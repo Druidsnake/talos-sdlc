@@ -8,7 +8,7 @@
 
 set -eu
 
-HOOKS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+HOOKS_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(dirname "$HOOKS_DIR")
 SCHEMAS="${TALOS_SCHEMAS_DIR:-$ROOT/schemas}"
 

@@ -8,6 +8,11 @@
 # Uso:   . hooks/lib/resolve-validator.sh && talos_validate <schema> <documento>
 # Sale:  0 valido / 1 invalido / 3 sin validador disponible
 
+# Ruta del validador de referencia, relativa a este archivo.
+TALOS_LIB_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+[ -f "$TALOS_LIB_DIR/lib/validate.py" ] && TALOS_LIB_DIR="$TALOS_LIB_DIR/lib"
+TALOS_PY_VALIDATOR="$TALOS_LIB_DIR/validate.py"
+
 talos_resolve_validator() {
     # 1. Override explicito
     if [ -n "${TALOS_VALIDATOR:-}" ]; then
@@ -42,48 +47,30 @@ talos: no hay validador de JSON Schema disponible.
 
 Instala uno (Talos no instala nada por su cuenta):
 
-  pipx install check-jsonschema
+  python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml
   # o
-  python3 -m venv .venv && .venv/bin/pip install jsonschema
+  pipx install check-jsonschema
   # o
   npm install -g ajv-cli
 
-O define uno propio:
+O define uno propio, que reciba <schema> <documento> y salga 0 o 1:
 
-  export TALOS_VALIDATOR="mi-validador --schema"
+  export TALOS_VALIDATOR="mi-validador"
 HINT
 }
 
 talos_validate() {
-    schema="$1"
-    doc="$2"
-    impl=$(talos_resolve_validator) || {
+    talos_schema="$1"
+    talos_doc="$2"
+    talos_impl=$(talos_resolve_validator) || {
         talos_validator_hint
         return 3
     }
-    case "$impl" in
-        env)              $TALOS_VALIDATOR "$schema" "$doc" ;;
-        venv)             .venv/bin/python -c "$TALOS_PY_VALIDATE" "$schema" "$doc" ;;
-        python3)          python3 -c "$TALOS_PY_VALIDATE" "$schema" "$doc" ;;
-        check-jsonschema) check-jsonschema --schemafile "$schema" "$doc" ;;
-        ajv)              ajv validate -s "$schema" -d "$doc" ;;
+    case "$talos_impl" in
+        env)              $TALOS_VALIDATOR "$talos_schema" "$talos_doc" ;;
+        venv)             .venv/bin/python "$TALOS_PY_VALIDATOR" "$talos_schema" "$talos_doc" ;;
+        python3)          python3 "$TALOS_PY_VALIDATOR" "$talos_schema" "$talos_doc" ;;
+        check-jsonschema) check-jsonschema --schemafile "$talos_schema" "$talos_doc" ;;
+        ajv)              ajv validate -s "$talos_schema" -d "$talos_doc" ;;
     esac
 }
-
-TALOS_PY_VALIDATE='
-import json, sys, pathlib
-from jsonschema import Draft202012Validator
-schema = json.loads(pathlib.Path(sys.argv[1]).read_text())
-raw = pathlib.Path(sys.argv[2]).read_text()
-if sys.argv[2].endswith((".yaml", ".yml")):
-    import yaml
-    doc = yaml.safe_load(raw)
-else:
-    doc = json.loads(raw)
-errors = sorted(Draft202012Validator(schema).iter_errors(doc), key=lambda e: list(e.path))
-for e in errors:
-    loc = "/".join(str(p) for p in e.path) or "(raiz)"
-    print(f"  {loc}: {e.message}", file=sys.stderr)
-sys.exit(1 if errors else 0)
-'
-export TALOS_PY_VALIDATE

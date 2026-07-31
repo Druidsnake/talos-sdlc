@@ -41,6 +41,7 @@ while IFS='	' read -r r mode glob; do
     [ "$r" = "$role" ] || continue
     [ "$mode" = "deny" ] || continue
     pattern=$(to_pattern "$glob")
+    # shellcheck disable=SC2254  # el glob es deliberado: es el matcher de rutas
     case "$path" in
         $pattern)
             echo "talos: DENEGADO $role no puede escribir en $path" >&2
@@ -56,6 +57,7 @@ while IFS='	' read -r r mode glob; do
     [ "$r" = "$role" ] || continue
     [ "$mode" = "allow" ] || continue
     pattern=$(to_pattern "$glob")
+    # shellcheck disable=SC2254  # el glob es deliberado: es el matcher de rutas
     case "$path" in
         $pattern) matched_allow=1; break ;;
     esac

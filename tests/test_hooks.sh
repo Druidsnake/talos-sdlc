@@ -3,7 +3,7 @@
 # Un hook que nunca deniega no es un mecanismo de enforcement.
 
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 
 pass=0
