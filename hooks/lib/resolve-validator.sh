@@ -24,6 +24,16 @@ talos_resolve_validator() {
         echo "venv"
         return 0
     fi
+    # 2b. Entorno de la instalacion de Talos.
+    # Con Talos vendoreado en .talos/, el proyecto puede no tener venv propio y
+    # el que sirve es el del sistema. Sin este paso, validar depende de donde
+    # se pare uno.
+    if [ -n "${TALOS_SYSTEM_ROOT:-}" ] \
+       && [ -x "$TALOS_SYSTEM_ROOT/.venv/bin/python" ] \
+       && "$TALOS_SYSTEM_ROOT/.venv/bin/python" -c "import jsonschema" 2>/dev/null; then
+        echo "venv-sistema"
+        return 0
+    fi
     # 3. PATH: validador dedicado primero
     if command -v check-jsonschema >/dev/null 2>&1; then
         echo "check-jsonschema"
@@ -69,6 +79,7 @@ talos_validate() {
     case "$talos_impl" in
         env)              $TALOS_VALIDATOR "$talos_schema" "$talos_doc" ;;
         venv)             .venv/bin/python "$TALOS_PY_VALIDATOR" "$talos_schema" "$talos_doc" ;;
+        venv-sistema)     "$TALOS_SYSTEM_ROOT/.venv/bin/python" "$TALOS_PY_VALIDATOR" "$talos_schema" "$talos_doc" ;;
         python3)          python3 "$TALOS_PY_VALIDATOR" "$talos_schema" "$talos_doc" ;;
         check-jsonschema) check-jsonschema --schemafile "$talos_schema" "$talos_doc" ;;
         ajv)              ajv validate -s "$talos_schema" -d "$talos_doc" ;;
