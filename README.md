@@ -2,7 +2,7 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: `dry-run-only` ejecutable.** El contrato normativo está completo y hay un slice vertical que corre: CLI, schemas, registro de capacidades y cinco adapters de referencia. Faltan la máquina de estados, los gates y la ejecución real. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
+**Estado actual: `dry-run-only` ejecutable.** El contrato normativo está completo y hay un slice vertical que corre: CLI, schemas, registro de capacidades, cinco adapters de referencia, la tabla de transiciones derivada de la spec y los gates que la custodian. Falta el **ejecutor** —nada avanza el estado todavía— y la ejecución real de agentes. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
 
 ---
 
@@ -110,13 +110,15 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
 | Schemas JSON | 25 definidos y verificados con suite de rechazo |
-| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `event append/tail` |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `event` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
 | Adapters | 5 de referencia en dry-run, uno por capacidad requerida |
 | Máquina de estados y gates | 52 transiciones derivadas de la spec, `GateEvaluator` puro |
-| `talos plan` / `talos feature start` | no implementados |
+| Evidencia | digest verificado, `GateResult` persistido e inmutable |
+| `talos plan` | `PLAN_GATE` completo sobre el grafo de features |
+| `talos feature start` | no implementado |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
-| Suite | 310 checks |
+| Suite | 355 checks |
 
 ---
 
@@ -149,8 +151,9 @@ Los pasos 1 a 6 de la [sección 51](talos-0.0.6.md#51-ruta-de-implementación-re
 
 | Paso | Qué falta |
 |---|---|
-| 7 | `talos plan` |
 | 8 | `talos feature start` |
+
+Falta además un **ejecutor** de transiciones: hoy `talos gate` evalúa, pero nada emite el evento ni avanza el estado (reglas 22.6.5 y 22.6.7). Encaja con el paso 8.
 
 Recién después de eso el paso 9 reemplaza el `ExecutionAdapter` dry-run por uno productivo, que es donde los agentes empiezan a trabajar de verdad.
 
