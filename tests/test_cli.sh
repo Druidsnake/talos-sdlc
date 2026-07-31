@@ -103,6 +103,40 @@ echo "=== separacion de raices ==="
 [ ! -d .talos/spec ] && ok "el spec NO se creo dentro de .talos/" || bad "el spec se creo dentro del sistema"
 
 echo ""
+echo "=== ayuda de cada comando ==="
+# talos rules estuvo roto por completo hasta que alguien pidio --help:
+# ningun test lo invocaba. Estos checks cubren la superficie entera.
+for c in doctor status rules init "spec check" "event append" "event tail"; do
+    # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
+    set -- $c
+    if $TALOS "$@" --help >/dev/null 2>&1; then
+        ok "talos $c --help sale 0"
+    else
+        bad "talos $c --help" "salio $?"
+    fi
+    if $TALOS "$@" --help 2>&1 | head -1 | grep -q "^talos $c"; then
+        ok "talos $c --help se identifica"
+    else
+        bad "talos $c --help se identifica" "primera linea no nombra el comando"
+    fi
+done
+
+expect_exit 0 "talos help lista los comandos" $TALOS help
+expect_out "talos rules -" "talos help <cmd> reenvia al comando" $TALOS help rules
+expect_exit 1 "sin argumentos sale 1" $TALOS
+expect_exit 1 "comando inexistente sale 1" $TALOS inventado
+
+echo ""
+echo "=== cada comando corre de verdad ==="
+expect_exit 0 "talos version" $TALOS version
+expect_exit 0 "talos rules" $TALOS rules
+expect_out "R-ROLE-001" "talos rules lista reglas reales" $TALOS rules
+expect_out "merge" "talos rules filtra por topic" $TALOS rules merge
+expect_exit 0 "talos status tras init" $TALOS status
+expect_exit 0 "talos doctor --format json" $TALOS doctor --format json
+expect_out '"install_level"' "doctor emite JSON con install_level" $TALOS doctor --format json
+
+echo ""
 total=$((pass + fail))
 echo "$pass/$total checks de la CLI"
 [ "$fail" -eq 0 ] || exit 1

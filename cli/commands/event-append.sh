@@ -32,7 +32,34 @@ while [ $# -gt 0 ]; do
         --evidence)  evidence="${2:?falta valor para --evidence}"; shift 2 ;;
         --causation) causation="${2:?falta valor para --causation}"; shift 2 ;;
         -h|--help)
-            echo "uso: talos event append --type <talos.x.y> --actor <actor> [--feature F001]"
+            cat <<'USAGE'
+talos event append - registra un evento con secuencia monotonica
+
+USO
+    talos event append --type <talos.x.y> --actor <actor> [opciones]
+
+OBLIGATORIOS
+    --type       tipo del evento, en el namespace talos
+    --actor      quien lo produce. Ej: core:MergeGate, role:Developer
+
+OPCIONALES
+    --feature    id de feature. Ej: F001
+    --evidence   ids de evidencia separados por coma
+    --causation  id del evento que lo causo
+
+COMO FUNCIONA
+    EventLog es el unico escritor de seq. La exclusion usa mkdir, que es
+    atomico en POSIX. El evento se valida ANTES de escribirse: uno
+    invalido no entra al log y no consume secuencia.
+
+EJEMPLO
+    talos event append --type talos.feature.started \
+                       --actor role:FeatureLead --feature F001
+
+SALIDA
+    0  registrado    1  evento invalido
+    2  runtime sin inicializar    5  no se pudo tomar el lock
+USAGE
             exit 0 ;;
         *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
     esac

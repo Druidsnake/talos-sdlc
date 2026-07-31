@@ -16,8 +16,28 @@ for arg in "$@"; do
     case "$arg" in
         --with-spec) WITH_SPEC=1 ;;
         -h|--help)
-            echo "uso: talos init [--with-spec]"
-            echo "  --with-spec  genera tambien un esqueleto en spec/"
+            cat <<'USAGE'
+talos init - prepara orchestration/ en el proyecto actual
+
+USO
+    talos init [--with-spec]
+
+OPCIONES
+    --with-spec   genera tambien un esqueleto en spec/
+
+QUE CREA
+    orchestration/.meta.json    run_id y secuencia de eventos
+    orchestration/state.json    estado del programa
+    orchestration/locks.json    leases activos
+    orchestration/.gitignore    excluye events/ y evidence/
+
+    Es idempotente: correrlo dos veces no pisa nada.
+    Valida lo que genera; si Talos produce algo invalido, falla.
+
+SALIDA
+    0  listo
+    1  lo generado no valida contra su schema
+USAGE
             exit 0 ;;
         *) echo "talos: opcion desconocida: $arg" >&2; exit 1 ;;
     esac

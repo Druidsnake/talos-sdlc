@@ -14,6 +14,30 @@ SYS="${TALOS_SYSTEM_ROOT:?}"
 PROJ="${TALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
+usage() {
+    cat <<'USAGE'
+talos spec check - valida el spec del producto
+
+USO
+    talos spec check [ruta-al-manifiesto]
+
+    Por defecto: spec/manifest.yaml
+
+QUE VERIFICA
+    que valide contra spec-manifest.schema.json
+    que el entry exista
+    que las 9 secciones del minimo aceptable apunten a archivos reales
+    si esta approved, que el digest coincida con el contenido actual
+    (un spec que cambio despues de aprobarse exige re-aprobacion)
+
+SALIDA
+    0  spec valido
+    2  spec ausente o rechazado
+    3  sin validador de JSON Schema disponible
+USAGE
+}
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
 MANIFEST="${1:-spec/manifest.yaml}"
 
 if [ ! -f "$MANIFEST" ]; then

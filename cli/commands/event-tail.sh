@@ -11,7 +11,20 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --format) [ "${2:-}" = json ] && FORMAT=json; shift 2 ;;
         [0-9]*) n="$1"; shift ;;
-        -h|--help) echo "uso: talos event tail [n] [--format json]"; exit 0 ;;
+        -h|--help)
+            cat <<'USAGE'
+talos event tail - muestra los ultimos eventos en orden de secuencia
+
+USO
+    talos event tail [n] [--format json]
+
+    n por defecto: 20
+
+SALIDA
+    0  ok
+    2  no hay event log; ejecuta talos init
+USAGE
+            exit 0 ;;
         *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
     esac
 done

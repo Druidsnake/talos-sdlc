@@ -5,6 +5,24 @@ set -eu
 PROJ="${TALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
+usage() {
+    cat <<'USAGE'
+talos status - estado del proyecto
+
+USO
+    talos status [--format json]
+
+MUESTRA
+    run_id, fecha de creacion, eventos registrados,
+    estado del spec y cantidad de features
+
+SALIDA
+    0  el proyecto esta inicializado
+    2  falta talos init
+USAGE
+}
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
 FORMAT=text
 [ "${1:-}" = "--format" ] && [ "${2:-}" = "json" ] && FORMAT=json
 

@@ -5,7 +5,29 @@ SYS="${TALOS_SYSTEM_ROOT:?}"
 PROJ="${TALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
-[ -f "/system/rules.yaml" ] || { echo "talos: falta system/rules.yaml" >&2; exit 2; }
+usage() {
+    cat <<'USAGE'
+talos rules - reglas normativas activas y su mecanismo de enforcement
+
+USO
+    talos rules [topic]
+
+TOPICS
+    roles  lifecycle  evidence  gates  spec  merge
+    locks  security   extensions  events  config
+
+FUERZA (derivada del mecanismo, no declarada)
+    dura    1-5   el requisito ES obligatorio
+    media   6-8   obligatorio con ventana de violacion
+    blanda  9-10  consultivo, aunque el texto suene a orden
+
+EJEMPLO
+    talos rules merge
+USAGE
+}
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
+[ -f "$SYS/system/rules.yaml" ] || { echo "talos: falta system/rules.yaml" >&2; exit 2; }
 
 PY=""
 [ -x .venv/bin/python ] && PY=".venv/bin/python"

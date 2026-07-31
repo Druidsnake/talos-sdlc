@@ -37,22 +37,36 @@ talos - Guardian del ciclo de desarrollo con IA
 
 USO
     talos <comando> [opciones]
+    talos help <comando>          ayuda detallada de un comando
 
-COMANDOS
-    init                 prepara orchestration/ en el proyecto actual
-    doctor               verifica preconditions y reporta el nivel real
-    spec check [ruta]    valida el spec contra su schema
-    event append         registra un evento con secuencia monotonica
-    event tail [n]       muestra los ultimos eventos
-    status               estado del proyecto
-    rules                reglas activas y su mecanismo
-    version              version del sistema
+EMPEZAR
+    talos init [--with-spec]      prepara orchestration/ en este proyecto
+    talos doctor                  que falta y que nivel de enforcement hay
+
+TRABAJAR
+    talos spec check [ruta]       valida el spec del producto
+    talos status                  estado del proyecto
+    talos rules [topic]           reglas activas y su mecanismo
+
+EVENTOS
+    talos event append            registra un evento con secuencia
+    talos event tail [n]          ultimos eventos
+
+OTROS
+    talos version                 version del sistema
+    talos help                    esta ayuda
 
 OPCIONES GLOBALES
-    --format json        salida estructurada
-    -h, --help           esta ayuda
+    --format json                 salida estructurada
+    -h, --help                    ayuda del comando
+
+SALIDA
+    0 exito              1 error de uso        2 precondition fallida
+    3 gate rechazado     4 escalacion          5 error de adapter
+    6 migracion requerida
 
 Talos nunca instala herramientas de terceros: detecta y te dice como.
+Documentacion: system/00-enforcement.md explica como se fuerza una regla.
 USAGE
 }
 
@@ -60,6 +74,13 @@ USAGE
 
 cmd="$1"
 shift
+
+# talos help <comando>  ->  <comando> --help
+if [ "$cmd" = "help" ] && [ $# -gt 0 ]; then
+    sub="$1"
+    shift
+    exec "$0" "$sub" "$@" --help
+fi
 
 case "$cmd" in
     -h|--help|help)

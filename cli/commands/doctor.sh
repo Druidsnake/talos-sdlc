@@ -12,6 +12,36 @@ SYS="${TALOS_SYSTEM_ROOT:?}"
 PROJ="${TALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
+usage() {
+    cat <<'USAGE'
+talos doctor - verifica preconditions y reporta el nivel de enforcement real
+
+USO
+    talos doctor [--format json]
+
+QUE VERIFICA
+    git, identidad, remoto y autenticacion de gh
+    validador de JSON Schema disponible
+    artefactos del sistema presentes
+    spec del producto, si existe
+    runtime inicializado
+    cuales de los 5 mecanismos de enforcement estan activos
+
+NIVEL DE INSTALACION
+    L0  solo documentacion, sin enforcement
+    L1  valida artefactos y commits
+    L2  gobierna el ciclo completo
+
+    No afirma que un requisito se cumple cuando su mecanismo no esta
+    disponible. Ver system/00-enforcement.md seccion 5.
+
+SALIDA
+    0  todas las preconditions requeridas pasan
+    2  falla al menos una precondition requerida
+USAGE
+}
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
 FORMAT=text
 [ "${1:-}" = "--format" ] && [ "${2:-}" = "json" ] && FORMAT=json
 
