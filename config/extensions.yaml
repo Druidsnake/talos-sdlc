@@ -1,0 +1,42 @@
+version: 1
+
+# Extension registry - talos-0.0.6.md seccion 37.4 y schemas/extension-registry.schema.json.
+#
+# Este es el UNICO lugar del sistema donde se puede nombrar una implementacion
+# concreta (regla 37.4.3.5), junto con los manifiestos bajo adapters/. Ningun
+# id de adapter debe aparecer en cli/, hooks/ ni system/.
+#
+# Las 5 capacidades REQUERIDAS (37.4.2) tienen exactamente una implementacion
+# cada una, todas en modo dry-run-only: ninguna depende de un binario externo,
+# por lo que el nucleo corre sin nada instalado (regla 37.4.4.1). Cuando el
+# proyecto avance a modo partial/production (seccion 51, pasos 9-13), estas
+# ligaduras se reemplazan por implementaciones productivas sin tocar el
+# nucleo (regla 37.4.3.6).
+#
+# Las capacidades OPCIONALES quedan sin ligar a proposito: la regla 37.4.3.4
+# dice que cero implementaciones de una capacidad opcional es un estado
+# valido, y esto demuestra que el nucleo corre sin extensiones (regla 37.1.9).
+
+capabilities:
+  FileSystemAdapter:
+    implementation: talos.adapter.fs_local
+
+  ModelProviderAdapter:
+    implementation: talos.adapter.model_dryrun
+
+  ExecutionAdapter:
+    implementation: talos.adapter.exec_dryrun
+
+  CoordinationAdapter:
+    implementation: talos.adapter.coord_dryrun
+
+  CIAdapter:
+    implementation: talos.adapter.ci_dryrun
+
+  MemoryAdapter: null
+  RoutingStrategy: null
+  RoleRegistry: null
+  Validator: null
+  Reporter: null
+
+plugins: []

@@ -1,0 +1,26 @@
+version: 1
+
+# Ver talos-0.0.6.md secciones 37.4.4, 47 y 51.
+#
+# dry-run-only es el modo objetivo actual (README.md "Estado de madurez").
+# En este modo ExecutionAdapter, CoordinationAdapter y CIAdapter DEBEN poder
+# resolverse sin ningun binario externo instalado (regla 37.4.4.1). Por eso
+# config/extensions.yaml liga esas tres capacidades a implementaciones
+# *_dryrun que no declaran external_binary.
+
+execution_mode: dry-run-only
+
+# L1: valida artefactos y commits (mecanismos 1, 2 y 4). Falta proteccion de
+# rama (mecanismo 5) para L2. Ver system/00-enforcement.md seccion 5.
+install_level: L1
+
+# Serial de a un feature: recomendacion 32.4.3. El schema exige
+# max_parallel_features = 1 cuando mode = serial (allOf de system-config).
+concurrency:
+  mode: serial
+  max_parallel_features: 1
+
+# Regla 31.7: auto_merge no es relajable por defecto.
+auto_merge: false
+
+human_approval: required_for_critical
