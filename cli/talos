@@ -1,0 +1,101 @@
+#!/bin/sh
+# CLI oficial de Talos.
+#
+# POSIX shell: mismo runtime que los hooks, sin dependencias propias.
+# Lo que necesita validar schemas delega en hooks/lib/resolve-validator.sh.
+#
+# Codigos de salida (talos-0.0.6.md 40.4):
+#   0 exito  1 error de uso  2 precondition fallida  3 gate rechazado
+#   4 escalacion requerida   5 error de adapter      6 migracion requerida
+
+set -eu
+
+# Dos raices distintas, como exige talos-0.0.6.md seccion 8:
+#   SYSTEM  -> donde vive Talos      (.talos/ vendoreado, o el repo si se auto-hospeda)
+#   PROJECT -> donde vive el trabajo (spec/, orchestration/, src/)
+# Confundirlas hace que Talos busque el spec del producto dentro de si mismo.
+CLI_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+TALOS_SYSTEM_ROOT=$(dirname "$CLI_DIR")
+
+if [ -n "${TALOS_PROJECT_ROOT:-}" ]; then
+    :
+elif git rev-parse --show-toplevel >/dev/null 2>&1; then
+    TALOS_PROJECT_ROOT=$(git rev-parse --show-toplevel)
+else
+    TALOS_PROJECT_ROOT=$(pwd)
+fi
+
+export TALOS_SYSTEM_ROOT TALOS_PROJECT_ROOT
+export TALOS_CLI_DIR="$CLI_DIR"
+
+TALOS_VERSION=$(cat "$TALOS_SYSTEM_ROOT/VERSION" 2>/dev/null || echo "desconocida")
+export TALOS_VERSION
+
+usage() {
+    cat <<'USAGE'
+talos - Guardian del ciclo de desarrollo con IA
+
+USO
+    talos <comando> [opciones]
+
+COMANDOS
+    init                 prepara orchestration/ en el proyecto actual
+    doctor               verifica preconditions y reporta el nivel real
+    spec check [ruta]    valida el spec contra su schema
+    event append         registra un evento con secuencia monotonica
+    event tail [n]       muestra los ultimos eventos
+    status               estado del proyecto
+    rules                reglas activas y su mecanismo
+    version              version del sistema
+
+OPCIONES GLOBALES
+    --format json        salida estructurada
+    -h, --help           esta ayuda
+
+Talos nunca instala herramientas de terceros: detecta y te dice como.
+USAGE
+}
+
+[ $# -eq 0 ] && { usage; exit 1; }
+
+cmd="$1"
+shift
+
+case "$cmd" in
+    -h|--help|help)
+        usage
+        ;;
+    version|--version)
+        echo "talos $TALOS_VERSION"
+        ;;
+    init|doctor|status|rules)
+        exec "$CLI_DIR/commands/$cmd.sh" "$@"
+        ;;
+    spec)
+        sub="${1:-}"
+        [ $# -gt 0 ] && shift
+        case "$sub" in
+            check) exec "$CLI_DIR/commands/spec-check.sh" "$@" ;;
+            *) echo "talos: subcomando de spec desconocido: ${sub:-<vacio>}" >&2
+               echo "talos: disponibles: check" >&2
+               exit 1 ;;
+        esac
+        ;;
+    event)
+        sub="${1:-}"
+        [ $# -gt 0 ] && shift
+        case "$sub" in
+            append) exec "$CLI_DIR/commands/event-append.sh" "$@" ;;
+            tail)   exec "$CLI_DIR/commands/event-tail.sh" "$@" ;;
+            *) echo "talos: subcomando de event desconocido: ${sub:-<vacio>}" >&2
+               echo "talos: disponibles: append, tail" >&2
+               exit 1 ;;
+        esac
+        ;;
+    *)
+        echo "talos: comando desconocido: $cmd" >&2
+        echo "" >&2
+        usage >&2
+        exit 1
+        ;;
+esac

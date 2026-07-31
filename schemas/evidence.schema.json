@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/evidence/0.0.5",
+  "$id": "https://talos-sdlc/schemas/evidence/0.0.6",
   "title": "Evidence",
   "description": "Artefacto tipado, persistido e inmutable que justifica una transicion de estado. Ver talos-0.0.6.md seccion 23.",
   "type": "object",
   "required": ["id", "kind", "schema_version", "run_id", "produced_by", "produced_at", "digest", "verifiable"],
   "properties": {
-    "id": { "type": "string", "pattern": "^ev-[A-Za-z0-9]+$" },
+    "id": { "type": "string", "pattern": "^ev-[A-Za-z0-9][A-Za-z0-9-]*$" },
     "kind": {
       "type": "string",
       "enum": ["PreconditionReport", "SchemaValidationReport", "HumanDecision", "HumanApproval", "SpecDraft", "ApprovedSpecRef", "ProgramPlan", "ProgramPlanEntry", "DependencySet", "LockLease", "LockRelease", "IssueRef", "BranchRef", "CommitRef", "PullRequestRef", "TaskResultSet", "LocalTestReport", "Review", "IssueList", "CheckRunSet", "PolicyDecision", "MergeGateReport", "MergeResult", "PostMergeReport", "BlockerResolution", "ErrorRecord", "GateResult", "FeatureStateSet"]

@@ -28,6 +28,7 @@ run "schemas: rechazo de documentos invalidos" $PY tests/test_schemas.py
 run "roles: coherencia entre config, archivos y schemas" $PY tests/test_roles.py
 run "reglas: mapeo de requisito a mecanismo" $PY tests/test_rules.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
+run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 
 printf '\n=== JSON de todos los schemas ===\n'
 bad=0

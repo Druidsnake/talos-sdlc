@@ -1,0 +1,121 @@
+#!/bin/sh
+# talos event append - registra un evento con secuencia monotonica.
+#
+# EventLog es el UNICO escritor de seq (talos-0.0.6.md 41.2.2). La exclusion
+# se hace con mkdir, que es atomico en POSIX: si el directorio ya existe,
+# mkdir falla y sabemos que otro escritor tiene el turno.
+#
+# Uso: talos event append --type talos.feature.started --actor role:FeatureLead
+#                         [--feature F001] [--evidence ev-1,ev-2]
+
+set -eu
+
+SYS="${TALOS_SYSTEM_ROOT:?}"
+PROJ="${TALOS_PROJECT_ROOT:?}"
+cd "$PROJ"
+
+META=orchestration/.meta.json
+LOCKDIR=orchestration/.lock
+EVENTS=orchestration/events
+
+type=""
+actor=""
+feature=""
+evidence=""
+causation=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --type)      type="${2:?falta valor para --type}"; shift 2 ;;
+        --actor)     actor="${2:?falta valor para --actor}"; shift 2 ;;
+        --feature)   feature="${2:?falta valor para --feature}"; shift 2 ;;
+        --evidence)  evidence="${2:?falta valor para --evidence}"; shift 2 ;;
+        --causation) causation="${2:?falta valor para --causation}"; shift 2 ;;
+        -h|--help)
+            echo "uso: talos event append --type <talos.x.y> --actor <actor> [--feature F001]"
+            exit 0 ;;
+        *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
+    esac
+done
+
+[ -n "$type" ]  || { echo "talos: --type es obligatorio" >&2; exit 1; }
+[ -n "$actor" ] || { echo "talos: --actor es obligatorio" >&2; exit 1; }
+
+if [ ! -f "$META" ]; then
+    echo "talos: runtime sin inicializar" >&2
+    echo "talos: ejecuta talos init" >&2
+    exit 2
+fi
+
+# El namespace lo valida despues el schema, pero fallar temprano da mejor mensaje.
+case "$type" in
+    talos.*.*) ;;
+    *) echo "talos: el tipo debe usar el namespace talos: $type" >&2; exit 1 ;;
+esac
+
+# --- exclusion mutua: mkdir es atomico ---
+attempts=0
+until mkdir "$LOCKDIR" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 50 ]; then
+        echo "talos: no se pudo tomar el lock del event log tras 50 intentos" >&2
+        echo "talos: si ningun proceso esta escribiendo, borra $LOCKDIR" >&2
+        exit 5
+    fi
+    sleep 0.1 2>/dev/null || sleep 1
+done
+trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT INT TERM
+
+# Ancla en la clave. Un sed con .*: es codicioso y parte mal los timestamps.
+read_meta() {
+    sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\(.*\)/\1/p" "$META" \
+        | head -1 | sed 's/[",]//g' | tr -d ' '
+}
+
+last_seq=$(read_meta last_event_seq)
+run_id=$(read_meta run_id)
+project=$(basename "$PROJ")
+: "${last_seq:=0}"
+
+seq=$((last_seq + 1))
+now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+eid="ev-$(printf '%06d' "$seq")-$(od -An -N3 -tx1 </dev/urandom | tr -d ' \n')"
+
+# evidencia como array JSON
+ev_json="[]"
+if [ -n "$evidence" ]; then
+    ev_json=$(printf '%s' "$evidence" | tr ',' '\n' | sed 's/^/"/; s/$/"/' | tr '\n' ',' | sed 's/,$//')
+    ev_json="[$ev_json]"
+fi
+
+json_or_null() { [ -n "$1" ] && printf '"%s"' "$1" || printf 'null'; }
+
+mkdir -p "$EVENTS"
+logfile="$EVENTS/$(printf '%06d' $(( (seq - 1) / 1000 + 1 ))).ndjson"
+
+event=$(cat <<EOF
+{"id":"$eid","seq":$seq,"schema_version":1,"type":"$type","ts":"$now","run_id":"$run_id","project":"$project","feature_id":$(json_or_null "$feature"),"actor":"$actor","correlation_id":$(json_or_null "$feature"),"causation_id":$(json_or_null "$causation"),"evidence_refs":$ev_json,"payload":{}}
+EOF
+)
+
+# Se valida ANTES de escribir: un evento invalido no entra al log.
+tmp=$(mktemp)
+printf '%s\n' "$event" > "$tmp"
+if [ -x "$SYS/hooks/validate-artifact.sh" ]; then
+    if ! "$SYS/hooks/validate-artifact.sh" event "$tmp" >/dev/null 2>&1; then
+        echo "talos: el evento no valida contra event.schema.json" >&2
+        "$SYS/hooks/validate-artifact.sh" event "$tmp" >&2 || true
+        rm -f "$tmp"
+        exit 1
+    fi
+fi
+rm -f "$tmp"
+
+printf '%s\n' "$event" >> "$logfile"
+
+# Actualiza last_event_seq de forma atomica
+newmeta=$(mktemp)
+sed "s/\"last_event_seq\": *[0-9]*/\"last_event_seq\": $seq/" "$META" > "$newmeta"
+mv "$newmeta" "$META"
+
+echo "$eid seq=$seq $type"
