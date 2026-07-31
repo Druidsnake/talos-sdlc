@@ -334,28 +334,45 @@ def main():
 
     # ---------- comportamiento en ejecucion ----------
 
-    # Health sin herramientas externas instaladas (regla 37.4.4.1).
-    # PATH minimo: solo lo que trae el sistema base.
+    # Regla 37.4.4.1: dry-run-only corre sin ninguna herramienta externa
+    # instalada. Eso aplica a los adapters que NO dependen de un binario: uno
+    # que declara external_binary DEBE negarse cuando ese binario falta, y su
+    # propia suite lo cubre con un binario de mentira.
+    #
+    # Correrle el health a todos escondia el problema en una maquina que si
+    # tenia el binario y lo destapaba solo en CI.
+    autonomos = [n for n, m in mans.items() if not m.get("external_binary")]
+    con_binario = [n for n, m in mans.items() if m.get("external_binary")]
+
     sanos = []
-    for name in mans:
+    for name in autonomos:
         proc = run_adapter(name, "health")
         sanos.append((name, proc.returncode == 0 and '"healthy":true' in proc.stdout))
     results.append(check(
-        "los 5 adapters responden al health check (regla 37.4.4.1)",
-        all(ok for _, ok in sanos),
+        f"los {len(autonomos)} adapters sin binario externo responden al health "
+        f"check (regla 37.4.4.1)",
+        autonomos and all(ok for _, ok in sanos),
         f"fallan: {[n for n, ok in sanos if not ok]}",
+    ))
+
+    results.append(check(
+        "todo adapter con binario externo lo declara con rango y env_override",
+        all((mans[n]["external_binary"] or {}).get("version_range")
+            and (mans[n]["external_binary"] or {}).get("env_override")
+            for n in con_binario),
+        f"{ {n: mans[n].get('external_binary') for n in con_binario} }",
     ))
 
     # Toda salida es JSON parseable (regla 38.1.3).
     no_json = []
-    for name in mans:
+    for name in autonomos:
         proc = run_adapter(name, "health")
         try:
             json.loads(proc.stdout)
         except json.JSONDecodeError:
             no_json.append(name)
     results.append(check(
-        "todo adapter devuelve resultado estructurado (regla 38.1.3)",
+        "todo adapter autonomo devuelve resultado estructurado (regla 38.1.3)",
         not no_json,
         f"salida no parseable: {no_json}",
     ))
