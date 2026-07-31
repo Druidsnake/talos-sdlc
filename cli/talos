@@ -51,6 +51,7 @@ TRABAJAR
     talos gate <maq> <de> <a>     evalua si una transicion esta autorizada
     talos evidence seal|check     sella y verifica evidencia
     talos plan check|init|show    planificacion de programa y PLAN_GATE
+    talos feature start|list      ejecuta una feature del plan
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -111,6 +112,9 @@ case "$cmd" in
         ;;
     plan)
         exec "$CLI_DIR/commands/plan.sh" "$@"
+        ;;
+    feature)
+        exec "$CLI_DIR/commands/feature.sh" "$@"
         ;;
     event)
         sub="${1:-}"
