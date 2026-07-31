@@ -125,15 +125,20 @@ case "$op" in
     create_workspace)
         check_version >/dev/null || exit 2
         _label=$(json_get label)
-        talos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"$(herdr_do workspace create ${_label:+--label "$_label"} | first_id workspace_id)\",\"url\":null}"
+        # talos_mutate_run consulta el ledger ANTES de ejecutar. Con la forma
+        # que recibe "$(comando)" ya evaluado, el workspace se creaba en cada
+        # reintento aunque la respuesta dijera already_exists.
+        # shellcheck disable=SC2086
+        talos_mutate_run "$op" "$run" "$feat" "$args" workspace_id \
+            herdr_do workspace create ${_label:+--label} ${_label:+"$_label"}
         ;;
 
     create_session)
         check_version >/dev/null || exit 2
         _ws=$(json_get workspace_id)
-        talos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"$(herdr_do tab create ${_ws:+--workspace "$_ws"} | first_id tab_id)\",\"url\":null}"
+        # shellcheck disable=SC2086
+        talos_mutate_run "$op" "$run" "$feat" "$args" tab_id \
+            herdr_do tab create ${_ws:+--workspace} ${_ws:+"$_ws"}
         ;;
 
     start_agent)
@@ -143,8 +148,8 @@ case "$op" in
             talos_error precondition "start_agent requiere name, kind y pane"
             exit 5
         }
-        talos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"$(herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane" | first_id terminal_id)\",\"url\":null}"
+        talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
+            herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane"
         ;;
 
     prompt_agent)
@@ -154,9 +159,8 @@ case "$op" in
             talos_error precondition "prompt_agent requiere target y text"
             exit 5
         }
-        herdr_do agent prompt "$_target" "$_text" >/dev/null
-        talos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"agent:$_target\",\"url\":null}"
+        talos_mutate_run "$op" "$run" "$feat" "$args" agent \
+            herdr_do agent prompt "$_target" "$_text"
         ;;
 
     wait_agent)
@@ -178,9 +182,8 @@ case "$op" in
             talos_error precondition "run_command requiere pane y command"
             exit 5
         }
-        herdr_do pane send-text "$_pane" "$_cmd" >/dev/null
-        talos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"pane:$_pane\",\"url\":null}"
+        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+            herdr_do pane send-text "$_pane" "$_cmd"
         ;;
 
     report_metadata)

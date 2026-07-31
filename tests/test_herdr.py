@@ -33,11 +33,19 @@ def check(label, condition, detail=""):
     return False
 
 
-def fake_herdr(version, works=True):
-    """Un herdr de mentira: la suite no puede depender del real."""
+def fake_herdr(version, works=True, tally=None):
+    """Un herdr de mentira: la suite no puede depender del real.
+
+    Con tally, cada `workspace create` deja una marca en ese archivo. Es lo
+    que permite contar efectos reales en vez de creerle a la respuesta.
+    """
     d = pathlib.Path(tempfile.mkdtemp())
     p = d / "herdr"
-    body = f'#!/bin/sh\ncase "$1" in\n  --version) echo "herdr {version}" ;;\n'
+    body = f'#!/bin/sh\ncase "$1 $2" in\n'
+    if tally:
+        body += f'  "workspace create") echo x >> {tally}; echo \'{{"workspace_id":"w1"}}\' ; exit 0 ;;\n'
+    body += 'esac\ncase "$1" in\n'
+    body += f'  --version) echo "herdr {version}" ;;\n'
     body += '  workspace) exit 0 ;;\n' if works else '  workspace) exit 1 ;;\n'
     body += '  *) echo "{}" ;;\nesac\n'
     p.write_text(body)
@@ -178,6 +186,56 @@ def main():
     results.append(check(
         "en dry-run no exige servidor y lo declara (regla 38.1.5)",
         code == 0 and '"dry_run":true' in out, f"exit={code} {out[:140]}"))
+
+    # ---------- idempotencia con efecto real ----------
+    #
+    # Este es el caso que los adapters de simulacion NO pueden cubrir: ellos
+    # no ejecutan nada, asi que su resource_ref es una constante y el reintento
+    # "funciona" sin probar nada.
+    #
+    # Pasar "$(comando)" como argumento a talos_mutate evalua la sustitucion
+    # ANTES de entrar a la funcion: el efecto ocurre siempre y la consulta al
+    # ledger llega tarde. La respuesta decia already_exists y el recurso se
+    # duplicaba igual, que es justo lo que corrige la seccion 38.2.
+    tally = pathlib.Path(tempfile.mkdtemp()) / "invocaciones"
+    contador = fake_herdr("0.7.5", tally=str(tally))
+    proyecto = tempfile.mkdtemp()   # ledger compartido entre las llamadas
+    env = {"TALOS_HERDR_BIN": str(contador), "TALOS_PROJECT_ROOT": proyecto,
+           "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+
+    r1 = run_adapter("create_workspace", {"label": "x"}, env=env)
+    r2 = run_adapter("create_workspace", {"label": "x"}, env=env)
+    r3 = run_adapter("create_workspace", {"label": "x"}, env=env)
+
+    veces = len(tally.read_text().split()) if tally.exists() else 0
+    results.append(check(
+        "tres llamadas iguales ejecutan el efecto UNA sola vez (seccion 38.2)",
+        veces == 1, f"el backend se invoco {veces} veces"))
+
+    results.append(check(
+        "la primera dice created y las siguientes already_exists",
+        '"status":"created"' in r1[1]
+        and '"status":"already_exists"' in r2[1]
+        and '"status":"already_exists"' in r3[1],
+        f"{r1[1][:60]} | {r2[1][:60]}"))
+
+    results.append(check(
+        "una mutacion real NO se reporta como dry_run",
+        '"dry_run":false' in r1[1], r1[1][:120]))
+
+    # Argumentos distintos si tienen que ejecutar de nuevo.
+    run_adapter("create_workspace", {"label": "otro"}, env=env)
+    veces2 = len(tally.read_text().split())
+    results.append(check(
+        "argumentos distintos si ejecutan el efecto de nuevo",
+        veces2 == 2, f"invocaciones: {veces2}"))
+
+    # Ninguna operacion mutante puede quedar con la forma vieja.
+    fuente = (ADAPTER / "run.sh").read_text()
+    results.append(check(
+        "ninguna mutante usa la forma que evalua el efecto por adelantado",
+        "talos_mutate " not in fuente and "talos_mutate_run" in fuente,
+        "queda una llamada a talos_mutate con el resultado ya calculado"))
 
     # ---------- el nucleo sigue sin nombrar a Herdr ----------
 

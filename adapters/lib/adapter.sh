@@ -127,8 +127,49 @@ talos_mutate() {
     fi
 
     talos_ledger_record "$_key" "$_op" "$_ref"
-    printf '{"status":"created","resource_ref":%s,"idempotency_key":"%s","dry_run":true}\n' \
-        "$_ref" "$_key"
+    printf '{"status":"created","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
+        "$_ref" "$_key" "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
+}
+
+# talos_mutate_run <operation> <run_id> <feature_id> <semantic_args> <campo-id> <cmd...>
+#
+# Igual que talos_mutate, pero EJECUTA el comando en vez de recibir su
+# resultado ya calculado.
+#
+# La diferencia no es de estilo. Pasar "$(comando)" como argumento hace que la
+# sustitucion se evalue ANTES de entrar a la funcion: el efecto de lado ocurre
+# siempre, y la consulta al ledger llega tarde. Con eso un reintento devuelve
+# already_exists y aun asi crea un recurso duplicado, que es exactamente lo que
+# la seccion 38.2 corrige de 0.0.4.
+#
+# Un adapter que ejecuta de verdad DEBE usar esta forma.
+talos_mutate_run() {
+    _op="$1"; _run="$2"; _feat="$3"; _args="$4"; _field="$5"
+    shift 5
+
+    _key=$(talos_idempotency_key "$_run" "$_feat" "$_op" "$_args") || return 5
+
+    # Consulta ANTES de tocar nada.
+    if _existing=$(talos_ledger_lookup "$_key"); then
+        printf '{"status":"already_exists","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
+            "$_existing" "$_key" \
+            "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
+        return 0
+    fi
+
+    _out=$("$@") || {
+        talos_error adapter "la operacion $_op fallo en el backend"
+        return 5
+    }
+    _id=$(printf '%s' "$_out" \
+          | sed -n 's/.*"'"$_field"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    [ -n "$_id" ] || _id="$_op"
+    _ref="{\"id\":\"$_id\",\"url\":null}"
+
+    talos_ledger_record "$_key" "$_op" "$_ref"
+    printf '{"status":"created","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
+        "$_ref" "$_key" \
+        "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
 }
 
 # ---------- despacho ----------
