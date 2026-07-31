@@ -237,6 +237,56 @@ def main():
         "talos_mutate " not in fuente and "talos_mutate_run" in fuente,
         "queda una llamada a talos_mutate con el resultado ya calculado"))
 
+    # ---------- defectos que solo aparecen ejecutando ----------
+    #
+    # Los tres se encontraron corriendo el adapter contra un servidor real.
+    # Ninguna cantidad de tests contra un backend simulado los habria mostrado,
+    # porque el simulado no tiene prompt, ni terminal, ni tecla Enter.
+
+    fuente = (ADAPTER / "run.sh").read_text()
+
+    # Un prompt enviado sin --wait justo despues de start_agent se pierde en
+    # silencio y la operacion reporta exito igual.
+    results.append(check(
+        "prompt_agent confirma la entrega con --wait",
+        "--wait" in fuente,
+        "sin --wait un prompt se puede perder sin que nadie se entere"))
+
+    # pane send-text escribe el texto y NO manda Enter: el comando queda en el
+    # prompt sin ejecutarse. pane run es atomico.
+    # Se mira la INVOCACION, no cualquier mencion: el comentario que explica
+    # por que no usar send-text tiene que poder nombrarlo.
+    results.append(check(
+        "run_command usa pane run, no send-text",
+        "herdr_do pane run" in fuente and "herdr_do pane send-text" not in fuente,
+        "send-text deja el comando escrito sin ejecutar"))
+
+    # agent read devuelve texto de terminal; meterlo crudo en JSON lo rompe.
+    results.append(check(
+        "read_agent escapa la salida antes de emitirla",
+        "talos_json_string" in fuente,
+        "la salida de terminal cruda no es un valor JSON valido"))
+
+    escapado = subprocess.run(
+        ["sh", "-c",
+         f'. "{ROOT}/adapters/lib/adapter.sh"; '
+         f'printf \'linea1\\n"comillas" y \\\\barras\' | talos_json_string'],
+        capture_output=True, text=True)
+    try:
+        json.loads(escapado.stdout)
+        ok_escape = True
+    except json.JSONDecodeError:
+        ok_escape = False
+    results.append(check(
+        "talos_json_string produce un string JSON valido con saltos y comillas",
+        ok_escape, escapado.stdout[:120]))
+
+    # El motivo del backend tiene que viajar en el error, no perderse.
+    results.append(check(
+        "un fallo del backend propaga su motivo, no un mensaje generico",
+        '"operation":"%s","message":%s' in (ROOT / "adapters" / "lib" / "adapter.sh").read_text(),
+        "el error generico obliga a reproducir a mano lo que el adapter ya sabia"))
+
     # ---------- el nucleo sigue sin nombrar a Herdr ----------
 
     # Regla 38.5.5: el nucleo NO DEBE nombrar a Herdr fuera del registry y la

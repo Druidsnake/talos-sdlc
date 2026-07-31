@@ -157,10 +157,13 @@ talos_mutate_run() {
         return 0
     fi
 
-    _out=$("$@") || {
-        talos_error adapter "la operacion $_op fallo en el backend"
+    # El motivo del backend viaja en el error. "fallo en el backend" no dice
+    # nada: obliga a reproducir a mano lo que el adapter ya sabia.
+    if ! _out=$("$@" 2>&1); then
+        printf '{"status":"error","error_class":"adapter","operation":"%s","message":%s}\n' \
+            "$_op" "$(printf '%s' "$_out" | talos_json_string)" >&2
         return 5
-    }
+    fi
     _id=$(printf '%s' "$_out" \
           | sed -n 's/.*"'"$_field"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
     [ -n "$_id" ] || _id="$_op"
@@ -177,4 +180,19 @@ talos_mutate_run() {
 # talos_require_op <operacion> <lista de operaciones soportadas>
 talos_unknown_op() {
     talos_error precondition "operacion no soportada por este adapter: $1"
+}
+
+# talos_json_string
+# Convierte la entrada estandar en un string JSON valido, escapes incluidos.
+#
+# La salida de una terminal trae saltos de linea, comillas y caracteres de
+# control. Insertarla cruda en una posicion JSON produce algo no parseable, y
+# la regla 38.1.3 exige resultado estructurado.
+talos_json_string() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
+    else
+        # Sin python: se degrada a un string vacio antes que emitir JSON roto.
+        printf '""'
+    fi
 }

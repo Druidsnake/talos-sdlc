@@ -125,12 +125,17 @@ case "$op" in
     create_workspace)
         check_version >/dev/null || exit 2
         _label=$(json_get label)
+        # El cwd es parte del contrato: una feature se desarrolla en su propio
+        # directorio o worktree, no donde haya quedado parado el orquestador.
+        _cwd=$(json_get cwd)
         # talos_mutate_run consulta el ledger ANTES de ejecutar. Con la forma
         # que recibe "$(comando)" ya evaluado, el workspace se creaba en cada
         # reintento aunque la respuesta dijera already_exists.
         # shellcheck disable=SC2086
         talos_mutate_run "$op" "$run" "$feat" "$args" workspace_id \
-            herdr_do workspace create ${_label:+--label} ${_label:+"$_label"}
+            herdr_do workspace create --no-focus \
+                ${_label:+--label} ${_label:+"$_label"} \
+                ${_cwd:+--cwd} ${_cwd:+"$_cwd"}
         ;;
 
     create_session)
@@ -159,20 +164,36 @@ case "$op" in
             talos_error precondition "prompt_agent requiere target y text"
             exit 5
         }
+        # --wait no es una comodidad: sin el, un prompt enviado justo despues
+        # de start_agent se pierde en silencio y la operacion reporta exito
+        # igual. Con --wait, Herdr confirma que el agente cambio de estado o
+        # devuelve agent_prompt_stalled, que es un error visible.
+        _tmo=$(json_get timeout_ms)
+        # shellcheck disable=SC2086
         talos_mutate_run "$op" "$run" "$feat" "$args" agent \
-            herdr_do agent prompt "$_target" "$_text"
+            herdr_do agent prompt "$_target" "$_text" --wait \
+                ${_tmo:+--timeout} ${_tmo:+"$_tmo"}
         ;;
 
     wait_agent)
         check_version >/dev/null || exit 2
         _target=$(json_get target); _until=$(json_get until); _timeout=$(json_get timeout_ms)
-        talos_ok "$(herdr_do agent wait "$_target" ${_until:+--until "$_until"} ${_timeout:+--timeout "$_timeout"})"
+        # shellcheck disable=SC2086
+        talos_ok "$(herdr_do agent wait "$_target" \
+                    ${_until:+--until} ${_until:+"$_until"} \
+                    ${_timeout:+--timeout} ${_timeout:+"$_timeout"})"
         ;;
 
     read_agent)
         check_version >/dev/null || exit 2
         _target=$(json_get target); _lines=$(json_get lines)
-        talos_ok "$(herdr_do agent read "$_target" ${_lines:+--lines "$_lines"} --format text)"
+        # agent read devuelve TEXTO de terminal, no JSON: saltos de linea,
+        # comillas y caracteres de dibujo. Meterlo crudo en una posicion JSON
+        # produce basura no parseable y rompe la regla 38.1.3.
+        # shellcheck disable=SC2086
+        _raw=$(herdr_do agent read "$_target" ${_lines:+--lines} ${_lines:+"$_lines"} \
+               --source recent-unwrapped --format text)
+        talos_ok "{\"output\":$(printf '%s' "$_raw" | talos_json_string),\"target\":\"$_target\"}"
         ;;
 
     run_command)
@@ -182,8 +203,11 @@ case "$op" in
             talos_error precondition "run_command requiere pane y command"
             exit 5
         }
+        # pane run manda el texto Y el Enter de forma atomica. Con send-text
+        # el comando queda escrito en el prompt y nunca se ejecuta: la
+        # operacion reportaba exito sin haber corrido nada.
         talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
-            herdr_do pane send-text "$_pane" "$_cmd"
+            herdr_do pane run "$_pane" "$_cmd"
         ;;
 
     report_metadata)
