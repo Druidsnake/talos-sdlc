@@ -1,0 +1,9 @@
+# Agent tooling caches
+.atl/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
