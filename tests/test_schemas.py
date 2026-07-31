@@ -318,6 +318,49 @@ CASES = [
         "created_at": "2026-07-30T12:00:00Z",
     }, False, "un blocker sin causa no es accionable"),
 
+    # --- rules-registry: el sistema no puede mentir sobre su propio enforcement
+    ("rules-registry", "DEBE con respaldo de schema", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-001", "topic": "roles", "nivel_normativo": "DEBE",
+            "requisito": "El artefacto debe validar contra su schema declarado.",
+            "mecanismo": 1, "implementacion": ["schemas/x.json"], "spec_ref": "s.md"}],
+    }, True, "00-enforcement 4: un DEBE nombra su mecanismo"),
+
+    ("rules-registry", "DEBE apoyado solo en un .md", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-002", "topic": "roles", "nivel_normativo": "DEBE",
+            "requisito": "El agente debe portarse bien y seguir las instrucciones.",
+            "mecanismo": 10, "estrategia_guia": ["contexto_minimo"], "spec_ref": "s.md"}],
+    }, False, "00-enforcement 4.2: fuerza blanda no puede redactarse como DEBE"),
+
+    ("rules-registry", "NO_DEBE apoyado solo en contexto de rol", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-003", "topic": "roles", "nivel_normativo": "NO_DEBE",
+            "requisito": "El agente no debe salirse del alcance asignado nunca.",
+            "mecanismo": 9, "estrategia_guia": ["contexto_minimo"], "spec_ref": "s.md"}],
+    }, False, "00-enforcement 3.1: mecanismos 9-10 son consultivos"),
+
+    ("rules-registry", "RECOMENDADO blando con estrategia", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-004", "topic": "roles", "nivel_normativo": "RECOMENDADO",
+            "requisito": "El agente escribe codigo parecido al que ya esta.",
+            "mecanismo": 10, "estrategia_guia": ["contexto_minimo"], "spec_ref": "s.md"}],
+    }, True, "00-enforcement 7: lo no forzable se guia"),
+
+    ("rules-registry", "blando sin estrategia de guia", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-005", "topic": "roles", "nivel_normativo": "RECOMENDADO",
+            "requisito": "El agente escribe codigo parecido al que ya esta.",
+            "mecanismo": 10, "spec_ref": "s.md"}],
+    }, False, "00-enforcement 7.1: todo requisito no forzable declara estrategia"),
+
+    ("rules-registry", "mecanismo ejecutable sin nombrar quien lo ejecuta", {
+        "version": 1, "rules": [{
+            "id": "R-TEST-006", "topic": "roles", "nivel_normativo": "DEBE",
+            "requisito": "El artefacto debe validar contra su schema declarado.",
+            "mecanismo": 1, "spec_ref": "s.md"}],
+    }, False, "00-enforcement 4: mecanismos 1-8 nombran su implementacion"),
+
     ("task-result", "intenta reportar pruebas como texto libre", {
         "schema_version": 1, "feature_id": "F001", "task_id": "T1",
         "status": "done", "declared_scope": ["src/auth/**"],

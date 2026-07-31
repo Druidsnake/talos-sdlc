@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/rules-registry/0.0.6",
+  "title": "RulesRegistry",
+  "description": "Registro de reglas normativas con su mecanismo de enforcement. Ver system/00-enforcement.md seccion 4. La fuerza NO se declara: se deriva del mecanismo, para que no puedan contradecirse.",
+  "type": "object",
+  "required": ["version", "rules"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "topic", "nivel_normativo", "requisito", "mecanismo", "spec_ref"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^R-[A-Z]{3,6}-[0-9]{3}$",
+          "description": "Identificador estable. Ej: R-ROLE-001"
+        },
+        "topic": {
+          "type": "string",
+          "enum": ["roles", "lifecycle", "evidence", "gates", "spec", "merge", "locks", "security", "extensions", "events", "config"]
+        },
+        "nivel_normativo": {
+          "type": "string",
+          "enum": ["DEBE", "NO_DEBE", "RECOMENDADO", "PUEDE", "OPCIONAL"]
+        },
+        "requisito": { "type": "string", "minLength": 10 },
+        "mecanismo": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "1 schema, 2 hook pre-accion, 3 CI, 4 git hook, 5 branch protection, 6 hook post-accion, 7 presencia de artefacto, 8 aislamiento de permisos, 9 contexto por rol, 10 instruccion en md"
+        },
+        "implementacion": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Archivos o checks concretos que lo ejecutan. Requerido para mecanismos 1-8."
+        },
+        "estrategia_guia": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["reducir_espacio_accion", "contexto_minimo", "salida_estructurada", "checklist_verificable", "scope_declarado", "separacion_roles"]
+          },
+          "description": "Requerido para mecanismos 9-10: lo no forzable necesita al menos una estrategia."
+        },
+        "spec_ref": { "type": "string", "minLength": 1 },
+        "nota": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "Mecanismos blandos (9-10) NO pueden expresarse como obligacion. La fuerza se deriva del mecanismo; declarar DEBE sin respaldo duro es imposible.",
+          "if": {
+            "properties": { "mecanismo": { "minimum": 9 } },
+            "required": ["mecanismo"]
+          },
+          "then": {
+            "properties": {
+              "nivel_normativo": { "enum": ["RECOMENDADO", "PUEDE", "OPCIONAL"] },
+              "estrategia_guia": { "minItems": 1 }
+            },
+            "required": ["estrategia_guia"]
+          }
+        },
+        {
+          "$comment": "Mecanismos ejecutables (1-8) deben nombrar que los ejecuta.",
+          "if": {
+            "properties": { "mecanismo": { "maximum": 8 } },
+            "required": ["mecanismo"]
+          },
+          "then": {
+            "required": ["implementacion"],
+            "properties": { "implementacion": { "minItems": 1 } }
+          }
+        }
+      ]
+    }
+  }
+}

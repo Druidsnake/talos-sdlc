@@ -1,0 +1,303 @@
+version: 1
+
+# Registro de reglas normativas de Talos con su mecanismo de enforcement.
+# Ver system/00-enforcement.md seccion 4.
+#
+# La FUERZA no se declara: se deriva del mecanismo.
+#   1-5  duro   -> el requisito ES obligatorio
+#   6-8  medio  -> obligatorio con ventana de violacion
+#   9-10 blando -> consultivo, y el schema prohibe expresarlo como DEBE
+#
+# Una regla con mecanismo 9 o 10 y nivel_normativo DEBE no valida.
+# Esa es la auditoria del criterio 3 de 00-enforcement.md, hecha con el
+# mecanismo 1 en vez de con un script a medida.
+
+rules:
+
+  # ---------- roles ----------
+
+  - id: R-ROLE-001
+    topic: roles
+    nivel_normativo: NO_DEBE
+    requisito: Un rol no debe escribir fuera de las rutas declaradas en su write_paths.
+    mecanismo: 2
+    implementacion:
+      - hooks/check-write-scope.sh
+      - hooks/agent/check-tool-call.sh
+      - hooks/generated/write-scope.rules
+    spec_ref: talos-0.0.6.md#19-permisos-de-rol
+
+  - id: R-ROLE-002
+    topic: roles
+    nivel_normativo: DEBE
+    requisito: Una ruta sin regla allow que la cubra debe denegarse (fail-closed).
+    mecanismo: 2
+    implementacion:
+      - hooks/check-write-scope.sh
+    spec_ref: system/00-enforcement.md#2-donde-vive-el-enforcement
+    nota: Un sistema que permite lo no contemplado deja de gobernar apenas aparece un caso nuevo.
+
+  - id: R-ROLE-003
+    topic: roles
+    nivel_normativo: DEBE
+    requisito: Cada rol debe producir su artefacto de salida declarado, valido contra su schema.
+    mecanismo: 1
+    implementacion:
+      - schemas/roles-config.schema.json
+      - hooks/validate-artifact.sh
+    spec_ref: talos-0.0.6.md#18-roles-y-componentes
+
+  - id: R-ROLE-004
+    topic: roles
+    nivel_normativo: NO_DEBE
+    requisito: Ningun rol agente debe poder ejecutar merge.
+    mecanismo: 5
+    implementacion:
+      - tools/setup-branch-protection.sh
+      - config/roles.yaml
+    spec_ref: talos-0.0.6.md#31-merge-governance
+    nota: MergeGate es un componente determinista, no un rol.
+
+  - id: R-ROLE-005
+    topic: roles
+    nivel_normativo: NO_DEBE
+    requisito: Solo el Developer debe escribir en src/ y solo el SpecAssistant en spec/.
+    mecanismo: 2
+    implementacion:
+      - hooks/generated/write-scope.rules
+      - tests/test_roles.py
+    spec_ref: talos-0.0.6.md#19-1-matriz-minima
+
+  - id: R-ROLE-006
+    topic: roles
+    nivel_normativo: RECOMENDADO
+    requisito: El Developer no amplia el alcance mas alla del declared_scope de su task.
+    mecanismo: 7
+    implementacion:
+      - schemas/task-result.schema.json
+      - schemas/review.schema.json
+    spec_ref: talos-0.0.6.md#30-2-developer
+    nota: Detectable comparando files_changed contra declared_scope. Se detecta despues del hecho, no antes.
+
+  # ---------- spec ----------
+
+  - id: R-SPEC-001
+    topic: spec
+    nivel_normativo: DEBE
+    requisito: Un spec en estado approved debe registrar approved_by, approved_at y digest.
+    mecanismo: 1
+    implementacion:
+      - schemas/spec-manifest.schema.json
+    spec_ref: talos-0.0.6.md#28-spec-intake
+
+  - id: R-SPEC-002
+    topic: spec
+    nivel_normativo: DEBE
+    requisito: El spec debe declarar las nueve secciones del minimo aceptable.
+    mecanismo: 1
+    implementacion:
+      - schemas/spec-manifest.schema.json
+    spec_ref: talos-0.0.6.md#15-3-spec-minimo-aceptable
+
+  - id: R-SPEC-003
+    topic: spec
+    nivel_normativo: NO_DEBE
+    requisito: El SpecAssistant no debe poder aprobar el spec.
+    mecanismo: 1
+    implementacion:
+      - schemas/spec-manifest.schema.json
+      - hooks/generated/write-scope.rules
+    spec_ref: talos-0.0.6.md#16-1-spec-faltante
+    nota: El rol no puede producir approved_by ni digest, asi que la aprobacion queda del lado humano por construccion.
+
+  - id: R-SPEC-004
+    topic: spec
+    nivel_normativo: RECOMENDADO
+    requisito: Un criterio de aceptacion se escribe de forma que alguien pueda testearlo sin preguntar nada.
+    mecanismo: 10
+    estrategia_guia:
+      - checklist_verificable
+      - salida_estructurada
+    spec_ref: roles/spec-assistant.md
+    nota: La calidad de un criterio es semantica. Se guia con ejemplos de mal y bien, no se fuerza.
+
+  # ---------- evidencia ----------
+
+  - id: R-EVID-001
+    topic: evidence
+    nivel_normativo: DEBE
+    requisito: Toda evidencia debe declarar digest sha256 y un kind del catalogo.
+    mecanismo: 1
+    implementacion:
+      - schemas/evidence.schema.json
+    spec_ref: talos-0.0.6.md#23-evidencia
+
+  - id: R-EVID-002
+    topic: evidence
+    nivel_normativo: NO_DEBE
+    requisito: Un rol agente no debe declarar que las pruebas pasaron; debe referenciar el reporte del adapter.
+    mecanismo: 1
+    implementacion:
+      - schemas/task-result.schema.json
+    spec_ref: talos-0.0.6.md#30-4-verificacion-de-pruebas
+    nota: task-result no tiene campo para afirmarlo y additionalProperties es false.
+
+  - id: R-EVID-003
+    topic: evidence
+    nivel_normativo: DEBE
+    requisito: Un review debe declarar contra que criterios del spec se reviso.
+    mecanismo: 1
+    implementacion:
+      - schemas/review.schema.json
+    spec_ref: system/00-enforcement.md#7-estrategias-de-guia-para-lo-no-forzable
+
+  - id: R-EVID-004
+    topic: evidence
+    nivel_normativo: RECOMENDADO
+    requisito: El Reviewer revisa la conformidad real del codigo contra el spec aprobado.
+    mecanismo: 9
+    estrategia_guia:
+      - separacion_roles
+      - salida_estructurada
+      - contexto_minimo
+    spec_ref: talos-0.0.6.md#30-3-reviewer
+    nota: No se puede forzar que una revision sea buena. Se fuerza que sea trazable y que la haga otro rol.
+
+  # ---------- eventos y estado ----------
+
+  - id: R-EVNT-001
+    topic: events
+    nivel_normativo: DEBE
+    requisito: Todo evento debe tener seq monotonico y schema_version.
+    mecanismo: 1
+    implementacion:
+      - schemas/event.schema.json
+    spec_ref: talos-0.0.6.md#41-event-system
+    nota: Sin secuencia no hay reconstruccion de estado.
+
+  - id: R-EVNT-002
+    topic: events
+    nivel_normativo: DEBE
+    requisito: Todo evento debe usar el namespace talos.
+    mecanismo: 1
+    implementacion:
+      - schemas/event.schema.json
+    spec_ref: talos-0.0.6.md#41-4-namespace
+
+  # ---------- gates y merge ----------
+
+  - id: R-GATE-001
+    topic: gates
+    nivel_normativo: DEBE
+    requisito: Un gate con decision fail debe poblar reasons con al menos un item.
+    mecanismo: 1
+    implementacion:
+      - schemas/gate-result.schema.json
+    spec_ref: talos-0.0.6.md#24-contrato-de-gates
+
+  - id: R-MERG-001
+    topic: merge
+    nivel_normativo: DEBE
+    requisito: El merge debe exigir checks verdes y no puede relajarse por configuracion.
+    mecanismo: 5
+    implementacion:
+      - schemas/policy-config.schema.json
+      - tools/setup-branch-protection.sh
+      - .github/workflows/talos.yml
+    spec_ref: talos-0.0.6.md#31-merge-governance
+
+  - id: R-MERG-002
+    topic: merge
+    nivel_normativo: DEBE
+    requisito: Una feature de riesgo critico debe exigir aprobacion humana.
+    mecanismo: 5
+    implementacion:
+      - schemas/policy-config.schema.json
+      - tools/setup-branch-protection.sh
+    spec_ref: talos-0.0.6.md#21-5-regla-de-agregacion
+
+  - id: R-MERG-003
+    topic: merge
+    nivel_normativo: DEBE
+    requisito: Todo commit debe seguir conventional commits y referenciar su feature en ramas de feature.
+    mecanismo: 4
+    implementacion:
+      - hooks/git/commit-msg
+    spec_ref: talos-0.0.6.md#5-2-trazabilidad
+
+  # ---------- locks ----------
+
+  - id: R-LOCK-001
+    topic: locks
+    nivel_normativo: DEBE
+    requisito: Todo lease debe declarar ttl_seconds, expires_at y generation.
+    mecanismo: 1
+    implementacion:
+      - schemas/locks.schema.json
+    spec_ref: talos-0.0.6.md#32-locks-y-concurrencia
+    nota: Sin expiracion, un propietario que muere deja el sistema en deadlock permanente.
+
+  # ---------- extensiones ----------
+
+  - id: R-EXTN-001
+    topic: extensions
+    nivel_normativo: DEBE
+    requisito: Cada capacidad requerida debe tener exactamente una implementacion habilitada.
+    mecanismo: 1
+    implementacion:
+      - schemas/extension-registry.schema.json
+    spec_ref: talos-0.0.6.md#37-4-capacidades-requeridas-e-implementaciones
+
+  - id: R-EXTN-002
+    topic: extensions
+    nivel_normativo: DEBE
+    requisito: Toda operacion de adapter que mute estado externo debe declarar su idempotencia.
+    mecanismo: 1
+    implementacion:
+      - schemas/adapter-manifest.schema.json
+    spec_ref: talos-0.0.6.md#38-2-idempotencia-obligatoria
+    nota: Sin esto, un reintento de open_pr tras timeout duplica el PR.
+
+  # ---------- configuracion ----------
+
+  - id: R-CONF-001
+    topic: config
+    nivel_normativo: NO_DEBE
+    requisito: Una configuracion que viole policy no debe cargarse.
+    mecanismo: 1
+    implementacion:
+      - schemas/policy-config.schema.json
+      - hooks/git/pre-commit
+    spec_ref: talos-0.0.6.md#43-4-restriccion-de-policy-sobre-configuracion
+
+  - id: R-CONF-002
+    topic: config
+    nivel_normativo: DEBE
+    requisito: Un archivo generado debe coincidir con lo que produce su generador desde la fuente actual.
+    mecanismo: 3
+    implementacion:
+      - .github/workflows/talos.yml
+      - hooks/git/pre-commit
+      - tools/build-rules.py
+    spec_ref: hooks/README.md
+
+  # ---------- seguridad ----------
+
+  - id: R-SECU-001
+    topic: security
+    nivel_normativo: NO_DEBE
+    requisito: Un rol no debe escribir en la definicion de CI ni en la configuracion del propio Talos.
+    mecanismo: 2
+    implementacion:
+      - hooks/generated/write-scope.rules
+    spec_ref: talos-0.0.6.md#36-seguridad
+    nota: Poder editar el workflow es poder desactivar el enforcement.
+
+  - id: R-SECU-002
+    topic: security
+    nivel_normativo: NO_DEBE
+    requisito: Una escritura fuera de la raiz del proyecto o con traversal no debe permitirse.
+    mecanismo: 2
+    implementacion:
+      - hooks/agent/check-tool-call.sh
+    spec_ref: talos-0.0.6.md#36-seguridad
