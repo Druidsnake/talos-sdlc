@@ -10,3 +10,4 @@
 
 # Validator sandbox
 .venv*/
+__pycache__/
