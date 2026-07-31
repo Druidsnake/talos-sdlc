@@ -2,7 +2,7 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: `dry-run-only` completo.** Los ocho pasos del modo están hechos: CLI, schemas, registro de capacidades, adapters de referencia, la tabla de transiciones derivada de la spec, los gates que la custodian y el ejecutor que hace avanzar el estado. Falta la ejecución real de agentes — el paso 9 reemplaza el `ExecutionAdapter` dry-run por uno productivo. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
+**Estado actual: `dry-run-only` completo, `partial` alcanzable.** Los ocho pasos del modo están hechos, y existe un `ExecutionAdapter` productivo sobre Herdr: cambiar una línea en `config/extensions.yaml` pasa el sistema a ejecución real de agentes. Faltan el `CoordinationAdapter` y el `CIAdapter` productivos y el `MergeGate` para llegar a `production`. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
 
 ---
 
@@ -112,7 +112,8 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Schemas JSON | 25 definidos y verificados con suite de rechazo |
 | CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `event` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
-| Adapters | 5 de referencia en dry-run, uno por capacidad requerida |
+| Adapters | 5 de simulación + `talos.adapter.herdr` productivo |
+| Resolución de binarios | cascada de 37.4.5 con verificación de versión |
 | Máquina de estados y gates | 52 transiciones derivadas de la spec, `GateEvaluator` puro |
 | Evidencia | digest verificado, `GateResult` persistido e inmutable |
 | `talos plan` | `PLAN_GATE` completo sobre el grafo de features |
@@ -120,7 +121,7 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Ejecutor de transiciones | gate, evento y proyección de estado |
 | LockManager | leases con TTL y fencing token |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
-| Suite | 381 checks |
+| Suite | 408 checks + shellcheck |
 
 ---
 
@@ -160,7 +161,13 @@ talos plan check      # PLAN_GATE sobre el grafo
 talos feature start F001
 ```
 
-Lo que sigue es el modo `partial`: reemplazar el `ExecutionAdapter` dry-run por uno productivo (paso 9), que es donde los agentes empiezan a trabajar de verdad. La ligadura se cambia en `config/extensions.yaml`, sin tocar el núcleo.
+El paso 9 está hecho: `talos.adapter.herdr` implementa `ExecutionAdapter` de verdad. Pasar a `partial` es cambiar una ligadura — ver [`adapters/README.md`](adapters/README.md#pasar-a-modo-partial).
+
+| Paso | Qué falta | Para |
+|---|---|---|
+| 11 | `CoordinationAdapter` productivo (GitHub) | `production` |
+| 12 | `CIAdapter` productivo | `production` |
+| 13 | `MergeGate` | `production` |
 
 Las transiciones que faltan de la tabla 22.5 —de `FEATURE_IN_PROGRESS` en adelante— dependen de que haya agentes ejecutando.
 
