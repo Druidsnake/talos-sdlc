@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/task-result/0.0.6",
+  "title": "TaskResult",
+  "description": "Salida estructurada obligatoria del rol Developer. Ver talos-0.0.6.md seccion 30.2 y system/00-enforcement.md seccion 7. El Developer NO afirma que las pruebas pasaron: referencia el LocalTestReport que produjo el ExecutionAdapter, que si es verificable.",
+  "type": "object",
+  "required": ["schema_version", "feature_id", "task_id", "status", "declared_scope", "files_changed", "created_at"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "feature_id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "const": "Developer" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "status": { "type": "string", "enum": ["done", "failed", "blocked"] },
+    "declared_scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Rutas que la task declaro que iba a tocar, copiadas de feature-state. Habilita el diff contra lo real."
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Rutas realmente modificadas. Comparable contra declared_scope sin intervencion del modelo."
+    },
+    "test_report_refs": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^ev-[A-Za-z0-9]+$" },
+      "description": "Ids de evidencia LocalTestReport producidos por el ExecutionAdapter. El Developer no puede afirmar un resultado de pruebas: solo referenciarlo."
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["summary"],
+        "properties": {
+          "summary": { "type": "string", "minLength": 1 },
+          "needs": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "done" } }, "required": ["status"] },
+      "then": {
+        "required": ["test_report_refs"],
+        "properties": {
+          "files_changed": { "minItems": 1 },
+          "test_report_refs": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
+      "then": { "required": ["blockers"], "properties": { "blockers": { "minItems": 1 } } }
+    }
+  ]
+}

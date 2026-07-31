@@ -24,6 +24,7 @@ Cada schema traduce requisitos normativos de [`talos-0.0.6.md`](../talos-0.0.6.m
 | `message` | Payload sobre 16 KB es inválido (§25.5) |
 | `locks` | Un lock sin `ttl_seconds` ni `expires_at` es inválido (§32.2) |
 | `review` | Un review sin `spec_refs_checked` es inválido |
+| `task-result` | Un `status: done` sin `test_report_refs` es inválido: el Developer no puede afirmar que las pruebas pasaron |
 | `adapter-manifest` | Una operación mutante sin `idempotency` declarada es inválida (§38.2) |
 | `program-plan` | Un plan sin features es inválido (§29) |
 
@@ -45,7 +46,7 @@ El modelo decide el contenido. La estructura deja de ser opcional. Y la estructu
 python3 -m venv .venv && .venv/bin/pip install jsonschema && .venv/bin/python tests/test_schemas.py
 ```
 
-33 casos: cada uno afirma que un documento válido pasa **y** que su contraparte inválida se rechaza. Un schema que solo acepta cosas buenas no prueba nada; hay que probar que bloquea las malas.
+39 casos: cada uno afirma que un documento válido pasa **y** que su contraparte inválida se rechaza. Un schema que solo acepta cosas buenas no prueba nada; hay que probar que bloquea las malas.
 
 ---
 
@@ -57,7 +58,7 @@ El `$id` de un schema versiona **el schema**, no el documento que lo contiene. L
 
 ## Inventario
 
-**Artefactos runtime** — `evidence`, `gate-result`, `event`, `program-plan`, `feature-state`, `review`, `locks`, `message`, `runtime-meta`
+**Artefactos runtime** — `evidence`, `gate-result`, `event`, `program-plan`, `feature-state`, `task-result`, `review`, `locks`, `message`, `runtime-meta`
 
 **Manifiestos** — `system-manifest`, `project-manifest`, `spec-manifest`, `adapter-manifest`, `plugin-manifest`
 

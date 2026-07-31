@@ -1,0 +1,110 @@
+version: 1
+
+# Ver talos-0.0.6.md secciones 18, 19 y 20.4
+# write_paths y forbidden_tools son la base del mecanismo 2 (hook bloqueante)
+# y del mecanismo 8 (aislamiento de permisos).
+# Ver system/00-enforcement.md seccion 3.
+#
+# output_artifact es la palanca principal: convierte una obligacion
+# semantica ("revisa bien") en un artefacto sintactico verificable.
+
+roles:
+
+  SpecAssistant:
+    role_minimum_tier: deep
+    instructions: roles/spec-assistant.md
+    write_paths:
+      - "spec/**"
+    forbidden_paths:
+      - "orchestration/**"
+      - "src/**"
+      - "tests/**"
+      - ".talos/**"
+      - "talos.config/**"
+    forbidden_tools:
+      - git_commit
+      - git_push
+      - pr_create
+      - pr_merge
+    output_artifact:
+      schema: spec-manifest
+      path: spec/manifest.yaml
+
+  Planner:
+    role_minimum_tier: deep
+    instructions: roles/planner.md
+    write_paths:
+      - "orchestration/program-plan.json"
+    forbidden_paths:
+      - "spec/**"
+      - "src/**"
+      - "tests/**"
+      - ".talos/**"
+    forbidden_tools:
+      - git_commit
+      - git_push
+      - branch_create
+      - pr_create
+      - pr_merge
+    output_artifact:
+      schema: program-plan
+      path: orchestration/program-plan.json
+
+  FeatureLead:
+    role_minimum_tier: null
+    instructions: roles/feature-lead.md
+    write_paths:
+      - "orchestration/features/**"
+      - "orchestration/messages/**"
+    forbidden_paths:
+      - "spec/**"
+      - "src/**"
+      - "tests/**"
+      - ".talos/**"
+      - "orchestration/program-plan.json"
+    forbidden_tools:
+      - pr_merge
+      - branch_delete_protected
+      - force_push
+    output_artifact:
+      schema: feature-state
+      path: orchestration/features/{feature_id}/feature-state.json
+
+  Developer:
+    role_minimum_tier: null
+    instructions: roles/developer.md
+    write_paths:
+      - "src/**"
+      - "tests/**"
+    forbidden_paths:
+      - "spec/**"
+      - "orchestration/**"
+      - ".talos/**"
+      - "talos.config/**"
+      - ".github/workflows/**"
+    forbidden_tools:
+      - pr_create
+      - pr_merge
+      - branch_create
+      - force_push
+    output_artifact:
+      schema: task-result
+      path: orchestration/features/{feature_id}/tasks/{task_id}/task-result.json
+
+  Reviewer:
+    role_minimum_tier: balanced
+    instructions: roles/reviewer.md
+    write_paths:
+      - "orchestration/reports/**"
+    forbidden_paths:
+      - "spec/**"
+      - "src/**"
+      - "tests/**"
+      - ".talos/**"
+    forbidden_tools:
+      - file_write_src
+      - pr_merge
+      - git_commit
+    output_artifact:
+      schema: review
+      path: orchestration/reports/{feature_id}/review.json

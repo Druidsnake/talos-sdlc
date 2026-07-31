@@ -279,6 +279,53 @@ CASES = [
         "schema_version": 1, "project": "p", "spec_digest": "sha256:" + "b" * 64,
         "created_at": "2026-07-30T12:00:00Z", "features": [],
     }, False, "29: un plan sin features no es un plan"),
+
+    # --- task-result: el Developer no puede afirmar que las pruebas pasaron
+    ("task-result", "done con referencia a reporte de pruebas", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "done", "declared_scope": ["src/auth/**"],
+        "files_changed": ["src/auth/verify.ts"],
+        "test_report_refs": ["ev-01HZ"],
+        "created_at": "2026-07-30T12:00:00Z",
+    }, True, "30.2.4: responde con evidencia"),
+
+    ("task-result", "done SIN reporte de pruebas", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "done", "declared_scope": ["src/auth/**"],
+        "files_changed": ["src/auth/verify.ts"],
+        "created_at": "2026-07-30T12:00:00Z",
+    }, False, "30.4.2: ningun rol agente declara pass sin evidencia de adapter"),
+
+    ("task-result", "done sin archivos cambiados", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "done", "declared_scope": ["src/auth/**"],
+        "files_changed": [], "test_report_refs": ["ev-01HZ"],
+        "created_at": "2026-07-30T12:00:00Z",
+    }, False, "una task done sin cambios no implemento nada"),
+
+    ("task-result", "blocked con blocker concreto", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "blocked", "declared_scope": ["src/auth/**"],
+        "files_changed": [],
+        "blockers": [{"summary": "El scope no incluye el modelo de sesion"}],
+        "created_at": "2026-07-30T12:00:00Z",
+    }, True, "blocked es un resultado valido"),
+
+    ("task-result", "blocked sin decir por que", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "blocked", "declared_scope": ["src/auth/**"],
+        "files_changed": [], "blockers": [],
+        "created_at": "2026-07-30T12:00:00Z",
+    }, False, "un blocker sin causa no es accionable"),
+
+    ("task-result", "intenta reportar pruebas como texto libre", {
+        "schema_version": 1, "feature_id": "F001", "task_id": "T1",
+        "status": "done", "declared_scope": ["src/auth/**"],
+        "files_changed": ["src/auth/verify.ts"],
+        "test_report_refs": ["ev-01HZ"],
+        "tests_passed": True,
+        "created_at": "2026-07-30T12:00:00Z",
+    }, False, "additionalProperties false: no hay campo para afirmar resultados"),
 ]
 
 
