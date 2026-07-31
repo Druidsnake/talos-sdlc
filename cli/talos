@@ -50,6 +50,7 @@ TRABAJAR
     talos adapters                capacidades y que implementacion las satisface
     talos gate <maq> <de> <a>     evalua si una transicion esta autorizada
     talos evidence seal|check     sella y verifica evidencia
+    talos plan check|init|show    planificacion de programa y PLAN_GATE
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -107,6 +108,9 @@ case "$cmd" in
         ;;
     evidence)
         exec "$CLI_DIR/commands/evidence.sh" "$@"
+        ;;
+    plan)
+        exec "$CLI_DIR/commands/plan.sh" "$@"
         ;;
     event)
         sub="${1:-}"
