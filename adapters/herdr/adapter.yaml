@@ -1,0 +1,82 @@
+id: talos.adapter.herdr
+package: talos-adapter-herdr
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: ExecutionAdapter
+
+# Regla 38.1.5: todo adapter soporta dry-run. Aca no significa "simula": con
+# TALOS_DRY_RUN=1 registra la intencion y no toca el servidor de Herdr. Es lo
+# que permite ensayar una corrida productiva sin efectos.
+supports_dry_run: true
+
+# Seccion 38.5 y 37.4.5. Herdr gestiona workspaces y paneles de terminal, que
+# es estado a nivel de maquina y de sesion: por eso machine_level. Vendorearlo
+# por proyecto haria que dos copias peleen por los mismos paneles, igual que
+# pasaria vendoreando tmux.
+external_binary:
+  name: herdr
+  version_range: ">=0.7.0"
+  env_override: TALOS_HERDR_BIN
+  install_hint: "curl -fsSL https://herdr.dev/install.sh | sh"
+  machine_level: true
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 10
+
+# El adapter es responsable del ciclo de vida de procesos y de nada mas
+# (seccion 38.5). No define politica de merge, no aprueba cambios, no decide
+# routing y no expone comandos de usuario.
+operations:
+  - name: create_workspace
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: create_session
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: start_agent
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 3
+
+  # at_most_once: la respuesta de un agente no es reproducible, asi que el
+  # adapter no puede garantizar idempotencia y el nucleo NO DEBE reintentar
+  # por su cuenta (regla 38.2.7).
+  - name: prompt_agent
+    mutating: true
+    idempotency: at_most_once
+    timeout_seconds: 900
+    max_attempts: 1
+
+  - name: wait_agent
+    mutating: false
+    timeout_seconds: 900
+
+  - name: read_agent
+    mutating: false
+    timeout_seconds: 30
+
+  # Un comando arbitrario tiene efectos de lado arbitrarios.
+  - name: run_command
+    mutating: true
+    idempotency: at_most_once
+    timeout_seconds: 600
+    max_attempts: 1
+
+  - name: report_metadata
+    mutating: false
+    timeout_seconds: 10
+
+permissions:
+  - exec:workspace
+  - exec:agent
+  - exec:command

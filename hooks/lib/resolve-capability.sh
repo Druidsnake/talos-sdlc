@@ -125,7 +125,10 @@ talos_capability_audit() {
         return 2
     fi
 
-    talos_capability_table | while IFS='	' read -r _cap _kind _impl _dir; do
+    # Se leen los siete campos: con menos variables, read mete el resto de la
+    # linea en la ultima y _dir deja de ser una ruta.
+    # shellcheck disable=SC2034
+    talos_capability_table | while IFS='	' read -r _cap _kind _impl _dir _bin _range _env; do
         [ -z "$_cap" ] && continue
         if [ "$_impl" = "-" ]; then
             # Regla 37.4.3.4: cero implementaciones de una opcional es valido.
@@ -147,6 +150,25 @@ talos_capability_audit() {
         fi
     done
     return 0
+}
+
+# talos_capability_binaries
+# Una linea por capacidad ligada que declara binario externo:
+#   <cap>|<binario>|<rango>|<ruta-resuelta|->
+#
+# Regla 37.4.5.6: talos doctor DEBE reportar la ruta resuelta. Sin esto, saber
+# cual de los tres pasos de la cascada gano exige adivinar.
+talos_capability_binaries() {
+    talos_capability_table 2>/dev/null \
+        | awk -F'\t' '$5 != "-" { print $1 "|" $5 "|" $6 "|" $7 }' \
+        | while IFS='|' read -r _cap _bin _range _env; do
+            [ -z "$_cap" ] && continue
+            if _path=$(talos_resolve_binary "$_bin" "$_env"); then
+                echo "$_cap|$_bin|$_range|$_path"
+            else
+                echo "$_cap|$_bin|$_range|-"
+            fi
+        done
 }
 
 # talos_capability_failures <filas-de-audit>

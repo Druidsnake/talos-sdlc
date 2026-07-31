@@ -31,6 +31,7 @@ Los cinco adapters de referencia satisfacen las cinco capacidades requeridas en 
 | `fs_local/` | `FileSystemAdapter` | operaciones reales sobre el filesystem local |
 | `model_dryrun/` | `ModelProviderAdapter` | respuestas canónicas, no invoca ningún modelo |
 | `exec_dryrun/` | `ExecutionAdapter` | simula workspaces, sesiones y agentes |
+| `herdr/` | `ExecutionAdapter` | **productivo** — requiere `herdr >= 0.7.0` |
 | `coord_dryrun/` | `CoordinationAdapter` | simula issues, ramas y PRs sin tocar el remoto |
 | `ci_dryrun/` | `CIAdapter` | simula checks; el `CheckRunSet` sale `verifiable: false` |
 
@@ -151,3 +152,40 @@ Se declara en `config/system.yaml`. En `dry-run-only`:
 - no se puede alcanzar `FEATURE_MERGED` (regla 37.4.4.3).
 
 Subir de modo es reemplazar ligaduras en `config/extensions.yaml`, no reescribir el núcleo.
+
+
+## Pasar a modo `partial`
+
+`partial` ejecuta agentes de verdad sin tocar el repositorio remoto. Reemplaza una sola ligadura — el núcleo no se toca:
+
+```yaml
+# config/extensions.yaml
+ExecutionAdapter:
+  implementation: talos.adapter.herdr    # antes: talos.adapter.exec_dryrun
+```
+
+```yaml
+# config/system.yaml
+execution_mode: partial
+```
+
+Recompilá la tabla y verificá:
+
+```bash
+python3 tools/build-registry.py
+talos doctor
+```
+
+`doctor` reporta qué paso de la cascada resolvió el binario:
+
+```txt
+ok  binario:herdr  /Users/vos/.local/bin/herdr (>=0.7.0)
+```
+
+Si la versión no satisface el rango, el health check falla y la capacidad queda insatisfecha. **No se degrada en silencio a "capaz funciona".**
+
+### Por qué el repo se queda en `dry-run-only`
+
+La regla 37.4.4.1 dice que `dry-run-only` tiene que correr sin ninguna herramienta externa instalada. La suite del propio Talos corre en ese modo, y por eso ninguno de sus tests necesita Herdr — incluidos los del adapter de Herdr, que usan un binario de mentira.
+
+Un proyecto que use Talos sí cambia el modo. El repo de Talos no.

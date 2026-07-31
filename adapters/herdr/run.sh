@@ -1,0 +1,197 @@
+#!/bin/sh
+# talos.adapter.herdr - implementacion productiva de ExecutionAdapter.
+#
+# Uso:   run.sh <operacion> [semantic_args_json]
+# Env:   TALOS_RUN_ID, TALOS_FEATURE_ID   contexto de la idempotency key
+#        TALOS_HERDR_BIN                  primer paso de la cascada (37.4.5)
+#        TALOS_DRY_RUN=1                  registra la intencion, no ejecuta
+# Sale:  0 ok / 2 precondition fallida / 5 error de adapter
+#
+# Responsable del ciclo de vida de procesos y de nada mas (seccion 38.5): no
+# define politica de merge, no aprueba cambios, no decide routing y no expone
+# comandos de usuario.
+
+set -eu
+
+DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+. "$DIR/../lib/adapter.sh"
+. "$DIR/../lib/semver.sh"
+
+REQUIRED_RANGE=">=0.7.0"
+
+op="${1:-}"
+args="${2:-{\}}"
+run="${TALOS_RUN_ID:-r-unknown}"
+feat="${TALOS_FEATURE_ID:-none}"
+
+# ---------- resolucion del binario (seccion 37.4.5) ----------
+#
+# Cascada: variable de entorno -> .talos/bin/herdr -> PATH.
+# La primera coincidencia gana. Talos NO instala nada (regla 37.4.5.4).
+resolve_herdr() {
+    if [ -n "${TALOS_HERDR_BIN:-}" ] && [ -x "${TALOS_HERDR_BIN}" ]; then
+        printf '%s' "$TALOS_HERDR_BIN"
+        return 0
+    fi
+    _vendored="${TALOS_PROJECT_ROOT:-.}/.talos/bin/herdr"
+    if [ -x "$_vendored" ]; then
+        printf '%s' "$_vendored"
+        return 0
+    fi
+    command -v herdr 2>/dev/null && return 0
+    return 1
+}
+
+missing_binary() {
+    printf '{"status":"error","error_class":"precondition",' >&2
+    printf '"message":"herdr no esta instalado",' >&2
+    printf '"required":"%s",' >&2 "$REQUIRED_RANGE"
+    printf '"resolution_order":["$TALOS_HERDR_BIN",".talos/bin/herdr","PATH"],' >&2
+    printf '"install_hint":"curl -fsSL https://herdr.dev/install.sh | sh"}\n' >&2
+    return 2
+}
+
+HERDR=$(resolve_herdr) || { missing_binary; exit 2; }
+
+herdr_version() {
+    "$HERDR" --version 2>/dev/null | head -1 | sed 's/[^0-9]*\([0-9][0-9.]*\).*/\1/'
+}
+
+# Regla 37.4.5.3: una version fuera de rango falla en PRECONDITION_GATE. No se
+# degrada en silencio a "capaz funciona".
+check_version() {
+    _v=$(herdr_version)
+    if [ -z "$_v" ]; then
+        talos_error precondition "no se pudo leer la version de $HERDR"
+        return 2
+    fi
+    if ! talos_semver_satisfies "$_v" "$REQUIRED_RANGE"; then
+        printf '{"status":"error","error_class":"precondition",' >&2
+        printf '"message":"herdr %s no satisface %s","path":"%s"}\n' >&2 \
+            "$_v" "$REQUIRED_RANGE" "$HERDR"
+        return 2
+    fi
+    printf '%s' "$_v"
+}
+
+# ---------- ejecucion ----------
+#
+# En dry-run el adapter registra la intencion y no toca el servidor. Es lo que
+# permite ensayar una corrida productiva sin crear workspaces reales.
+DRY="${TALOS_DRY_RUN:-0}"
+
+# Este adapter ejecuta de verdad salvo que se le pida lo contrario. Lo declara
+# antes de emitir cualquier resultado, para que dry_run no mienta.
+# La lee talos_ok, que viene de adapters/lib/adapter.sh.
+# shellcheck disable=SC2034
+TALOS_ADAPTER_SIMULATED="$DRY"
+
+herdr_do() {
+    if [ "$DRY" = 1 ]; then
+        talos_ledger_record "dryrun-$(date -u +%s)-$$" "herdr:$1" \
+            "{\"intended\":\"$*\"}"
+        printf '{"dry_run":true,"intended":"%s"}' "$*"
+        return 0
+    fi
+    "$HERDR" "$@" 2>&1
+}
+
+# jq no es dependencia de Talos: el id sale del JSON de Herdr por sed.
+first_id() {
+    sed -n 's/.*"\('"$1"'\)"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2/p' | head -1
+}
+
+json_get() {
+    printf '%s' "$args" | sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
+}
+
+case "$op" in
+    health)
+        _v=$(check_version) || exit 2
+        # Sano no es solo "el binario existe": tiene que haber servidor. Sin
+        # servidor no hay donde ejecutar y la capacidad no esta satisfecha.
+        if [ "$DRY" = 1 ]; then
+            talos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"dry_run\":true}"
+        elif "$HERDR" workspace list >/dev/null 2>&1; then
+            talos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\"}"
+        else
+            printf '{"status":"error","error_class":"precondition",' >&2
+            printf '"message":"herdr %s responde pero no hay servidor","path":"%s",' >&2 "$_v" "$HERDR"
+            printf '"hint":"arranca una sesion con  herdr"}\n' >&2
+            exit 2
+        fi
+        ;;
+
+    create_workspace)
+        check_version >/dev/null || exit 2
+        _label=$(json_get label)
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            "{\"id\":\"$(herdr_do workspace create ${_label:+--label "$_label"} | first_id workspace_id)\",\"url\":null}"
+        ;;
+
+    create_session)
+        check_version >/dev/null || exit 2
+        _ws=$(json_get workspace_id)
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            "{\"id\":\"$(herdr_do tab create ${_ws:+--workspace "$_ws"} | first_id tab_id)\",\"url\":null}"
+        ;;
+
+    start_agent)
+        check_version >/dev/null || exit 2
+        _name=$(json_get name); _kind=$(json_get kind); _pane=$(json_get pane)
+        [ -n "$_name" ] && [ -n "$_kind" ] && [ -n "$_pane" ] || {
+            talos_error precondition "start_agent requiere name, kind y pane"
+            exit 5
+        }
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            "{\"id\":\"$(herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane" | first_id terminal_id)\",\"url\":null}"
+        ;;
+
+    prompt_agent)
+        check_version >/dev/null || exit 2
+        _target=$(json_get target); _text=$(json_get text)
+        [ -n "$_target" ] && [ -n "$_text" ] || {
+            talos_error precondition "prompt_agent requiere target y text"
+            exit 5
+        }
+        herdr_do agent prompt "$_target" "$_text" >/dev/null
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            "{\"id\":\"agent:$_target\",\"url\":null}"
+        ;;
+
+    wait_agent)
+        check_version >/dev/null || exit 2
+        _target=$(json_get target); _until=$(json_get until); _timeout=$(json_get timeout_ms)
+        talos_ok "$(herdr_do agent wait "$_target" ${_until:+--until "$_until"} ${_timeout:+--timeout "$_timeout"})"
+        ;;
+
+    read_agent)
+        check_version >/dev/null || exit 2
+        _target=$(json_get target); _lines=$(json_get lines)
+        talos_ok "$(herdr_do agent read "$_target" ${_lines:+--lines "$_lines"} --format text)"
+        ;;
+
+    run_command)
+        check_version >/dev/null || exit 2
+        _pane=$(json_get pane); _cmd=$(json_get command)
+        [ -n "$_pane" ] && [ -n "$_cmd" ] || {
+            talos_error precondition "run_command requiere pane y command"
+            exit 5
+        }
+        herdr_do pane send-text "$_pane" "$_cmd" >/dev/null
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            "{\"id\":\"pane:$_pane\",\"url\":null}"
+        ;;
+
+    report_metadata)
+        _v=$(check_version) || exit 2
+        talos_ok "{\"adapter\":\"herdr\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"supports_parallel\":true}"
+        ;;
+
+    "")
+        talos_error precondition "falta la operacion"
+        ;;
+    *)
+        talos_unknown_op "$op"
+        ;;
+esac

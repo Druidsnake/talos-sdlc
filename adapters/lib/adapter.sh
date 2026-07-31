@@ -14,8 +14,19 @@
 
 # talos_ok <json-body>
 # Resultado de una operacion no mutante.
+#
+# dry_run refleja lo que realmente paso. Un adapter productivo que reporte
+# dry_run:true estaria mintiendo sobre si toco el mundo, y el campo se vuelve
+# inservible justo cuando importa. Los adapters de simulacion lo dejan en 1;
+# los productivos lo bajan a 0 cuando ejecutan de verdad.
+TALOS_ADAPTER_SIMULATED="${TALOS_ADAPTER_SIMULATED:-1}"
+
 talos_ok() {
-    printf '{"status":"ok","dry_run":true,"result":%s}\n' "$1"
+    if [ "${TALOS_ADAPTER_SIMULATED}" = 1 ]; then
+        printf '{"status":"ok","dry_run":true,"result":%s}\n' "$1"
+    else
+        printf '{"status":"ok","dry_run":false,"result":%s}\n' "$1"
+    fi
 }
 
 # talos_error <clase> <mensaje>

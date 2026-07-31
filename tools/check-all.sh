@@ -31,6 +31,7 @@ run "capacidades: registry y adapters de referencia" $PY tests/test_adapters.py
 run "estados: transiciones y contrato de gates" $PY tests/test_states.py
 run "plan: PLAN_GATE sobre el grafo de features" $PY tests/test_plan.py
 run "features: ejecutor de transiciones y leases" $PY tests/test_feature.py
+run "herdr: adapter productivo y cascada de binarios" $PY tests/test_herdr.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 

@@ -160,6 +160,23 @@ else
     record fail si capacidades "sin tabla de capacidades" "python3 tools/build-registry.py"
 fi
 
+# Regla 37.4.5.6: reportar la ruta resuelta de cada binario externo. Talos no
+# instala nada; cuando falta, muestra el comando exacto (regla 37.4.5.5).
+# El bucle NO puede ir detras de un pipe: record acumula en una variable, y en
+# un subshell ese acumulado se pierde al cerrar. Se captura primero.
+bin_rows=$(talos_capability_binaries 2>/dev/null || true)
+while IFS='|' read -r bcap bbin brange bpath; do
+    [ -z "$bcap" ] && continue
+    if [ "$bpath" = "-" ]; then
+        record fail si "binario:$bbin" "no resuelto, requiere $brange" \
+            "instala $bbin o define TALOS_$(printf '%s' "$bbin" | tr 'a-z' 'A-Z')_BIN"
+    else
+        record ok si "binario:$bbin" "$bpath ($brange)" ""
+    fi
+done <<EOF
+$bin_rows
+EOF
+
 # ---------- spec del producto ----------
 if [ -f spec/manifest.yaml ]; then
     if [ "$FORMAT" = json ] || "$SYS/hooks/validate-artifact.sh" spec-manifest spec/manifest.yaml >/dev/null 2>&1; then

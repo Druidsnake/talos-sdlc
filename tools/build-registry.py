@@ -46,7 +46,11 @@ OPTIONAL = [
 
 
 def adapter_index():
-    """id declarado en cada manifiesto -> directorio que lo contiene."""
+    """id declarado en cada manifiesto -> (directorio, binario externo).
+
+    El binario viaja a la tabla para que talos doctor pueda reportar la ruta
+    resuelta (regla 37.4.5.6) sin volver a parsear YAML en el camino caliente.
+    """
     index = {}
     for manifest in sorted(ADAPTERS.glob("*/adapter.yaml")):
         data = yaml.safe_load(manifest.read_text())
@@ -55,7 +59,13 @@ def adapter_index():
             sys.exit(f"{manifest.relative_to(ROOT)}: sin campo id")
         if aid in index:
             sys.exit(f"id duplicado entre adapters: {aid}")
-        index[aid] = manifest.parent.relative_to(ROOT).as_posix()
+        ext = data.get("external_binary") or {}
+        index[aid] = (
+            manifest.parent.relative_to(ROOT).as_posix(),
+            ext.get("name") or "-",
+            ext.get("version_range") or "-",
+            ext.get("env_override") or "-",
+        )
     return index
 
 
@@ -67,7 +77,8 @@ def main():
     lines = [
         "# GENERADO por tools/build-registry.py - NO EDITAR A MANO",
         "# fuente: config/extensions.yaml + adapters/*/adapter.yaml",
-        "# formato: <capacidad>\\t<required|optional>\\t<implementacion|->\\t<dir|->",
+        "# formato: <capacidad>\\t<required|optional>\\t<implementacion|->\\t<dir|->"
+        "\\t<binario|->\\t<rango|->\\t<env_override|->",
         "# Cero implementaciones de una capacidad required falla en PRECONDITION_GATE",
         "# (regla 37.4.3.2). Cero de una optional es estado valido (regla 37.4.3.4).",
         "",
@@ -82,14 +93,15 @@ def main():
         if not impl:
             if kind == "required":
                 problems.append(f"{cap}: capacidad REQUERIDA sin implementacion")
-            lines.append(f"{cap}\t{kind}\t-\t-")
+            lines.append(f"{cap}\t{kind}\t-\t-\t-\t-\t-")
             continue
 
-        directory = index.get(impl)
-        if directory is None:
+        entry = index.get(impl)
+        if entry is None:
             problems.append(f"{cap}: la implementacion {impl} no existe bajo adapters/")
-            directory = "-"
-        lines.append(f"{cap}\t{kind}\t{impl}\t{directory}")
+            entry = ("-", "-", "-", "-")
+        directory, binario, rango, env = entry
+        lines.append(f"{cap}\t{kind}\t{impl}\t{directory}\t{binario}\t{rango}\t{env}")
 
     # La regla 37.4.3.3 -dos o mas implementaciones de la misma capacidad son
     # ambiguedad- ya queda cubierta en dos lugares antes de llegar aca:
@@ -110,7 +122,7 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines) + "\n")
 
-    bound_n = sum(1 for line in lines if "\t" in line and not line.endswith("\t-\t-"))
+    bound_n = sum(1 for line in lines if "\t" in line and "\t-\t-\t-\t-\t-" not in line)
     print(f"escrito {OUT.relative_to(ROOT)}: {bound_n} capacidades ligadas, "
           f"{len(REQUIRED)} requeridas, {len(OPTIONAL)} opcionales")
     return 0
