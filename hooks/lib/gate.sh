@@ -36,32 +36,56 @@ _gate_is_in() {
     return 1
 }
 
-# talos_evidence_kinds <dir>
-# Los kind de la evidencia presente. Lee el campo sin parsear JSON completo:
-# la evidencia ya validó contra evidence.schema.json al persistirse.
-# Un JSON sin newline final hace que sed emita sin terminador y los kind se
-# peguen entre si. La sustitucion de comando normaliza: un kind por linea.
-talos_evidence_kinds() {
+# La evidencia NO se lee con sed ni grep.
+#
+# Un payload que contenga la clave "kind" hace que una expresion de linea
+# agarre el valor equivocado, y ahi una evidencia se hace pasar por otra:
+# exactamente el ataque que el modelo de evidencia existe para impedir. Todo
+# el parseo va por hooks/lib/evidence.py, que ademas verifica el digest.
+#
+# Salida de evidence.py read:  <kind>\t<verifiable>\t<digest_ok>\t<id>
+
+# Interprete disponible. Sin python no hay lectura de evidencia, y sin lectura
+# de evidencia no hay gate que pueda autorizar nada.
+talos_python() {
+    if [ -x "${TALOS_PROJECT_ROOT:-.}/.venv/bin/python" ]; then
+        printf '%s' "${TALOS_PROJECT_ROOT:-.}/.venv/bin/python"
+        return 0
+    fi
+    if [ -x "$TALOS_GATE_SYS/.venv/bin/python" ]; then
+        printf '%s' "$TALOS_GATE_SYS/.venv/bin/python"
+        return 0
+    fi
+    command -v python3 2>/dev/null && return 0
+    return 1
+}
+
+talos_evidence_read() {
     [ -d "$1" ] || return 0
-    for _f in "$1"/*.json; do
-        [ -f "$_f" ] || continue
-        _k=$(sed -n 's/.*"kind"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p' "$_f" | head -1)
-        [ -n "$_k" ] && printf '%s\n' "$_k"
-    done
+    _py=$(talos_python) || return 0
+    "$_py" "$TALOS_GATE_SYS/hooks/lib/evidence.py" read "$1" 2>/dev/null
     return 0
+}
+
+# talos_evidence_kinds <dir>
+# Solo cuenta como presente la evidencia con digest valido: una evidencia cuyo
+# digest no cuadra esta rota, y una evidencia rota no justifica una transicion
+# (reglas 23.3.3 y 23.3.4).
+talos_evidence_kinds() {
+    talos_evidence_read "$1" | awk -F'\t' '$3 == "true" { print $1 }'
 }
 
 # talos_evidence_unverifiable <dir>
 # Los kind marcados verifiable:false.
 talos_evidence_unverifiable() {
-    [ -d "$1" ] || return 0
-    for _f in "$1"/*.json; do
-        [ -f "$_f" ] || continue
-        grep -q '"verifiable"[[:space:]]*:[[:space:]]*false' "$_f" || continue
-        _k=$(sed -n 's/.*"kind"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p' "$_f" | head -1)
-        [ -n "$_k" ] && printf '%s\n' "$_k"
-    done
-    return 0
+    talos_evidence_read "$1" | awk -F'\t' '$2 == "false" { print $1 }'
+}
+
+# talos_evidence_tampered <dir>
+# Presente pero con digest invalido. Se reporta aparte para que el gate no diga
+# "falta" cuando lo cierto es "esta y no se puede confiar".
+talos_evidence_tampered() {
+    talos_evidence_read "$1" | awk -F'\t' '$3 == "false" { print $1 }'
 }
 
 # talos_gate_eval <maquina> <desde> <hacia> <dir-evidencia> [run_id] [feature_id]
@@ -87,6 +111,7 @@ talos_gate_eval() {
 
     _present=$(talos_evidence_kinds "$_evdir" | sort -u | tr '\n' ' ')
     _unverifiable=$(talos_evidence_unverifiable "$_evdir" | sort -u | tr '\n' ' ')
+    _tampered=$(talos_evidence_tampered "$_evdir" | sort -u | tr '\n' ' ')
 
     _reasons=""
     _missing=""
@@ -105,6 +130,13 @@ talos_gate_eval() {
                     _reasons="$_reasons{\"code\":\"EVIDENCE_NOT_VERIFIABLE\",\"status\":\"fail\",\"detail\":\"$_kind no puede satisfacer $_gate\"},"
                     _decision=fail
                 fi
+            elif _gate_is_in "$_kind" $_tampered; then
+                # Presente pero con digest roto. Decirlo distinto de "falta"
+                # importa: quien lee el reporte tiene que saber que alguien
+                # produjo esa evidencia y no cierra.
+                _reasons="$_reasons{\"code\":\"EVIDENCE_DIGEST_MISMATCH\",\"status\":\"fail\",\"detail\":\"$_kind no coincide con su digest\"},"
+                _missing="$_missing\"$_kind\","
+                _decision=fail
             else
                 _reasons="$_reasons{\"code\":\"EVIDENCE_MISSING\",\"status\":\"fail\",\"detail\":\"$_kind\"},"
                 _missing="$_missing\"$_kind\","
@@ -139,6 +171,54 @@ talos_gate_eval() {
         needs_human) return 4 ;;
         *)           return 3 ;;
     esac
+}
+
+# talos_gate_persist <gate-result-json> <dir-evidencia> [run_id] [feature_id]
+#
+# Regla 24.4.7: todo GateResult DEBE persistirse como evidencia. Sin esto la
+# regla 22.6.6 -toda transicion registra el GateResult que la autorizo- no se
+# puede cumplir: la decision se perderia al cerrar la terminal.
+#
+# Imprime la ruta escrita.
+talos_gate_persist() {
+    _res="$1"; _dir="$2"
+    _run="${3:-${TALOS_RUN_ID:-r-unknown}}"
+    _feat="${4:-${TALOS_FEATURE_ID:-}}"
+
+    _py=$(talos_python) || return 1
+    mkdir -p "$_dir" || return 1
+
+    # El id solo admite alfanumericos y guiones (evidence.schema.json).
+    _slug=$(printf '%s' "$_res" | sed -n 's/.*"gate":"\([A-Z_]*\)".*/\1/p' | tr 'A-Z_' 'a-z-')
+    [ -z "$_slug" ] && _slug="sin-gate"
+    _stamp=$(date -u +%Y%m%d%H%M%S)
+    _n=0
+    while [ -e "$_dir/ev-gate-$_slug-$_stamp-$_n.json" ]; do
+        _n=$((_n + 1))
+    done
+    _out="$_dir/ev-gate-$_slug-$_stamp-$_n.json"
+
+    _feat_json=null
+    [ -n "$_feat" ] && _feat_json="\"$_feat\""
+
+    # El GateResult va como payload de un envoltorio Evidence (seccion 23.2).
+    printf '{"id":"ev-gate-%s-%s-%s","kind":"GateResult","schema_version":1,' \
+        "$_slug" "$_stamp" "$_n" >"$_out"
+    printf '"run_id":"%s","feature_id":%s,"produced_by":"core:GateEvaluator",' \
+        "$_run" "$_feat_json" >>"$_out"
+    printf '"produced_at":"%s","digest":"pendiente","verifiable":true,"payload":%s}\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$_res" >>"$_out"
+
+    "$_py" "$TALOS_GATE_SYS/hooks/lib/evidence.py" seal "$_out" >/dev/null 2>&1 || {
+        rm -f "$_out"
+        return 1
+    }
+
+    # Regla 23.3.2: la evidencia es inmutable una vez escrita. Solo lectura no
+    # detiene a root, pero convierte un pisado accidental en un error visible.
+    chmod 444 "$_out" 2>/dev/null || true
+
+    printf '%s\n' "$_out"
 }
 
 talos_execution_mode() {
