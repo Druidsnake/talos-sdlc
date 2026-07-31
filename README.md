@@ -110,12 +110,13 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
 | Schemas JSON | 25 definidos y verificados con suite de rechazo |
-| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `event append/tail` |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `event append/tail` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
 | Adapters | 5 de referencia en dry-run, uno por capacidad requerida |
-| Máquina de estados y gates | no implementados |
+| Máquina de estados y gates | 52 transiciones derivadas de la spec, `GateEvaluator` puro |
 | `talos plan` / `talos feature start` | no implementados |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
+| Suite | 310 checks |
 
 ---
 
@@ -144,15 +145,25 @@ La versión 0.0.6 separa la **capacidad** de la **implementación**. Antes, marc
 
 ## Próximo paso
 
-Los pasos 1, 2, 4, 5 y 6 de la [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada) están hechos. Falta cerrar el modo `dry-run-only`:
+Los pasos 1 a 6 de la [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada) están hechos. Falta cerrar el modo `dry-run-only`:
 
 | Paso | Qué falta |
 |---|---|
-| 3 | máquina de estados y `GateEvaluator` |
 | 7 | `talos plan` |
 | 8 | `talos feature start` |
 
 Recién después de eso el paso 9 reemplaza el `ExecutionAdapter` dry-run por uno productivo, que es donde los agentes empiezan a trabajar de verdad.
+
+### La tabla de transiciones no se escribe a mano
+
+`tools/build-transitions.py` la extrae de las secciones 22.4 y 22.5 de la spec. Una copia manual en otro archivo podría divergir del contrato, y la que gobernaría la ejecución no sería la normativa.
+
+```bash
+talos gate --from feature FEATURE_READY   # qué transiciones salen de un estado
+talos gate feature FEATURE_READY FEATURE_IN_PROGRESS
+```
+
+El gate es una función pura de evidencia, policy y config. No invoca modelos: un gate que llama a un modelo no es un gate, es una opinión.
 
 ---
 
