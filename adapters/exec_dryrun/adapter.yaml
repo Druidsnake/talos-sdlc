@@ -1,0 +1,70 @@
+id: talos.adapter.exec_dryrun
+package: talos-adapter-dryrun
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: ExecutionAdapter
+
+# ExecutionAdapter es capacidad REQUERIDA (37.4.2) y solo es satisfacible por
+# dry-run como SIMULACION. Este adapter existe para que el modo dry-run-only
+# corra sin ninguna herramienta externa instalada (regla 37.4.4.1), no para
+# reemplazar a una implementacion productiva.
+supports_dry_run: true
+
+external_binary: null
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 5
+
+operations:
+  - name: create_workspace
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: create_session
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: start_agent
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 3
+
+  # at_most_once por el mismo motivo que invoke_model: la respuesta de un
+  # agente no es reproducible (regla 38.2.7).
+  - name: prompt_agent
+    mutating: true
+    idempotency: at_most_once
+    timeout_seconds: 900
+    max_attempts: 1
+
+  - name: wait_agent
+    mutating: false
+    timeout_seconds: 900
+
+  - name: read_agent
+    mutating: false
+    timeout_seconds: 30
+
+  # Un comando arbitrario puede tener cualquier efecto de lado. El adapter no
+  # puede prometer que reintentarlo sea seguro.
+  - name: run_command
+    mutating: true
+    idempotency: at_most_once
+    timeout_seconds: 600
+    max_attempts: 1
+
+  - name: report_metadata
+    mutating: false
+    timeout_seconds: 10
+
+permissions:
+  - exec:workspace
+  - exec:agent

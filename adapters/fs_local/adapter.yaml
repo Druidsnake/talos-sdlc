@@ -1,0 +1,46 @@
+id: talos.adapter.fs_local
+package: talos-adapter-filesystem
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: FileSystemAdapter
+
+# El filesystem es local: no hay nada que simular, las operaciones son reales.
+# Por eso soporta dry-run pero no depende de el.
+supports_dry_run: true
+
+external_binary: null
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 5
+
+operations:
+  - name: read_file
+    mutating: false
+    timeout_seconds: 10
+
+  - name: write_file
+    mutating: true
+    idempotency: required
+    timeout_seconds: 10
+    max_attempts: 3
+
+  - name: list_dir
+    mutating: false
+    timeout_seconds: 10
+
+  - name: ensure_dir
+    mutating: true
+    idempotency: required
+    timeout_seconds: 10
+    max_attempts: 3
+
+  - name: validate_path
+    mutating: false
+    timeout_seconds: 5
+
+permissions:
+  - fs:read
+  - fs:write

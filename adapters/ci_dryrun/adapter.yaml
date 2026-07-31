@@ -1,0 +1,40 @@
+id: talos.adapter.ci_dryrun
+package: talos-adapter-dryrun
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: CIAdapter
+
+# El pase de pruebas se determina por CheckRunSet del CIAdapter (regla 30.4.1).
+# En dry-run el CheckRunSet se simula y por lo tanto NO es evidencia de pase:
+# regla 37.4.4.2 prohibe evidencia verificable en dry-run-only, y 37.4.4.3
+# impide alcanzar FEATURE_MERGED.
+supports_dry_run: true
+
+external_binary: null
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 5
+
+operations:
+  - name: run_checks
+    mutating: true
+    idempotency: required
+    timeout_seconds: 1800
+    max_attempts: 2
+
+  - name: get_check_status
+    mutating: false
+    timeout_seconds: 60
+
+  - name: publish_report
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+permissions:
+  - ci:run
+  - ci:report

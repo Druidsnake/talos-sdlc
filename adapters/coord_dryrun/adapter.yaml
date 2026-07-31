@@ -1,0 +1,63 @@
+id: talos.adapter.coord_dryrun
+package: talos-adapter-dryrun
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: CoordinationAdapter
+
+# CoordinationAdapter SI es satisfacible por dry-run (tabla 37.4.2): se puede
+# simular la coordinacion completa sin tocar el repositorio remoto. Es lo que
+# permite el modo partial (agentes reales, remoto intacto).
+supports_dry_run: true
+
+external_binary: null
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 5
+
+# Las operaciones marcadas [M] en la seccion 38.4 son mutantes y REQUIEREN
+# idempotency key. Sin esto, un reintento duplica issues y PRs: es el defecto
+# concreto de 0.0.4 que corrige la seccion 38.2.
+operations:
+  - name: create_issue
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: create_branch
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: open_pr
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 3
+
+  - name: get_pr_checks
+    mutating: false
+    timeout_seconds: 60
+
+  - name: request_review
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  # El merge real lo gobierna MergeGate, que es nucleo y no rol (seccion 31).
+  # El adapter solo ejecuta lo que el gate ya autorizo.
+  - name: merge_pr
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 1
+
+permissions:
+  - coord:issue
+  - coord:branch
+  - coord:pr

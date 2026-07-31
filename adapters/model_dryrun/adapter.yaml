@@ -1,0 +1,50 @@
+id: talos.adapter.model_dryrun
+package: talos-adapter-model
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: ModelProviderAdapter
+
+# Simulacion: devuelve respuestas canonicas sin invocar ningun modelo.
+# Regla 37.4.4.2: en dry-run-only nada de esto produce evidencia verificable.
+supports_dry_run: true
+
+external_binary: null
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 5
+
+operations:
+  - name: list_models
+    mutating: false
+    timeout_seconds: 10
+
+  # capability_tier -> modelo concreto. El routing por capacidad (20.1) no
+  # depende del presupuesto: eso lo limita la ejecucion, no la resolucion.
+  - name: resolve_profile
+    mutating: false
+    timeout_seconds: 5
+
+  # at_most_once: la salida de un modelo no es reproducible, asi que el
+  # adapter no puede garantizar idempotencia y el nucleo NO DEBE reintentar
+  # automaticamente (regla 38.2.7).
+  - name: invoke_model
+    mutating: true
+    idempotency: at_most_once
+    timeout_seconds: 300
+    max_attempts: 1
+
+  - name: estimate_cost
+    mutating: false
+    timeout_seconds: 5
+
+  - name: report_usage
+    mutating: true
+    idempotency: required
+    timeout_seconds: 10
+    max_attempts: 3
+
+permissions:
+  - model:invoke
