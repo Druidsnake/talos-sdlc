@@ -52,6 +52,8 @@ def gate(*args, evidence=None, run_root=None):
     if evidence:
         cmd += ["--evidence", str(evidence)]
     cmd += ["--format", "json"]
+    if run_root is None:
+        cmd.append("--no-persist")
     env = {
         "PATH": "/usr/bin:/bin:/usr/local/bin",
         "HOME": str(pathlib.Path.home()),
@@ -61,15 +63,32 @@ def gate(*args, evidence=None, run_root=None):
     return p.returncode, p.stdout
 
 
-def evidence_dir(kinds):
-    """kinds: lista de (kind, verifiable)."""
+sys.path.insert(0, str(ROOT / "hooks" / "lib"))
+import evidence as ev_lib  # noqa: E402
+
+
+def evidence_dir(kinds, payloads=None, break_digest=(), raw=None):
+    """kinds: lista de (kind, verifiable). Sella cada evidencia con su digest.
+
+    payloads      indice -> payload a incrustar
+    break_digest  indices cuyo digest queda invalido a proposito
+    raw           lista de (nombre, texto) escritos tal cual, sin sellar
+    """
     d = pathlib.Path(tempfile.mkdtemp())
+    payloads = payloads or {}
     for i, (kind, verifiable) in enumerate(kinds):
-        (d / f"{i}.json").write_text(json.dumps({
+        doc = {
             "id": f"ev-{i}", "kind": kind, "schema_version": 1, "run_id": "r-1",
             "produced_by": "core:test", "produced_at": "2026-07-31T00:00:00Z",
-            "digest": "sha256:" + "0" * 64, "verifiable": verifiable,
-        }))
+            "verifiable": verifiable,
+        }
+        if i in payloads:
+            doc["payload"] = payloads[i]
+        doc["digest"] = ("sha256:" + "0" * 64) if i in break_digest \
+            else ev_lib.expected_digest(doc)
+        (d / f"{i}.json").write_text(json.dumps(doc))
+    for name, text in (raw or []):
+        (d / name).write_text(text)
     return d
 
 
@@ -222,6 +241,123 @@ def main():
     results.append(check(
         "dry-run-only NO alcanza FEATURE_MERGED aun con toda la evidencia (regla 37.4.4.3)",
         code == 3 and "MODE_FORBIDS_MERGE" in out, f"exit={code}",
+    ))
+
+    # ---------- evidencia hostil ----------
+    #
+    # Estos casos existen porque la suite anterior solo usaba evidencia plana y
+    # bien formada, y por eso no vio que el kind se leia con una expresion de
+    # linea greedy: un payload con la clave "kind" pisaba el verdadero.
+
+    ok3 = [("LockLease", True), ("IssueRef", True), ("BranchRef", True)]
+
+    # Un kind anidado en el payload no debe cambiar la identidad de la
+    # evidencia. Si lo hiciera, un Review se haria pasar por CheckRunSet.
+    trampa = evidence_dir(ok3, payloads={0: {"nested": {"kind": "CheckRunSet"}}})
+    code, out = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS", evidence=trampa)
+    results.append(check(
+        "un kind anidado en el payload NO suplanta al kind real",
+        code == 0, f"exit={code} out={out[:160]}",
+    ))
+
+    # El mismo truco al reves: el payload no puede inventar una evidencia que
+    # no existe en el directorio.
+    falsa = evidence_dir([("Review", False)], payloads={0: {"kind": "CheckRunSet"}})
+    code, out = gate("feature", "FEATURE_CHECKS_RUNNING", "FEATURE_CHECKS_PASS",
+                     evidence=falsa)
+    results.append(check(
+        "un payload no puede fabricar una evidencia que no existe",
+        code == 3 and "CheckRunSet" in json.loads(out)["missing_evidence"],
+        f"exit={code}",
+    ))
+
+    # Un verifiable:false anidado no debe contaminar el nivel superior.
+    anidado = evidence_dir([("CheckRunSet", True)],
+                           payloads={0: {"detalle": {"verifiable": False}}})
+    code, _ = gate("feature", "FEATURE_CHECKS_RUNNING", "FEATURE_CHECKS_PASS",
+                   evidence=anidado)
+    results.append(check(
+        "un verifiable:false anidado no marca la evidencia como no verificable",
+        code == 0, f"exit={code}",
+    ))
+
+    # Reglas 23.3.3 y 23.3.4: el digest tiene que cubrir payload y
+    # artifact_refs, y verificarse al leer.
+    roto = evidence_dir(ok3, break_digest={0})
+    code, out = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS", evidence=roto)
+    results.append(check(
+        "RECHAZA evidencia cuyo digest no cuadra (reglas 23.3.3 y 23.3.4)",
+        code == 3 and "EVIDENCE_DIGEST_MISMATCH" in out, f"exit={code}",
+    ))
+
+    # Cambiar el payload dejando el digest viejo tiene que invalidarla: es el
+    # caso concreto de manipulacion que el digest existe para detectar.
+    alterado = evidence_dir(ok3)
+    victim = alterado / "0.json"
+    doc = json.loads(victim.read_text())
+    doc["payload"] = {"inyectado": "el digest quedo viejo"}
+    victim.write_text(json.dumps(doc))
+    code, out = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS", evidence=alterado)
+    results.append(check(
+        "RECHAZA evidencia cuyo payload cambio despues de sellarse",
+        code == 3 and "EVIDENCE_DIGEST_MISMATCH" in out, f"exit={code}",
+    ))
+
+    # Un archivo que no es JSON no es evidencia: se ignora, no rompe el gate.
+    basura = evidence_dir(ok3, raw=[("roto.json", "{esto no es json")])
+    code, _ = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS", evidence=basura)
+    results.append(check(
+        "un archivo ilegible se ignora sin romper la evaluacion",
+        code == 0, f"exit={code}",
+    ))
+
+    # Sin evidencia legible el gate no puede autorizar: el default es negar.
+    vacio = evidence_dir([], raw=[("x.json", "{}")])
+    code, _ = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS", evidence=vacio)
+    results.append(check(
+        "sin evidencia legible el gate niega (default deny)",
+        code == 3, f"exit={code}",
+    ))
+
+    # ---------- persistencia del GateResult ----------
+
+    # Regla 24.4.7: todo GateResult se persiste como evidencia.
+    proj = pathlib.Path(tempfile.mkdtemp())
+    ok_ev = evidence_dir(ok3)
+    code, _ = gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS",
+                   evidence=ok_ev, run_root=proj)
+    guardados = sorted((proj / "orchestration" / "evidence").glob("*.json"))
+    results.append(check(
+        "el GateResult se persiste como evidencia (regla 24.4.7)",
+        len(guardados) == 1, f"archivos: {len(guardados)}",
+    ))
+
+    if guardados:
+        persistido = json.loads(guardados[0].read_text())
+        ev_schema_v = Draft202012Validator(
+            json.loads((SCHEMAS / "evidence.schema.json").read_text()))
+        results.append(check(
+            "el GateResult persistido valida contra evidence.schema.json",
+            not list(ev_schema_v.iter_errors(persistido)),
+            "; ".join(e.message[:80] for e in ev_schema_v.iter_errors(persistido)),
+        ))
+        results.append(check(
+            "el GateResult persistido trae su propio digest verificable",
+            persistido["digest"] == ev_lib.expected_digest(persistido),
+        ))
+        results.append(check(
+            "el GateResult persistido queda de solo lectura (regla 23.3.2)",
+            not (guardados[0].stat().st_mode & 0o222),
+            oct(guardados[0].stat().st_mode),
+        ))
+
+    # Un rechazo tambien se persiste: es tan auditable como una autorizacion.
+    proj2 = pathlib.Path(tempfile.mkdtemp())
+    gate("feature", "FEATURE_READY", "FEATURE_IN_PROGRESS",
+         evidence=evidence_dir([]), run_root=proj2)
+    results.append(check(
+        "un GateResult de rechazo tambien se persiste",
+        len(list((proj2 / "orchestration" / "evidence").glob("*.json"))) == 1,
     ))
 
     # ---------- contrato de salida ----------

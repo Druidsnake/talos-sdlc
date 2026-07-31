@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
@@ -166,6 +166,20 @@ expect_exit 3 "gate rechaza sin evidencia (exit 3)" $TALOS gate feature FEATURE_
 expect_exit 3 "gate rechaza una transicion inexistente" $TALOS gate feature FEATURE_READY FEATURE_MERGED
 expect_exit 1 "gate rechaza una maquina desconocida" $TALOS gate inventada A B
 expect_out "TRANSITION_NOT_DEFINED" "el rechazo dice por que" $TALOS gate feature FEATURE_READY FEATURE_MERGED
+
+echo ""
+echo "=== evidencia: sellado y verificacion ==="
+mkdir -p orchestration/evidence
+printf '{"id":"ev-t","kind":"LockLease","schema_version":1,"run_id":"r-1","produced_by":"core:t","produced_at":"2026-07-31T00:00:00Z","digest":"pendiente","verifiable":true,"payload":{"a":1}}\n' > orchestration/evidence/t.json
+expect_exit 0 "evidence seal calcula el digest" $TALOS evidence seal orchestration/evidence/t.json
+expect_exit 0 "evidence check pasa con la evidencia sellada" $TALOS evidence check
+expect_out "cierra contra su digest" "check confirma que todo cierra" $TALOS evidence check
+
+# Cambiar el payload despues de sellar tiene que romperla.
+printf '{"id":"ev-t","kind":"LockLease","schema_version":1,"run_id":"r-1","produced_by":"core:t","produced_at":"2026-07-31T00:00:00Z","digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000","verifiable":true,"payload":{"a":2}}\n' > orchestration/evidence/t.json
+expect_exit 1 "evidence check detecta un digest que no cuadra" $TALOS evidence check
+expect_out "no justifica" "check explica por que una evidencia rota no sirve" $TALOS evidence check
+rm -f orchestration/evidence/t.json
 
 echo ""
 total=$((pass + fail))
