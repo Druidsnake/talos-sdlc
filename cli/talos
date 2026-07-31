@@ -49,6 +49,7 @@ TRABAJAR
     talos rules [topic]           reglas activas y su mecanismo
     talos adapters                capacidades y que implementacion las satisface
     talos gate <maq> <de> <a>     evalua si una transicion esta autorizada
+    talos evidence seal|check     sella y verifica evidencia
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -103,6 +104,9 @@ case "$cmd" in
                echo "talos: disponibles: check" >&2
                exit 1 ;;
         esac
+        ;;
+    evidence)
+        exec "$CLI_DIR/commands/evidence.sh" "$@"
         ;;
     event)
         sub="${1:-}"

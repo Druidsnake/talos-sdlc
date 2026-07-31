@@ -108,10 +108,12 @@ esac
 
 EVDIR="orchestration/evidence"
 FORMAT=text
+PERSIST=1
 while [ $# -gt 0 ]; do
     case "$1" in
-        --evidence) EVDIR="${2:?falta el directorio}"; shift 2 ;;
-        --format)   [ "${2:-}" = json ] && FORMAT=json; shift 2 ;;
+        --evidence)   EVDIR="${2:?falta el directorio}"; shift 2 ;;
+        --format)     [ "${2:-}" = json ] && FORMAT=json; shift 2 ;;
+        --no-persist) PERSIST=0; shift ;;
         *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
     esac
 done
@@ -120,6 +122,13 @@ set +e
 result=$(talos_gate_eval "$machine" "$from" "$to" "$EVDIR")
 code=$?
 set -e
+
+# Regla 24.4.7: el GateResult se persiste como evidencia, pase o falle. Un
+# rechazo es tan auditable como una autorizacion.
+saved=""
+if [ "$PERSIST" -eq 1 ]; then
+    saved=$(talos_gate_persist "$result" "orchestration/evidence" 2>/dev/null || true)
+fi
 
 if [ "$FORMAT" = json ]; then
     printf '%s\n' "$result"
@@ -161,4 +170,5 @@ case "$code" in
     4) echo "  needs_human: un gate humano no resuelve pass por su cuenta (regla 24.4.6)" ;;
     *) echo "  fail: la transicion NO esta autorizada" ;;
 esac
+[ -n "$saved" ] && printf '  GateResult persistido en %s\n' "$saved"
 exit "$code"
