@@ -35,7 +35,7 @@ git config user.name "Prueba"
 git config user.email "prueba@ejemplo.com"
 
 mkdir -p .talos
-for d in cli hooks schemas system config; do cp -R "$SYS/$d" .talos/; done
+for d in cli hooks schemas system config adapters; do cp -R "$SYS/$d" .talos/; done
 cp "$SYS/VERSION" .talos/
 [ -d "$SYS/.venv" ] && cp -R "$SYS/.venv" .venv
 
@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
@@ -135,6 +135,25 @@ expect_out "merge" "talos rules filtra por topic" $TALOS rules merge
 expect_exit 0 "talos status tras init" $TALOS status
 expect_exit 0 "talos doctor --format json" $TALOS doctor --format json
 expect_out '"install_level"' "doctor emite JSON con install_level" $TALOS doctor --format json
+
+echo ""
+echo "=== capacidades y adapters ==="
+expect_exit 0 "talos adapters sale 0 con el registry completo" $TALOS adapters
+expect_out "dry-run-only" "adapters reporta el modo de ejecucion" $TALOS adapters
+expect_out "ExecutionAdapter" "adapters lista las capacidades requeridas" $TALOS adapters
+expect_out "sin_ligar" "adapters muestra las opcionales sin ligar" $TALOS adapters
+expect_exit 0 "talos adapters --format json" $TALOS adapters --format json
+expect_out '"execution_mode"' "adapters emite JSON con el modo" $TALOS adapters --format json
+expect_out "modo_ejecucion" "doctor verifica el modo declarado (precondition 27.1.15)" $TALOS doctor
+expect_out "capacidades" "doctor verifica las capacidades requeridas" $TALOS doctor
+
+# Sin la tabla de capacidades, el nucleo no puede resolver ninguna: eso es
+# una precondition fallida, no una advertencia.
+mv .talos/hooks/generated/capabilities.tsv .talos/hooks/generated/capabilities.off
+expect_exit 2 "adapters sale 2 sin tabla de capacidades" $TALOS adapters
+expect_exit 2 "doctor sale 2 sin tabla de capacidades" $TALOS doctor
+mv .talos/hooks/generated/capabilities.off .talos/hooks/generated/capabilities.tsv
+expect_exit 0 "doctor vuelve a 0 al restaurar la tabla" $TALOS doctor
 
 echo ""
 total=$((pass + fail))

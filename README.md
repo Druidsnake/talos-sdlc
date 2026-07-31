@@ -2,7 +2,7 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: especificación, sin implementación.** Este repositorio contiene el contrato normativo. El código todavía no existe. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define en qué orden construirlo.
+**Estado actual: `dry-run-only` ejecutable.** El contrato normativo está completo y hay un slice vertical que corre: CLI, schemas, registro de capacidades y cinco adapters de referencia. Faltan la máquina de estados, los gates y la ejecución real. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
 
 ---
 
@@ -89,6 +89,16 @@ orchestration/   <- qué pasó                (estado runtime + event log)
 src/ tests/      <- lo construido           (resultado)
 ```
 
+Dentro del sistema:
+
+```txt
+schemas/         <- los contratos           (único enforcement duro)
+config/          <- qué está ligado a qué   (roles, capacidades, modo)
+adapters/        <- toda integración externa
+hooks/           <- los bloqueos ejecutables
+cli/             <- la superficie de uso
+```
+
 El event log es la fuente de verdad del estado. `state.json` es una proyección reconstruible.
 
 ---
@@ -99,10 +109,13 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 |---|---|
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
-| Schemas JSON | definidos, no implementados |
-| CLI `talos` | no implementada |
-| Adapters | no implementados |
-| Modo actual objetivo | `dry-run-only`, serial, un feature a la vez |
+| Schemas JSON | 25 definidos y verificados con suite de rechazo |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `event append/tail` |
+| Registro de capacidades | implementado (`config/extensions.yaml`) |
+| Adapters | 5 de referencia en dry-run, uno por capacidad requerida |
+| Máquina de estados y gates | no implementados |
+| `talos plan` / `talos feature start` | no implementados |
+| Modo actual | `dry-run-only`, serial, un feature a la vez |
 
 ---
 
@@ -131,7 +144,15 @@ La versión 0.0.6 separa la **capacidad** de la **implementación**. Antes, marc
 
 ## Próximo paso
 
-Construir el primer vertical slice: `talos doctor` → `talos spec check` → `talos plan` → `talos feature start` en dry-run, sin extensiones. Ver [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada).
+Los pasos 1, 2, 4, 5 y 6 de la [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada) están hechos. Falta cerrar el modo `dry-run-only`:
+
+| Paso | Qué falta |
+|---|---|
+| 3 | máquina de estados y `GateEvaluator` |
+| 7 | `talos plan` |
+| 8 | `talos feature start` |
+
+Recién después de eso el paso 9 reemplaza el `ExecutionAdapter` dry-run por uno productivo, que es donde los agentes empiezan a trabajar de verdad.
 
 ---
 
