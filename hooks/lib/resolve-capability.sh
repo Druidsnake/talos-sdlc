@@ -115,9 +115,11 @@ talos_resolve_binary() {
 # talos_capability_audit
 # Emite una linea por capacidad: <cap>|<kind>|<estado>|<detalle>
 # Estados: ok | sin_ligar | sin_adapter | no_responde
-# Sale 0 si toda capacidad REQUERIDA esta ok, 2 si alguna falla.
+#
+# Corre el health check UNA sola vez por capacidad. Quien necesite el conteo de
+# fallas lo saca de estas mismas filas con talos_capability_failures: volver a
+# auditar para contar hacia tres pasadas de health checks por invocacion.
 talos_capability_audit() {
-    _fails=0
     if ! talos_capability_table >/dev/null 2>&1; then
         echo "-|-|sin_tabla|falta $TALOS_CAP_TABLE, corre tools/build-registry.py"
         return 2
@@ -144,22 +146,17 @@ talos_capability_audit() {
             echo "$_cap|$_kind|no_responde|$_impl fallo el health check"
         fi
     done
-
-    # El while corre en subshell: recontar aca para el codigo de salida.
-    _fails=$(talos_capability_audit_failures)
-    [ "$_fails" -gt 0 ] && return 2
     return 0
 }
 
+# talos_capability_failures <filas-de-audit>
+# Cuenta las capacidades REQUERIDAS que no quedaron en ok.
+talos_capability_failures() {
+    printf '%s\n' "$1" | awk -F'|' '$2 == "required" && $3 != "ok"' | grep -c . | tr -d ' '
+}
+
+# talos_capability_audit_failures
+# Compatibilidad: audita y cuenta en un paso.
 talos_capability_audit_failures() {
-    _n=0
-    talos_capability_table 2>/dev/null | while IFS='	' read -r _cap _kind _impl _dir; do
-        [ -z "$_cap" ] && continue
-        [ "$_kind" = required ] || continue
-        if [ "$_impl" = "-" ] || [ ! -x "$TALOS_CAP_SYS/$_dir/run.sh" ]; then
-            echo x
-        elif ! "$TALOS_CAP_SYS/$_dir/run.sh" health >/dev/null 2>&1; then
-            echo x
-        fi
-    done | wc -l | tr -d ' '
+    talos_capability_failures "$(talos_capability_audit || true)"
 }

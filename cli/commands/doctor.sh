@@ -148,7 +148,8 @@ else
 fi
 
 if talos_capability_table >/dev/null 2>&1; then
-    cap_fails=$(talos_capability_audit_failures)
+    cap_rows=$(talos_capability_audit || true)
+    cap_fails=$(talos_capability_failures "$cap_rows")
     n_bound=$(talos_capability_table | awk -F'\t' '$3 != "-"' | wc -l | tr -d ' ')
     if [ "$cap_fails" -eq 0 ]; then
         record ok si capacidades "$n_bound ligadas, requeridas sanas" ""

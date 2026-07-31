@@ -58,7 +58,7 @@ mode=$(grep -E '^execution_mode:' "$SYS/config/system.yaml" 2>/dev/null \
        | head -1 | sed 's/execution_mode:[[:space:]]*//' | tr -d '"' || echo "?")
 
 rows=$(talos_capability_audit || true)
-fails=$(talos_capability_audit_failures)
+fails=$(talos_capability_failures "$rows")
 
 if [ "$FORMAT" = json ]; then
     printf '{\n  "execution_mode": "%s",\n  "capabilities": [\n' "$mode"

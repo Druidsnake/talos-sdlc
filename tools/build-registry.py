@@ -91,18 +91,16 @@ def main():
             directory = "-"
         lines.append(f"{cap}\t{kind}\t{impl}\t{directory}")
 
-    # Regla 37.4.3.3: dos o mas implementaciones de la misma capacidad son
-    # ambiguedad. El schema impide declararlas dos veces bajo la misma clave,
-    # pero dos manifiestos distintos pueden declarar el mismo `implements`.
-    declared = {}
-    for manifest in sorted(ADAPTERS.glob("*/adapter.yaml")):
-        data = yaml.safe_load(manifest.read_text())
-        declared.setdefault(data["implements"], []).append(data["id"])
-    bound = {c: (caps.get(c) or {}).get("implementation") for c in REQUIRED + OPTIONAL if isinstance(caps.get(c), dict)}
-    for cap, impls in declared.items():
-        chosen = bound.get(cap)
-        if chosen and len([i for i in impls if i == chosen]) > 1:
-            problems.append(f"{cap}: implementacion {chosen} declarada por mas de un manifiesto")
+    # La regla 37.4.3.3 -dos o mas implementaciones de la misma capacidad son
+    # ambiguedad- ya queda cubierta en dos lugares antes de llegar aca:
+    #
+    #   - adapter_index() aborta si dos manifiestos declaran el mismo id,
+    #   - extension-registry.schema.json admite una sola clave por capacidad,
+    #     asi que el registry no puede ligar dos implementaciones a la vez.
+    #
+    # Tener varios adapters distintos que implementen la misma capacidad NO es
+    # ambiguedad: son alternativas disponibles. La ambiguedad seria ligar dos,
+    # y eso el schema no lo permite expresar.
 
     if problems:
         for p in problems:
