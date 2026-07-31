@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/evidence/0.0.5",
+  "title": "Evidence",
+  "description": "Artefacto tipado, persistido e inmutable que justifica una transicion de estado. Ver talos-0.0.6.md seccion 23.",
+  "type": "object",
+  "required": ["id", "kind", "schema_version", "run_id", "produced_by", "produced_at", "digest", "verifiable"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^ev-[A-Za-z0-9]+$" },
+    "kind": {
+      "type": "string",
+      "enum": ["PreconditionReport", "SchemaValidationReport", "HumanDecision", "HumanApproval", "SpecDraft", "ApprovedSpecRef", "ProgramPlan", "ProgramPlanEntry", "DependencySet", "LockLease", "LockRelease", "IssueRef", "BranchRef", "CommitRef", "PullRequestRef", "TaskResultSet", "LocalTestReport", "Review", "IssueList", "CheckRunSet", "PolicyDecision", "MergeGateReport", "MergeResult", "PostMergeReport", "BlockerResolution", "ErrorRecord", "GateResult", "FeatureStateSet"]
+    },
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "run_id": { "type": "string" },
+    "feature_id": { "type": ["string", "null"] },
+    "produced_by": { "type": "string", "description": "Formato: <clase>:<id>. Ej: adapter:talos.adapter.github, role:Reviewer, core:MergeGate" },
+    "produced_at": { "type": "string", "format": "date-time" },
+    "artifact_refs": { "type": "array", "items": { "type": "string" } },
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "verifiable": { "type": "boolean", "description": "false para evidencia producida por un agente sin salida de herramienta determinista. Evidencia no verificable no puede satisfacer un gate critico." },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

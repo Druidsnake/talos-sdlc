@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/runtime-meta/0.0.5",
+  "title": "RuntimeMeta",
+  "description": "Metadatos de runtime en orchestration/.meta.json. Ver talos-0.0.6.md seccion 12.2.",
+  "type": "object",
+  "required": ["runtime_schema_version", "talos_version", "run_id", "created_at", "last_event_seq"],
+  "properties": {
+    "runtime_schema_version": { "type": "integer", "minimum": 1 },
+    "talos_version": { "type": "string" },
+    "run_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "last_migrated_at": { "type": ["string", "null"], "format": "date-time" },
+    "last_event_seq": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false
+}

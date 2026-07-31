@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/system-manifest/0.0.6",
+  "title": "SystemManifest",
+  "description": "Manifiesto del sistema Talos. Ver talos-0.0.6.md seccion 13.",
+  "type": "object",
+  "required": ["system_name", "system_version", "api_version", "spec_schema_version", "config_schema_version", "runtime_schema_version", "event_schema_version", "status", "install_level"],
+  "properties": {
+    "system_name": { "type": "string", "const": "Talos" },
+    "system_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "api_version": { "type": "string" },
+    "spec_schema_version": { "type": "integer", "minimum": 1 },
+    "config_schema_version": { "type": "integer", "minimum": 1 },
+    "runtime_schema_version": { "type": "integer", "minimum": 1 },
+    "event_schema_version": { "type": "integer", "minimum": 1 },
+    "status": { "type": "string", "enum": ["experimental", "beta", "stable", "deprecated"] },
+    "install_level": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2"],
+      "description": "Nivel de enforcement disponible. Ver system/00-enforcement.md seccion 5."
+    },
+    "adapters": { "type": "array", "items": { "type": "string" } },
+    "plugins": { "type": "array", "items": { "type": "string" } },
+    "extensions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

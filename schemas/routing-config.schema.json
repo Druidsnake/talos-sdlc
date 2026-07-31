@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/routing-config/0.0.6",
+  "title": "RoutingConfig",
+  "description": "config/routing.yaml. Ver talos-0.0.6.md seccion 20. El routing selecciona por capacidad, nunca por costo.",
+  "type": "object",
+  "required": ["version", "default_tier", "effort_to_tier", "risk_to_tier"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "default_tier": {
+      "type": "string",
+      "enum": ["fast", "balanced", "deep"],
+      "description": "Obligatorio. Se usa cuando todos los candidatos son null (seccion 20.5)."
+    },
+    "effort_to_tier": {
+      "type": "object",
+      "required": ["trivial", "low", "medium", "high", "critical"],
+      "properties": {
+        "trivial": { "$ref": "#/$defs/tier" },
+        "low": { "$ref": "#/$defs/tier" },
+        "medium": { "$ref": "#/$defs/tier" },
+        "high": { "$ref": "#/$defs/tier" },
+        "critical": { "$ref": "#/$defs/tier" }
+      },
+      "additionalProperties": false
+    },
+    "risk_to_tier": {
+      "type": "object",
+      "required": ["low", "medium", "high", "critical"],
+      "properties": {
+        "low": { "$ref": "#/$defs/tier" },
+        "medium": { "$ref": "#/$defs/tier" },
+        "high": { "$ref": "#/$defs/tier" },
+        "critical": { "$ref": "#/$defs/tier" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tier": { "type": "string", "enum": ["fast", "balanced", "deep"] }
+  }
+}

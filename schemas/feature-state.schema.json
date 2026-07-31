@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/feature-state/0.0.5",
+  "title": "FeatureState",
+  "description": "Estado runtime de una feature. Ver talos-0.0.6.md secciones 22.2 y 30.",
+  "type": "object",
+  "required": ["schema_version", "feature_id", "state", "updated_at", "last_event_seq"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "feature_id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "run_id": { "type": "string" },
+    "state": {
+      "type": "string",
+      "enum": ["FEATURE_READY", "FEATURE_IN_PROGRESS", "FEATURE_REVIEW", "FEATURE_PR_OPEN", "FEATURE_CHECKS_RUNNING", "FEATURE_CHECKS_PASS", "FEATURE_CHECKS_FAIL", "FEATURE_FIXING", "FEATURE_HUMAN_REVIEW", "FEATURE_MERGING", "FEATURE_MERGED", "FEATURE_DONE", "FEATURE_BLOCKED", "FEATURE_ESCALATED", "FEATURE_FAILED", "FEATURE_ABANDONED"]
+    },
+    "issue_ref": { "type": ["string", "null"] },
+    "branch_ref": { "type": ["string", "null"] },
+    "pr_ref": { "type": ["string", "null"] },
+    "leases": { "type": "array", "items": { "type": "string" } },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "in_progress", "done", "failed"] },
+          "assigned_role": { "type": "string", "enum": ["SpecAssistant", "Planner", "FeatureLead", "Developer", "Reviewer"] },
+          "effort": { "type": "string", "enum": ["trivial", "low", "medium", "high", "critical"] },
+          "declared_scope": { "type": "array", "items": { "type": "string" }, "description": "Rutas que la task declara que va a tocar. Habilita el diff posterior contra lo declarado." },
+          "files": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "attempts": {
+      "type": "object",
+      "properties": {
+        "fix": { "type": "integer", "minimum": 0 },
+        "review": { "type": "integer", "minimum": 0 },
+        "merge": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "budget_consumed": {
+      "type": "object",
+      "properties": {
+        "cost_usd": { "type": "number", "minimum": 0 },
+        "iterations": { "type": "integer", "minimum": 0 },
+        "wall_minutes": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "last_gate_result": { "type": ["string", "null"] },
+    "last_event_seq": { "type": "integer", "minimum": 0 },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/preconditions-config/0.0.6",
+  "title": "PreconditionsConfig",
+  "description": "config/preconditions.yaml. Ver talos-0.0.6.md seccion 27.",
+  "type": "object",
+  "required": ["version", "checks"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "required", "verify"],
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string" },
+          "required": { "type": "boolean", "description": "Si es required y falla, el sistema entra en PRECONDITION_FAILED." },
+          "verify": {
+            "type": "object",
+            "required": ["kind"],
+            "oneOf": [
+              {
+                "properties": {
+                  "kind": { "const": "command" },
+                  "command": { "type": "string" },
+                  "expect_exit_code": { "type": "integer", "default": 0 },
+                  "expect_output_matches": { "type": "string" }
+                },
+                "required": ["kind", "command"],
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "kind": { "const": "path_exists" },
+                  "path": { "type": "string" }
+                },
+                "required": ["kind", "path"],
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "kind": { "const": "schema_valid" },
+                  "path": { "type": "string" },
+                  "schema": { "type": "string" }
+                },
+                "required": ["kind", "path", "schema"],
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "kind": { "const": "capability_bound" },
+                  "capability": { "type": "string" }
+                },
+                "required": ["kind", "capability"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "remediation": { "type": "string", "description": "Comando exacto que se muestra al usuario. Talos nunca lo ejecuta por su cuenta." }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

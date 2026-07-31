@@ -7,3 +7,6 @@
 # Editor
 .vscode/
 .idea/
+
+# Validator sandbox
+.venv*/

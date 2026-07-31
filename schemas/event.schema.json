@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/event/0.0.5",
+  "title": "Event",
+  "description": "Registro inmutable y secuenciado de cambio de estado. Ver talos-0.0.6.md seccion 41.",
+  "type": "object",
+  "required": ["id", "seq", "schema_version", "type", "ts", "run_id", "project", "actor"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^ev-[A-Za-z0-9]+$" },
+    "seq": { "type": "integer", "minimum": 1, "description": "Monotonico dentro de un run_id. Asignado exclusivamente por EventLog." },
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "type": { "type": "string", "pattern": "^talos\\.[a-z_]+\\.[a-z_]+$" },
+    "ts": { "type": "string", "format": "date-time" },
+    "run_id": { "type": "string" },
+    "project": { "type": "string" },
+    "feature_id": { "type": ["string", "null"] },
+    "actor": { "type": "string" },
+    "correlation_id": { "type": ["string", "null"] },
+    "causation_id": { "type": ["string", "null"] },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/project-manifest/0.0.6",
+  "title": "ProjectManifest",
+  "description": "Manifiesto de proyecto en talos.config/project.yaml. Ver talos-0.0.6.md seccion 14.",
+  "type": "object",
+  "required": ["system_name", "system_root", "system_version", "spec_root", "runtime_root", "config_root"],
+  "properties": {
+    "project_name": { "type": "string" },
+    "system_name": { "type": "string", "const": "Talos" },
+    "system_root": { "type": "string", "default": ".talos" },
+    "system_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "Version fijada de Talos. El proyecto debe fijar una version especifica (seccion 12.1.3)." },
+    "spec_root": { "type": "string", "default": "spec" },
+    "runtime_root": { "type": "string", "default": "orchestration" },
+    "config_root": { "type": "string", "default": "talos.config" },
+    "config_overrides": { "type": "array", "items": { "type": "string" } },
+    "extensions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

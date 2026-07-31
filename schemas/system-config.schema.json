@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/system-config/0.0.6",
+  "title": "SystemConfig",
+  "description": "config/system.yaml. Ver talos-0.0.6.md secciones 37.4.4 y 47.",
+  "type": "object",
+  "required": ["version", "execution_mode", "install_level", "concurrency"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "execution_mode": {
+      "type": "string",
+      "enum": ["dry-run-only", "partial", "production"],
+      "description": "dry-run-only no puede producir evidencia verificable ni alcanzar FEATURE_MERGED."
+    },
+    "install_level": { "type": "string", "enum": ["L0", "L1", "L2"] },
+    "concurrency": {
+      "type": "object",
+      "required": ["mode", "max_parallel_features"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["serial", "parallel"] },
+        "max_parallel_features": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "auto_merge": { "type": "boolean", "default": false },
+    "human_approval": { "type": "string", "enum": ["never", "required_for_critical", "always"], "default": "required_for_critical" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "concurrency": { "properties": { "mode": { "const": "serial" } } } } },
+      "then": { "properties": { "concurrency": { "properties": { "max_parallel_features": { "const": 1 } } } } }
+    }
+  ]
+}

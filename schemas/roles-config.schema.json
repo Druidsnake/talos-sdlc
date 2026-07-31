@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/roles-config/0.0.6",
+  "title": "RolesConfig",
+  "description": "config/roles.yaml. Ver talos-0.0.6.md secciones 18, 19 y 20.4. write_paths y forbidden_tools son la base del mecanismo 2 (hook bloqueante) y del mecanismo 8 (aislamiento de permisos).",
+  "type": "object",
+  "required": ["version", "roles"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "roles": {
+      "type": "object",
+      "required": ["SpecAssistant", "Planner", "FeatureLead", "Developer", "Reviewer"],
+      "properties": {
+        "SpecAssistant": { "$ref": "#/$defs/role" },
+        "Planner": { "$ref": "#/$defs/role" },
+        "FeatureLead": { "$ref": "#/$defs/role" },
+        "Developer": { "$ref": "#/$defs/role" },
+        "Reviewer": { "$ref": "#/$defs/role" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/role" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "role": {
+      "type": "object",
+      "required": ["role_minimum_tier", "write_paths", "output_artifact"],
+      "properties": {
+        "role_minimum_tier": {
+          "type": ["string", "null"],
+          "enum": ["fast", "balanced", "deep", null],
+          "description": "null significa sin minimo propio: se resuelve por esfuerzo y riesgo. No participa en max()."
+        },
+        "instructions": { "type": "string", "description": "Ruta al archivo de roles/ que se inyecta como contexto." },
+        "write_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Globs que el rol PUEDE escribir. Todo lo demas se deniega en el hook pre-accion."
+        },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+        "allowed_tools": { "type": "array", "items": { "type": "string" } },
+        "forbidden_tools": { "type": "array", "items": { "type": "string" } },
+        "output_artifact": {
+          "type": ["object", "null"],
+          "required": ["schema", "path"],
+          "description": "Salida estructurada obligatoria del rol. Convierte una obligacion semantica en un artefacto verificable.",
+          "properties": {
+            "schema": { "type": "string" },
+            "path": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "max_cost_usd": { "type": "number", "minimum": 0 },
+            "max_iterations": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

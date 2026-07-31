@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/program-plan/0.0.5",
+  "title": "ProgramPlan",
+  "description": "Plan de programa generado por Planner. Ver talos-0.0.6.md seccion 29.",
+  "type": "object",
+  "required": ["schema_version", "project", "spec_digest", "created_at", "features"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "project": { "type": "string" },
+    "spec_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "created_by": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "effort", "risk", "capability_tier", "human_approval_required"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+          "title": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "spec_refs": { "type": "array", "items": { "type": "string" } },
+          "acceptance_refs": { "type": "array", "items": { "type": "string" } },
+          "depends_on": { "type": "array", "items": { "type": "string", "pattern": "^F[0-9]{3,}$" } },
+          "effort": { "type": "string", "enum": ["trivial", "low", "medium", "high", "critical"] },
+          "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "risk_factors": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["auth", "billing", "security", "migrations", "public_api", "ci_cd", "infrastructure", "breaking_change"] }
+          },
+          "capability_tier": { "type": "string", "enum": ["fast", "balanced", "deep"] },
+          "human_approval_required": { "type": "boolean" },
+          "required_locks": { "type": "array", "items": { "type": "string" } },
+          "budget": {
+            "type": "object",
+            "properties": {
+              "max_cost_usd": { "type": "number", "minimum": 0 },
+              "max_iterations": { "type": "integer", "minimum": 1 },
+              "max_wall_minutes": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

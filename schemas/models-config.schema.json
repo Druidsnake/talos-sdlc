@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/models-config/0.0.6",
+  "title": "ModelsConfig",
+  "description": "config/models.yaml. Mapeo capability_tier -> modelo concreto. Ver talos-0.0.6.md seccion 20.3. El nucleo no conoce identificadores de modelo: solo tiers.",
+  "type": "object",
+  "required": ["version", "tiers"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "provider": { "type": "string" },
+    "tiers": {
+      "type": "object",
+      "required": ["fast", "balanced", "deep"],
+      "properties": {
+        "fast": { "$ref": "#/$defs/tierBinding" },
+        "balanced": { "$ref": "#/$defs/tierBinding" },
+        "deep": { "$ref": "#/$defs/tierBinding" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tierBinding": {
+      "type": "object",
+      "required": ["model"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string" },
+        "max_output_tokens": { "type": "integer", "minimum": 1 },
+        "cost_per_mtok_input": { "type": "number", "minimum": 0 },
+        "cost_per_mtok_output": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/policy-config/0.0.6",
+  "title": "PolicyConfig",
+  "description": "config/policy.yaml. Ver talos-0.0.6.md secciones 31 y 43.4. Policy NO participa en la cadena de resolucion de configuracion: la restringe. Un valor resuelto que viole policy falla al cargar.",
+  "type": "object",
+  "required": ["version", "merge", "human_approval", "constraints"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "merge": {
+      "type": "object",
+      "required": ["require_green_checks", "require_mergeable", "auto_merge_allowed"],
+      "properties": {
+        "require_green_checks": { "type": "boolean", "const": true, "description": "No relajable. Ver seccion 31.1." },
+        "require_mergeable": { "type": "boolean", "const": true },
+        "auto_merge_allowed": { "type": "boolean" },
+        "strategy": { "type": "string", "enum": ["squash", "merge", "rebase"] },
+        "protected_branches": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "human_approval": {
+      "type": "object",
+      "required": ["required_for_risk"],
+      "properties": {
+        "required_for_risk": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "contains": { "const": "critical" },
+          "description": "Debe contener critical. No relajable. Ver seccion 21.5.4."
+        },
+        "required_for_factors": { "type": "array", "items": { "type": "string" } },
+        "required_for_paths": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Restricciones sobre la configuracion resuelta. Un override que las viole se rechaza.",
+      "properties": {
+        "max_parallel_features": { "type": "integer", "minimum": 1 },
+        "min_install_level": { "type": "string", "enum": ["L0", "L1", "L2"] },
+        "forbid_execution_modes": { "type": "array", "items": { "type": "string", "enum": ["dry-run-only", "partial", "production"] } },
+        "require_secret_scan": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

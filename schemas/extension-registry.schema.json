@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/extension-registry/0.0.6",
+  "title": "ExtensionRegistry",
+  "description": "Registro de capacidades e implementaciones en config/extensions.yaml. Ver talos-0.0.6.md secciones 37.4 y 43.6. Este archivo es el unico lugar donde el sistema puede nombrar implementaciones concretas (principio 20.b).",
+  "type": "object",
+  "required": ["version", "capabilities"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "capabilities": {
+      "type": "object",
+      "description": "Binding capacidad -> implementacion. Toda capacidad REQUERIDA debe tener exactamente una.",
+      "required": ["FileSystemAdapter", "ModelProviderAdapter", "ExecutionAdapter", "CoordinationAdapter", "CIAdapter"],
+      "properties": {
+        "FileSystemAdapter": { "$ref": "#/$defs/requiredBinding" },
+        "ModelProviderAdapter": { "$ref": "#/$defs/requiredBinding" },
+        "ExecutionAdapter": { "$ref": "#/$defs/requiredBinding" },
+        "CoordinationAdapter": { "$ref": "#/$defs/requiredBinding" },
+        "CIAdapter": { "$ref": "#/$defs/requiredBinding" },
+        "MemoryAdapter": { "$ref": "#/$defs/optionalBinding" },
+        "RoutingStrategy": { "$ref": "#/$defs/optionalBinding" },
+        "RoleRegistry": { "$ref": "#/$defs/optionalBinding" },
+        "Validator": { "$ref": "#/$defs/optionalBinding" },
+        "Reporter": { "$ref": "#/$defs/optionalBinding" }
+      },
+      "additionalProperties": false
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "enabled"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^talos\\.plugin\\.[a-z0-9_]+$" },
+          "enabled": { "type": "boolean" },
+          "priority": { "type": "integer" },
+          "permissions": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "requiredBinding": {
+      "type": "object",
+      "required": ["implementation"],
+      "description": "Capacidad REQUERIDA: exactamente una implementacion. Cero o dos falla en PRECONDITION_GATE.",
+      "properties": {
+        "implementation": { "type": "string", "pattern": "^talos\\.adapter\\.[a-z0-9_]+$" },
+        "config": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "optionalBinding": {
+      "type": ["object", "null"],
+      "description": "Capacidad OPCIONAL: cero implementaciones es un estado valido.",
+      "properties": {
+        "implementation": { "type": "string", "pattern": "^talos\\.adapter\\.[a-z0-9_]+$" },
+        "config": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/locks/0.0.5",
+  "title": "Locks",
+  "description": "Leases con TTL y fencing token. Ver talos-0.0.6.md seccion 32.",
+  "type": "object",
+  "required": ["schema_version", "leases"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "leases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lease_id", "resource", "owner_feature", "owner_run", "reason", "acquired_at", "expires_at", "ttl_seconds", "generation"],
+        "properties": {
+          "lease_id": { "type": "string", "pattern": "^lk-[A-Za-z0-9]+$" },
+          "resource": { "type": "string" },
+          "owner_feature": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+          "owner_run": { "type": "string" },
+          "reason": { "type": "string", "minLength": 1 },
+          "acquired_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "last_heartbeat_at": { "type": ["string", "null"], "format": "date-time" },
+          "ttl_seconds": { "type": "integer", "minimum": 30 },
+          "generation": { "type": "integer", "minimum": 1, "description": "Fencing token. Se incrementa al expirar. Los adapters rechazan operaciones con generation obsoleta." }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

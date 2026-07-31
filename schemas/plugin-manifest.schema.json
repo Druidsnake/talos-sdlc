@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/plugin-manifest/0.0.6",
+  "title": "PluginManifest",
+  "description": "Manifiesto de un plugin. Ver talos-0.0.6.md seccion 39.",
+  "type": "object",
+  "required": ["id", "version", "core_compatibility", "permissions"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^talos\\.plugin\\.[a-z0-9_]+$" },
+    "package": { "type": "string" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "core_compatibility": { "type": "string" },
+    "permissions": { "type": "array", "items": { "type": "string" } },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "invokes"],
+        "properties": {
+          "name": { "type": "string" },
+          "invokes": { "type": "string", "description": "Comando de la CLI talos que ejecuta. Un plugin nunca muta estado directamente (seccion 39.2.3)." }
+        },
+        "additionalProperties": false
+      }
+    },
+    "event_subscriptions": { "type": "array", "items": { "type": "string", "pattern": "^talos\\.[a-z_]+\\.[a-z_*]+$" } },
+    "layouts": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

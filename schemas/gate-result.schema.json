@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/gate-result/0.0.5",
+  "title": "GateResult",
+  "description": "Salida de un GateEvaluator. Ver talos-0.0.6.md seccion 24.",
+  "type": "object",
+  "required": ["gate", "decision", "reasons", "evaluated_at", "evaluator_version"],
+  "properties": {
+    "gate": {
+      "type": "string",
+      "enum": ["PRECONDITION_GATE", "SPEC_SCHEMA_GATE", "SPEC_GATE", "PLAN_GATE", "READY_GATE", "DEV_GATE", "REVIEW_GATE", "CHECKS_GATE", "POLICY_GATE", "HUMAN_GATE", "MERGE_GATE", "POST_MERGE_GATE"]
+    },
+    "run_id": { "type": "string" },
+    "feature_id": { "type": ["string", "null"] },
+    "from_state": { "type": "string" },
+    "to_state": { "type": "string" },
+    "decision": { "type": "string", "enum": ["pass", "fail", "needs_human"] },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["code", "status"],
+        "properties": {
+          "code": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "fail", "skip"] },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "missing_evidence": { "type": "array", "items": { "type": "string" } },
+    "execution_mode": { "type": "string", "enum": ["dry-run-only", "partial", "production"] },
+    "policy_snapshot_digest": { "type": "string" },
+    "config_snapshot_digest": { "type": "string" },
+    "evaluated_at": { "type": "string", "format": "date-time" },
+    "evaluator_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

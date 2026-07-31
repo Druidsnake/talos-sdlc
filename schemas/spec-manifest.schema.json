@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/spec-manifest/0.0.6",
+  "title": "SpecManifest",
+  "description": "Manifiesto del spec de producto en spec/manifest.yaml. Ver talos-0.0.6.md secciones 15.2 y 15.3. Formaliza el spec minimo aceptable para que sea verificable sin modelo (mecanismo 1).",
+  "type": "object",
+  "required": ["version", "title", "status", "entry", "sections"],
+  "properties": {
+    "version": { "type": "string" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["draft", "review", "approved", "deprecated"] },
+    "entry": { "type": "string", "description": "Ruta relativa al documento principal del spec." },
+    "approved_by": { "type": ["string", "null"] },
+    "approved_at": { "type": ["string", "null"], "format": "date-time" },
+    "digest": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$", "description": "Digest del spec al momento de aprobar. Habilita detectar cambios posteriores (seccion 28.9)." },
+    "sections": {
+      "type": "object",
+      "description": "Cada clave del spec minimo aceptable debe apuntar a una ubicacion concreta.",
+      "required": ["problem", "goal", "non_goals", "users", "requirements", "acceptance_criteria", "constraints", "risks", "test_plan"],
+      "properties": {
+        "problem": { "$ref": "#/$defs/sectionRef" },
+        "goal": { "$ref": "#/$defs/sectionRef" },
+        "non_goals": { "$ref": "#/$defs/sectionRef" },
+        "users": { "$ref": "#/$defs/sectionRef" },
+        "requirements": { "$ref": "#/$defs/sectionRef" },
+        "acceptance_criteria": { "$ref": "#/$defs/sectionRef" },
+        "constraints": { "$ref": "#/$defs/sectionRef" },
+        "risks": { "$ref": "#/$defs/sectionRef" },
+        "test_plan": { "$ref": "#/$defs/sectionRef" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sectionRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ruta de archivo, opcionalmente con ancla. Ej: requirements.md#autenticacion"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] },
+      "then": { "required": ["approved_by", "approved_at", "digest"] }
+    }
+  ]
+}

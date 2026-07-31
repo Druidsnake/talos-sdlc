@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/message/0.0.5",
+  "title": "Message",
+  "description": "Comunicacion estructurada entre roles. Ver talos-0.0.6.md seccion 25.",
+  "type": "object",
+  "required": ["id", "thread_id", "type", "from", "to", "state", "created_at"],
+  "properties": {
+    "id": { "type": "string" },
+    "thread_id": { "type": "string" },
+    "in_reply_to": { "type": ["string", "null"] },
+    "type": {
+      "type": "string",
+      "enum": ["TASK_REQUEST", "TASK_RESPONSE", "QUESTION", "ANSWER", "REVIEW_REQUEST", "REVIEW_RESPONSE", "FIX_REQUEST", "FIX_RESPONSE", "STATUS_UPDATE", "ESCALATION", "APPROVAL_REQUEST", "APPROVAL_RESPONSE", "SPEC_ASSIST_REQUEST", "SPEC_ASSIST_RESPONSE"]
+    },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "run_id": { "type": "string" },
+    "feature_id": { "type": ["string", "null"] },
+    "task_id": { "type": ["string", "null"] },
+    "state": { "type": "string", "enum": ["OPEN", "ACKED", "ANSWERED", "CLOSED", "EXPIRED", "ESCALATED"] },
+    "critical": { "type": "boolean" },
+    "artifact_refs": { "type": "array", "items": { "type": "string" } },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "payload": { "type": "object" },
+    "payload_bytes": { "type": "integer", "minimum": 0, "maximum": 16384, "description": "Limite duro de 16 KB. Contexto mayor va como artifact_refs." },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

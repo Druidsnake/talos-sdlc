@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/communication-config/0.0.6",
+  "title": "CommunicationConfig",
+  "description": "config/communication.yaml. Ver talos-0.0.6.md seccion 25.",
+  "type": "object",
+  "required": ["version", "max_payload_bytes", "channels"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "max_payload_bytes": { "type": "integer", "maximum": 16384, "default": 16384, "description": "Limite duro. Contexto mayor debe ir como artifact_refs o el mensaje se rechaza." },
+    "default_expiry_seconds": { "type": "integer", "minimum": 60 },
+    "escalate_expired_critical": { "type": "boolean", "default": true },
+    "channels": {
+      "type": "object",
+      "required": ["durable"],
+      "properties": {
+        "durable": { "type": "string", "default": "repo_files" },
+        "operational": { "type": "string" },
+        "coordination": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/review/0.0.5",
+  "title": "Review",
+  "description": "Salida estructurada obligatoria del rol Reviewer. Ver talos-0.0.6.md seccion 30.3 y system/00-enforcement.md seccion 7.",
+  "type": "object",
+  "required": ["schema_version", "feature_id", "reviewer", "created_at", "verdict", "findings", "spec_refs_checked", "blocker_count"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "feature_id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "pr_ref": { "type": ["string", "null"] },
+    "reviewer": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "verdict": { "type": "string", "enum": ["approve", "request_changes"] },
+    "spec_refs_checked": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Obligatorio y no vacio: fuerza a declarar contra que criterios del spec se reviso."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "file", "summary"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["blocker", "major", "minor", "nit"] },
+          "category": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "summary": { "type": "string", "minLength": 1 },
+          "suggested_fix": { "type": "string" },
+          "spec_ref": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocker_count": { "type": "integer", "minimum": 0 },
+    "scope_violation": { "type": "boolean" },
+    "missing_tests": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

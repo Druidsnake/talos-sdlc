@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/reliability-config/0.0.6",
+  "title": "ReliabilityConfig",
+  "description": "config/reliability.yaml. Timeouts, reintentos y backoff. Ver talos-0.0.6.md seccion 35.",
+  "type": "object",
+  "required": ["version", "reliability"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "reliability": {
+      "type": "object",
+      "required": ["defaults"],
+      "properties": {
+        "defaults": { "$ref": "#/$defs/opPolicy" },
+        "operations": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/opPolicy" }
+        },
+        "retryable_error_classes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["TRANSIENT", "TIMEOUT", "RATE_LIMITED", "CONFLICT"] },
+          "description": "Solo estas clases pueden reintentarse. AUTH, PRECONDITION, VALIDATION e INTERNAL escalan de inmediato."
+        },
+        "lock_wait_timeout_seconds": { "type": "integer", "minimum": 1 },
+        "max_plan_attempts": { "type": "integer", "minimum": 1 },
+        "max_fix_attempts": { "type": "integer", "minimum": 1 },
+        "escalate_after_consecutive_failures": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "opPolicy": {
+      "type": "object",
+      "properties": {
+        "timeout_seconds": { "type": "integer", "minimum": 1 },
+        "max_attempts": { "type": "integer", "minimum": 1 },
+        "backoff": {
+          "type": "object",
+          "required": ["strategy"],
+          "properties": {
+            "strategy": { "type": "string", "enum": ["exponential", "fixed", "none"] },
+            "base_ms": { "type": "integer", "minimum": 0 },
+            "max_ms": { "type": "integer", "minimum": 0 },
+            "jitter": { "type": "string", "enum": ["none", "full", "equal"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
