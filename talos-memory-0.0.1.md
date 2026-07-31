@@ -3,7 +3,7 @@
 **Extension Name:** Talos Memory
 **Canonical Package:** talos-ext-memory
 **Extension Version:** 0.0.1
-**Requires Core:** talos-sdlc >= 0.0.5
+**Requires Core:** talos-sdlc >= 0.0.6
 **Status:** Experimental — OPCIONAL
 **Date:** 2026-07-30
 **Document Type:** Extension Specification
@@ -20,7 +20,11 @@ Las palabras clave DEBE, NO DEBE, REQUERIDO, PUEDE, RECOMENDADO y OPCIONAL deben
 
 ### 0.2. Naturaleza de esta extensión
 
-Esta extensión ES **opcional**. El núcleo de Talos DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
+`MemoryAdapter` ES una capacidad **OPCIONAL** según `talos-0.0.6.md` sección 37.4.2. El núcleo DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
+
+Esto la distingue de las capacidades REQUERIDAS como `ExecutionAdapter`, donde el adapter concreto es reemplazable pero la capacidad no es prescindible. Acá tanto la implementación como la capacidad son prescindibles: cero implementaciones de `MemoryAdapter` ES un estado válido del sistema.
+
+`talos-adapter-engram` ES la implementación de referencia, no un requisito.
 
 ### 0.3. Autoridad
 

@@ -2,13 +2,13 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: especificación, sin implementación.** Este repositorio contiene el contrato normativo. El código todavía no existe. La [ruta de implementación](talos-0.0.5.md#51-ruta-de-implementación-recomendada) define en qué orden construirlo.
+**Estado actual: especificación, sin implementación.** Este repositorio contiene el contrato normativo. El código todavía no existe. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define en qué orden construirlo.
 
 ---
 
 ## Quick path
 
-1. Leé [`talos-0.0.5.md`](talos-0.0.5.md) — la especificación del núcleo.
+1. Leé [`talos-0.0.6.md`](talos-0.0.6.md) — la especificación del núcleo.
 2. Si te interesa la memoria persistente, leé [`talos-memory-0.0.1.md`](talos-memory-0.0.1.md) — extensión **opcional**.
 3. Empezá por las secciones 22 (ciclo de vida), 23 (evidencia) y 24 (gates). Son el corazón del sistema.
 
@@ -18,9 +18,52 @@ Talos es un marco normativo para orquestar desarrollo de software asistido por a
 
 | Archivo | Contenido | Versión |
 |---|---|---|
-| [`talos-0.0.5.md`](talos-0.0.5.md) | Especificación del núcleo | 0.0.5 |
+| [`talos-0.0.6.md`](talos-0.0.6.md) | Especificación del núcleo | 0.0.6 |
 | [`talos-memory-0.0.1.md`](talos-memory-0.0.1.md) | Extensión opcional de memoria persistente | 0.0.1 |
-| [`history/talos-0.0.4.md`](history/talos-0.0.4.md) | Versión anterior, superada | 0.0.4 |
+| [`history/`](history/) | Versiones superadas | 0.0.4, 0.0.5 |
+
+---
+
+## Integraciones: capacidad requerida ≠ implementación elegida
+
+Esta es la distinción que gobierna todo el modelo de extensión, y conviene entenderla antes de leer la spec.
+
+Talos define **capacidades** (extension points). Cada capacidad la satisface una **implementación** concreta (un adapter). Una capacidad puede ser requerida y su implementación seguir siendo reemplazable — son dos ejes distintos.
+
+| Capacidad | ¿Requerida? | Implementación de referencia | Binario externo |
+|---|---|---|---|
+| `FileSystemAdapter` | sí | `talos-adapter-filesystem` | — |
+| `ModelProviderAdapter` | sí | `talos-adapter-model` | — |
+| `ExecutionAdapter` | **sí** | **`talos-adapter-herdr`** | `herdr >= 0.7.0` |
+| `CoordinationAdapter` | sí | `talos-adapter-github` | `git`, `gh` |
+| `CIAdapter` | sí | `talos-adapter-ci` | — |
+| `MemoryAdapter` | **no** | `talos-adapter-engram` | `engram` |
+| `Plugin` | no | `talos-plugin-herdr` | — |
+
+Leído en concreto:
+
+- **Herdr es requerido en una instalación productiva**, porque los agentes tienen que ejecutarse en algún lado. Pero el núcleo nunca lo nombra: escribís otro `ExecutionAdapter` y Talos no se entera.
+- **Engram es opcional de punta a punta.** Implementa una capacidad opcional. Cero implementaciones de `MemoryAdapter` es un estado perfectamente válido.
+
+### Modos de operación
+
+| Modo | Qué necesita instalado | Para qué sirve |
+|---|---|---|
+| `dry-run-only` | nada | validar el sistema, correr los tests de Talos |
+| `partial` | Herdr | ejecutar agentes sin tocar el repositorio remoto |
+| `production` | Herdr, git, gh | ejecución real |
+
+Arrancás en `dry-run-only` y subís cuando cada modo cumple sus criterios.
+
+### Talos no instala nada por vos
+
+Cuando falta un binario, `talos doctor` lo detecta, te dice la versión requerida y te da el comando exacto. No lo instala solo. La resolución del binario baja por cascada:
+
+```txt
+$TALOS_HERDR_BIN  ->  .talos/bin/herdr  ->  PATH
+```
+
+Herdr gestiona workspaces y paneles de terminal, que es estado a nivel de máquina. Por eso se instala a nivel de sistema y **no se vendorea por proyecto** — dos copias pelearían por los mismos paneles, igual que pasaría vendoreando `tmux`.
 
 ---
 
@@ -59,13 +102,13 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Schemas JSON | definidos, no implementados |
 | CLI `talos` | no implementada |
 | Adapters | no implementados |
-| Modo objetivo | serial, un feature a la vez, dry-run preferente |
+| Modo actual objetivo | `dry-run-only`, serial, un feature a la vez |
 
 ---
 
 ## Decisiones abiertas
 
-Estas bloquean versiones futuras y están documentadas en la [sección 50](talos-0.0.5.md#50-decisiones-abiertas):
+Estas bloquean versiones futuras y están documentadas en la [sección 50](talos-0.0.6.md#50-decisiones-abiertas):
 
 | ID | Decisión | Bloquea |
 |---|---|---|
@@ -78,15 +121,17 @@ Estas bloquean versiones futuras y están documentadas en la [sección 50](talos
 
 ## Cómo evolucionó
 
-La versión 0.0.5 es una corrección estructural de 0.0.4, no un incremento de features. Se arreglaron una contradicción normativa que invertía la autoridad de la memoria sobre el spec aprobado, la ausencia total de tabla de transiciones, la falta de definición del término "evidencia", locks sin expiración que permitían deadlock permanente y adapters sin idempotencia que duplicaban PRs al reintentar. El detalle completo está en el [changelog](talos-0.0.5.md#49-changelog).
+La versión 0.0.5 es una corrección estructural de 0.0.4, no un incremento de features. Se arreglaron una contradicción normativa que invertía la autoridad de la memoria sobre el spec aprobado, la ausencia total de tabla de transiciones, la falta de definición del término "evidencia", locks sin expiración que permitían deadlock permanente y adapters sin idempotencia que duplicaban PRs al reintentar. El detalle completo está en el [changelog](talos-0.0.6.md#49-changelog).
 
 La memoria persistente ocupaba el 38% del documento del núcleo siendo una feature opcional. Se extrajo a su propio documento versionado de forma independiente.
+
+La versión 0.0.6 separa la **capacidad** de la **implementación**. Antes, marcar `talos-adapter-herdr` como "opcional" era arquitectónicamente cierto y operacionalmente engañoso: el adapter es reemplazable, pero la capacidad que implementa no es prescindible. Ahora cada extension point se clasifica como requerido u opcional, independientemente de qué adapter lo satisface, y aparecen los modos de operación que hacen explícito qué hace falta instalar para cada nivel de uso.
 
 ---
 
 ## Próximo paso
 
-Construir el primer vertical slice: `talos doctor` → `talos spec check` → `talos plan` → `talos feature start` en dry-run, sin extensiones. Ver [sección 51](talos-0.0.5.md#51-ruta-de-implementación-recomendada).
+Construir el primer vertical slice: `talos doctor` → `talos spec check` → `talos plan` → `talos feature start` en dry-run, sin extensiones. Ver [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada).
 
 ---
 
