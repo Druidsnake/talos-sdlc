@@ -29,6 +29,7 @@ run "roles: coherencia entre config, archivos y schemas" $PY tests/test_roles.py
 run "reglas: mapeo de requisito a mecanismo" $PY tests/test_rules.py
 run "capacidades: registry y adapters de referencia" $PY tests/test_adapters.py
 run "estados: transiciones y contrato de gates" $PY tests/test_states.py
+run "plan: PLAN_GATE sobre el grafo de features" $PY tests/test_plan.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 

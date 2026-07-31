@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate evidence init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence plan init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
@@ -180,6 +180,13 @@ printf '{"id":"ev-t","kind":"LockLease","schema_version":1,"run_id":"r-1","produ
 expect_exit 1 "evidence check detecta un digest que no cuadra" $TALOS evidence check
 expect_out "no justifica" "check explica por que una evidencia rota no sirve" $TALOS evidence check
 rm -f orchestration/evidence/t.json
+
+echo ""
+echo "=== planificacion ==="
+# Regla 29.1: sin spec approved no se planifica.
+expect_exit 2 "plan init se niega con el spec en draft (regla 29.1)" $TALOS plan init
+expect_out "no approved" "dice por que se niega" $TALOS plan init
+expect_exit 2 "plan check sin plan sale 2" $TALOS plan check
 
 echo ""
 total=$((pass + fail))
