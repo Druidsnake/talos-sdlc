@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
@@ -154,6 +154,18 @@ expect_exit 2 "adapters sale 2 sin tabla de capacidades" $TALOS adapters
 expect_exit 2 "doctor sale 2 sin tabla de capacidades" $TALOS doctor
 mv .talos/hooks/generated/capabilities.off .talos/hooks/generated/capabilities.tsv
 expect_exit 0 "doctor vuelve a 0 al restaurar la tabla" $TALOS doctor
+
+echo ""
+echo "=== maquina de estados y gates ==="
+expect_exit 0 "talos gate --list vuelca la tabla" $TALOS gate --list
+expect_out "F19" "la tabla trae las transiciones de feature" $TALOS gate --list
+expect_out "P21" "la tabla trae las transiciones de programa" $TALOS gate --list
+expect_out "FEATURE_ABANDONED" "adapters lista el comodin F27" $TALOS gate --from feature FEATURE_READY
+expect_out "terminal" "un estado terminal no ofrece salidas" $TALOS gate --from feature FEATURE_DONE
+expect_exit 3 "gate rechaza sin evidencia (exit 3)" $TALOS gate feature FEATURE_READY FEATURE_IN_PROGRESS
+expect_exit 3 "gate rechaza una transicion inexistente" $TALOS gate feature FEATURE_READY FEATURE_MERGED
+expect_exit 1 "gate rechaza una maquina desconocida" $TALOS gate inventada A B
+expect_out "TRANSITION_NOT_DEFINED" "el rechazo dice por que" $TALOS gate feature FEATURE_READY FEATURE_MERGED
 
 echo ""
 total=$((pass + fail))
