@@ -78,6 +78,38 @@ expect bloquea "asunto con punto final"               msg "feat(schemas): agrega
 expect bloquea "asunto de mas de 72 caracteres"       msg "feat(schemas): $(printf 'x%.0s' $(seq 1 70))"
 
 echo ""
+echo "=== mecanismo 2 en vivo: checker generico ==="
+call() { TALOS_ROLE="$1" ./hooks/agent/check-tool-call.sh "$2" "$3"; }
+expect bloquea "Write de Developer sobre spec/"       call Developer Write spec/SPEC.md
+expect permite "Write de Developer sobre src/"        call Developer Write src/auth.ts
+expect permite "Read no es una escritura"             call Developer Read spec/SPEC.md
+expect permite "Bash queda fuera de cobertura"        call Developer Bash "rm -rf /"
+expect bloquea "ruta absoluta fuera del proyecto"     call Developer Write /etc/passwd
+expect bloquea "traversal fuera del proyecto"         call Developer Write src/../../etc/hosts
+expect bloquea "traversal al inicio"                  call Developer Write ../otro-repo/src/x.ts
+expect bloquea "ruta que termina en .."               call Developer Write src/..
+expect bloquea "ruta que es solo .."                  call Developer Write ..
+expect permite "sin rol activo Talos no gobierna"     env -u TALOS_ROLE ./hooks/agent/check-tool-call.sh Write spec/SPEC.md
+expect bloquea "Edit de Reviewer sobre codigo"        call Reviewer Edit src/auth.ts
+expect permite "ruta con prefijo ./"                  call Developer Write ./src/auth.ts
+
+echo ""
+echo "=== mecanismo 2 en vivo: shim de Claude Code ==="
+shim() {
+    printf '%s' "$2" | TALOS_ROLE="$1" ./hooks/agent/claude-code/pre-tool-use.sh
+}
+expect bloquea "payload que apunta a spec/" \
+    shim Developer '{"tool_name":"Write","tool_input":{"file_path":"spec/SPEC.md"}}'
+expect permite "payload que apunta a src/" \
+    shim Developer '{"tool_name":"Write","tool_input":{"file_path":"src/auth.ts"}}'
+expect permite "payload sin ruta" \
+    shim Developer '{"tool_name":"Write","tool_input":{}}'
+expect permite "payload que no es JSON" \
+    shim Developer 'esto no es json'
+expect bloquea "notebook_path tambien se cubre" \
+    shim Developer '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":"spec/x.ipynb"}}'
+
+echo ""
 echo "=== deriva: reglas generadas al dia ==="
 if command -v python3 >/dev/null 2>&1 && [ -x .venv/bin/python ]; then
     cp hooks/generated/write-scope.rules "$tmp/rules.before"
