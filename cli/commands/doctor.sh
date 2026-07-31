@@ -127,6 +127,38 @@ else
     record fail si schemas "sin schemas" "reinstala Talos"
 fi
 
+# ---------- modo de operacion y capacidades (preconditions 27.1.15 y 37.4.3) ----------
+#
+# El nucleo no nombra implementaciones: lee la ligadura que declara el
+# registry. Ver hooks/lib/resolve-capability.sh.
+# shellcheck source=../../hooks/lib/resolve-capability.sh
+. "$SYS/hooks/lib/resolve-capability.sh"
+
+if [ -f "$SYS/config/system.yaml" ]; then
+    exec_mode=$(grep -E '^execution_mode:' "$SYS/config/system.yaml" | head -1 \
+                | sed 's/execution_mode:[[:space:]]*//' | tr -d '"')
+    if [ -n "$exec_mode" ]; then
+        record ok si modo_ejecucion "$exec_mode" ""
+    else
+        record fail si modo_ejecucion "sin declarar" "declara execution_mode en config/system.yaml"
+    fi
+else
+    exec_mode=""
+    record fail si modo_ejecucion "falta config/system.yaml" "reinstala Talos"
+fi
+
+if talos_capability_table >/dev/null 2>&1; then
+    cap_fails=$(talos_capability_audit_failures)
+    n_bound=$(talos_capability_table | awk -F'\t' '$3 != "-"' | wc -l | tr -d ' ')
+    if [ "$cap_fails" -eq 0 ]; then
+        record ok si capacidades "$n_bound ligadas, requeridas sanas" ""
+    else
+        record fail si capacidades "$cap_fails requerida(s) sin satisfacer" "talos adapters"
+    fi
+else
+    record fail si capacidades "sin tabla de capacidades" "python3 tools/build-registry.py"
+fi
+
 # ---------- spec del producto ----------
 if [ -f spec/manifest.yaml ]; then
     if [ "$FORMAT" = json ] || "$SYS/hooks/validate-artifact.sh" spec-manifest spec/manifest.yaml >/dev/null 2>&1; then
@@ -212,7 +244,11 @@ else
         req_mark=""
         [ "$req" = si ] && req_mark=" (requerido)"
         printf '  %s  %-28s %s%s\n' "$mark" "$id" "$detail" "$req_mark"
-        [ -n "$rem" ] && printf '        -> %s\n' "$rem"
+        # El cuerpo del bucle debe terminar en exito: con set -e, una ultima
+        # fila sin remediacion hacia salir 1 al propio doctor.
+        if [ -n "$rem" ]; then
+            printf '        -> %s\n' "$rem"
+        fi
     done
 
     echo ""

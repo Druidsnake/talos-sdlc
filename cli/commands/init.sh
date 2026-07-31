@@ -99,6 +99,7 @@ if [ ! -f orchestration/.gitignore ]; then
 events/
 evidence/
 .lock/
+dry-run/
 EOF
     note "creado orchestration/.gitignore"
 fi

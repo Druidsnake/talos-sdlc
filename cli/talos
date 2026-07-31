@@ -47,6 +47,7 @@ TRABAJAR
     talos spec check [ruta]       valida el spec del producto
     talos status                  estado del proyecto
     talos rules [topic]           reglas activas y su mecanismo
+    talos adapters                capacidades y que implementacion las satisface
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -89,7 +90,7 @@ case "$cmd" in
     version|--version)
         echo "talos $TALOS_VERSION"
         ;;
-    init|doctor|status|rules)
+    init|doctor|status|rules|adapters)
         exec "$CLI_DIR/commands/$cmd.sh" "$@"
         ;;
     spec)
