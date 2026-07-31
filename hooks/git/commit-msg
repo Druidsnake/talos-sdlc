@@ -1,0 +1,48 @@
+#!/bin/sh
+# Mecanismo 4: git hook.
+# Rechaza mensajes de commit que rompen la trazabilidad (talos-0.0.6.md 5.5).
+
+set -eu
+msg_file="$1"
+subject=$(head -n1 "$msg_file")
+
+# Ignora merges y reverts generados por git
+case "$subject" in
+    "Merge "*|"Revert "*|"fixup!"*|"squash!"*) exit 0 ;;
+esac
+
+fail() {
+    echo "talos: commit RECHAZADO" >&2
+    echo "talos: $1" >&2
+    echo "" >&2
+    echo "  asunto: $subject" >&2
+    exit 1
+}
+
+# Conventional commits
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|refactor|test|chore|perf|build|ci)(\([a-z0-9._-]+\))?!?: .+'; then
+    fail "el asunto debe seguir conventional commits: <tipo>(<scope>): <descripcion>"
+fi
+
+# Longitud del asunto
+if [ "${#subject}" -gt 72 ]; then
+    fail "el asunto tiene ${#subject} caracteres, maximo 72"
+fi
+
+# Sin punto final
+case "$subject" in
+    *.) fail "el asunto no lleva punto final" ;;
+esac
+
+# Trazabilidad: en rama de feature, el commit referencia la feature
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+case "$branch" in
+    feature/F[0-9]*|F[0-9]*-*)
+        fid=$(printf '%s' "$branch" | grep -Eo 'F[0-9]{3,}' | head -n1)
+        if ! grep -q "$fid" "$msg_file"; then
+            fail "estas en $branch: el commit debe referenciar $fid (5.5 trazabilidad)"
+        fi
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,35 @@
+# GENERADO por tools/build-rules.py - NO EDITAR A MANO
+# fuente: config/roles.yaml
+# formato: <rol>\t<allow|deny>\t<glob>
+# deny gana sobre allow. Sin allow que matchee, se deniega (fail-closed).
+
+Developer	allow	src/**
+Developer	allow	tests/**
+Developer	deny	spec/**
+Developer	deny	orchestration/**
+Developer	deny	.talos/**
+Developer	deny	talos.config/**
+Developer	deny	.github/workflows/**
+FeatureLead	allow	orchestration/features/**
+FeatureLead	allow	orchestration/messages/**
+FeatureLead	deny	spec/**
+FeatureLead	deny	src/**
+FeatureLead	deny	tests/**
+FeatureLead	deny	.talos/**
+FeatureLead	deny	orchestration/program-plan.json
+Planner	allow	orchestration/program-plan.json
+Planner	deny	spec/**
+Planner	deny	src/**
+Planner	deny	tests/**
+Planner	deny	.talos/**
+Reviewer	allow	orchestration/reports/**
+Reviewer	deny	spec/**
+Reviewer	deny	src/**
+Reviewer	deny	tests/**
+Reviewer	deny	.talos/**
+SpecAssistant	allow	spec/**
+SpecAssistant	deny	orchestration/**
+SpecAssistant	deny	src/**
+SpecAssistant	deny	tests/**
+SpecAssistant	deny	.talos/**
+SpecAssistant	deny	talos.config/**

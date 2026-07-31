@@ -1,0 +1,84 @@
+#!/bin/sh
+# Mecanismo 4: git hook.
+# Valida artefactos de Talos staged y detecta deriva entre fuente y generados.
+
+set -eu
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
+
+. hooks/lib/resolve-validator.sh 2>/dev/null || {
+    echo "talos: no se encontro hooks/lib/resolve-validator.sh" >&2
+    exit 1
+}
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+status=0
+
+# 1. Deriva entre fuente y generado.
+#    El invariante no es que ambos esten staged: es que el generado coincida
+#    con lo que produce el generador desde la fuente actual. Eso cubre tanto
+#    la edicion a mano como el olvido de regenerar.
+if printf '%s\n' "$staged" | grep -qE '^(config/roles\.yaml|hooks/generated/write-scope\.rules)$'; then
+    gen=""
+    if [ -x .venv/bin/python ]; then
+        gen=".venv/bin/python"
+    elif command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" 2>/dev/null; then
+        gen="python3"
+    fi
+
+    if [ -z "$gen" ]; then
+        echo "talos: aviso, no se pudo verificar la deriva de write-scope.rules" >&2
+        echo "talos: falta un python con pyyaml para regenerar y comparar" >&2
+    else
+        actual=$(mktemp)
+        cp hooks/generated/write-scope.rules "$actual" 2>/dev/null || true
+        "$gen" tools/build-rules.py >/dev/null 2>&1 || true
+        if ! cmp -s "$actual" hooks/generated/write-scope.rules; then
+            echo "talos: hooks/generated/write-scope.rules no coincide con config/roles.yaml" >&2
+            echo "talos: se regenero. Revisa el diff y agregalo al commit." >&2
+            status=1
+        fi
+        rm -f "$actual"
+    fi
+fi
+
+# 3. Valida configuracion de Talos contra su schema
+for f in $staged; do
+    schema=""
+    case "$f" in
+        config/roles.yaml)            schema="roles-config" ;;
+        config/policy.yaml)           schema="policy-config" ;;
+        config/routing.yaml)          schema="routing-config" ;;
+        config/models.yaml)           schema="models-config" ;;
+        config/system.yaml)           schema="system-config" ;;
+        config/extensions.yaml)       schema="extension-registry" ;;
+        config/communication.yaml)    schema="communication-config" ;;
+        config/preconditions.yaml)    schema="preconditions-config" ;;
+        config/reliability.yaml)      schema="reliability-config" ;;
+        spec/manifest.yaml)           schema="spec-manifest" ;;
+    esac
+    if [ -n "$schema" ]; then
+        if ! ./hooks/validate-artifact.sh "$schema" "$f" >/dev/null 2>&1; then
+            echo "talos: $f no valida contra $schema.schema.json" >&2
+            ./hooks/validate-artifact.sh "$schema" "$f" 2>&1 | grep -v '^talos:' | head -5 >&2
+            status=1
+        fi
+    fi
+done
+
+# 4. Todo schema debe ser JSON parseable
+for f in $staged; do
+    case "$f" in
+        schemas/*.json)
+            if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" 2>/dev/null; then
+                echo "talos: $f no es JSON valido" >&2
+                status=1
+            fi
+            ;;
+    esac
+done
+
+[ "$status" -ne 0 ] && echo "talos: commit RECHAZADO" >&2
+exit $status
