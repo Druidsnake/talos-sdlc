@@ -62,7 +62,7 @@ jobs:
       - name: verificar POSIX sh
         run: |
           status=0
-          for f in $(find hooks tools tests -name '*.sh') hooks/git/commit-msg hooks/git/pre-commit; do
+          for f in $(find hooks tools tests cli adapters -name '*.sh') cli/talos hooks/git/commit-msg hooks/git/pre-commit; do
             if sh -n "$f"; then
               echo "ok   $f"
             else
@@ -76,5 +76,5 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           shellcheck --shell=sh --severity=warning \
-            hooks/*.sh hooks/lib/*.sh tools/*.sh tests/*.sh \
-            hooks/git/commit-msg hooks/git/pre-commit
+            $(find hooks tools tests cli adapters -name '*.sh') \
+            cli/talos hooks/git/commit-msg hooks/git/pre-commit

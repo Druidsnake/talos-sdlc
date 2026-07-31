@@ -4,7 +4,7 @@
 set -eu
 ROOT=$(git rev-parse --show-toplevel)
 HOOKS="$ROOT/.git/hooks"
-SRC=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SRC=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 for h in commit-msg pre-commit; do
     if [ -e "$HOOKS/$h" ] && [ ! -L "$HOOKS/$h" ]; then

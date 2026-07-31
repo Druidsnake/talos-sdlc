@@ -233,7 +233,7 @@ sem="{\"feature\":\"$FEAT\",\"generation\":$GEN}"
 set +e
 issue_out=$(talos_capability_run CoordinationAdapter create_issue "$sem" 2>&1)
 irc=$?
-branch_out=$(talos_capability_run CoordinationAdapter create_branch "$sem" 2>&1)
+talos_capability_run CoordinationAdapter create_branch "$sem" >/dev/null 2>&1
 brc=$?
 set -e
 if [ "$irc" -ne 0 ] || [ "$brc" -ne 0 ]; then

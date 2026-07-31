@@ -34,6 +34,32 @@ run "features: ejecutor de transiciones y leases" $PY tests/test_feature.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 
+printf '\n=== sintaxis y estilo de shell ===\n'
+# Este runner dice ser la unica definicion de "esta bien", para una persona y
+# para el CI. Si no corre shellcheck y el CI si, son dos definiciones y una se
+# entera tarde. Cubre tambien cli/ y adapters/, que son shell como el resto.
+SH_FILES=$(find hooks tools tests cli adapters -name '*.sh' 2>/dev/null)
+SH_FILES="$SH_FILES cli/talos hooks/git/commit-msg hooks/git/pre-commit"
+
+bad=0
+for f in $SH_FILES; do
+    [ -f "$f" ] || continue
+    sh -n "$f" 2>/dev/null || { echo "  FALLA $f no es POSIX sh valido"; bad=1; }
+done
+[ "$bad" -eq 0 ] && echo "  ok    $(echo "$SH_FILES" | wc -w | tr -d ' ') archivos parsean como POSIX sh"
+[ "$bad" -eq 0 ] || failed=1
+
+if command -v shellcheck >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    if shellcheck --shell=sh --severity=warning $SH_FILES; then
+        echo "  ok    shellcheck sin advertencias"
+    else
+        failed=1
+    fi
+else
+    echo "  skip  shellcheck no instalado (brew install shellcheck)"
+fi
+
 printf '\n=== JSON de todos los schemas ===\n'
 bad=0
 for f in schemas/*.json; do

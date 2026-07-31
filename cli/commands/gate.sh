@@ -88,6 +88,9 @@ if [ "${1:-}" = "--from" ]; then
     fi
     printf '  desde %s\n\n' "$st"
     printf '  %-4s %-24s %-18s %-14s %s\n' ID HACIA GATE ACTOR EVIDENCIA
+    # Se leen los nueve campos aunque no se impriman todos: el read tiene que
+    # respetar el ancho del registro para que las columnas caigan donde van.
+    # shellcheck disable=SC2034
     talos_transitions_from "$m" "$st" | while IFS='	' read -r mm id from to gate cond actor req event; do
         printf '  %-4s %-24s %-18s %-14s %s\n' "$id" "$to" "$gate" "$actor" "$req"
     done

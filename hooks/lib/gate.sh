@@ -30,7 +30,10 @@ TALOS_CRITICAL_GATES="MERGE_GATE POLICY_GATE POST_MERGE_GATE CHECKS_GATE"
 
 _gate_is_in() {
     _needle="$1"; shift
-    for _x in $*; do
+    # Quien llama pasa la lista sin comillas a proposito, para que el shell la
+    # separe en palabras antes de entrar. Aca ya son argumentos: "$@" recorre
+    # exactamente esos, sin volver a partir nada.
+    for _x in "$@"; do
         [ "$_x" = "$_needle" ] && return 0
     done
     return 1
