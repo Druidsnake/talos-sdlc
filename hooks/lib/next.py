@@ -138,7 +138,46 @@ def iteraciones_agotadas(root, fid):
     return (st.get("budget_consumed") or {}).get("iterations", 0) >= lim
 
 
-def trabajo_pendiente(root, fid, presentes, pane):
+def adapter_ligado(tabla, capacidad):
+    """Que implementacion tiene ligada hoy una capacidad, o None.
+
+    Se lee la MISMA tabla generada que usa el resolvedor del nucleo. Mirar el
+    YAML por su cuenta haria que el loop decida sobre una ligadura que no es la
+    que se va a ejecutar.
+    """
+    p = pathlib.Path(tabla).parent / "capabilities.tsv"
+    if not p.is_file():
+        return None
+    for linea in p.read_text().splitlines():
+        if linea.startswith("#") or not linea.strip():
+            continue
+        campos = linea.split("\t")
+        if len(campos) > 2 and campos[0] == capacidad:
+            return None if campos[2] == "-" else campos[2]
+    return None
+
+
+def agente_despachado(root, fid, adapter):
+    """Si hay un agente al que este paso le pueda hablar, y por que no.
+
+    Un rol activo NO prueba que haya agente: el rol es un archivo local que
+    Talos escribe, el agente es un proceso que puede no haber arrancado, haber
+    muerto, o pertenecer a otro ExecutionAdapter. Tratar lo primero como
+    evidencia de lo segundo es lo que hacia que el loop le mandara trabajo a un
+    id fabricado por otro adapter y fallara dos comandos despues de la causa.
+
+    Devuelve (True, None) o (False, motivo).
+    """
+    ref = cargar(root / "orchestration" / "features" / fid / ".agent", None)
+    if not isinstance(ref, dict) or not ref.get("name"):
+        return False, "no hay referencia del agente despachado para esta feature"
+    if adapter and ref.get("adapter") != adapter:
+        return False, (f"la referencia del agente la produjo {ref.get('adapter') or '-'} "
+                       f"y hoy esta ligado {adapter}: un id de un adapter no vale en otro")
+    return True, None
+
+
+def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     """Los pasos que PRODUCEN el trabajo, no los que mueven el estado.
 
     El loop sabia mover la maquina de estados pero no causar que se hiciera el
@@ -155,12 +194,17 @@ def trabajo_pendiente(root, fid, presentes, pane):
 
     # 1. Sin rol activo no hay quien trabaje. Despachar es lo primero.
     #    Ya no hace falta que alguien elija un pane: Talos crea el suyo.
-    if not rol.is_file():
+    #
+    #    Tampoco alcanza el rol solo: hace falta un agente al que hablarle, y
+    #    que lo haya producido el adapter que hoy esta ligado.
+    hay_agente, motivo = agente_despachado(root, fid, adapter)
+    if not rol.is_file() or not hay_agente:
         orden = f"talos feature dispatch {fid} --role Developer"
         if pane and pane != "<PANE>":
             orden += f" --pane {pane}"
-        return {"feature": fid, "orden": orden,
-                "porque": "no hay agente despachado para esta feature"}
+        if not rol.is_file():
+            motivo = "no hay agente despachado para esta feature"
+        return {"feature": fid, "orden": orden, "porque": motivo}
 
     # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
     #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
@@ -202,6 +246,8 @@ def main(argv):
     transiciones = leer_transiciones(argv[2])
     formato = argv[3] if len(argv) > 3 else "texto"
     pane = argv[4] if len(argv) > 4 else None
+    # Quien ejecuta hoy. No se nombra ninguna implementacion: sale del registry.
+    ejecutor = adapter_ligado(argv[2], "ExecutionAdapter")
 
     out = {"programa": "SIN_PLAN", "spec": None, "features": [],
            "acciones": [], "frenos": []}
@@ -303,7 +349,7 @@ def main(argv):
                 info["motivo"] = "espera evidencia"
                 # Ya no hace falta que nadie elija un pane: Talos abre el
                 # suyo. La proyeccion propone el trabajo sin condiciones.
-                paso = trabajo_pendiente(root, fid, presentes, pane)
+                paso = trabajo_pendiente(root, fid, presentes, pane, ejecutor)
                 if paso and paso.get("orden"):
                     info["trabajo"] = paso["orden"]
                     out["acciones"].append(paso)

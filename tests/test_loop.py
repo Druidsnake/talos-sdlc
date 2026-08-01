@@ -170,6 +170,40 @@ def main():
         "y la orden no arrastra un pane",
         all("--pane" not in o for o in ordenes), f"{ordenes}"))
 
+    # Un rol activo NO prueba que haya agente. El rol es un archivo que escribe
+    # Talos; el agente es un proceso que puede no haber arrancado, haberse
+    # muerto, o pertenecer a otro ExecutionAdapter. Tratar lo primero como
+    # evidencia de lo segundo hacia que el loop saltara el despacho y le
+    # mandara trabajo a un id que ya no significaba nada.
+    talos(pf, "feature", "dispatch", "F001", "--role", "Developer")
+    ordenes = [a["orden"] for a in next_json(pf).get("acciones", [])]
+    results.append(check(
+        "con agente despachado el loop pasa a encargar el trabajo",
+        any("feature work" in o for o in ordenes), f"{ordenes}"))
+
+    refp = pf / "orchestration" / "features" / "F001" / ".agent"
+    ref = json.loads(refp.read_text())
+    rol = pf / "orchestration" / ".current-role"
+    refp.unlink()
+    results.append(check(
+        "sin referencia de agente el loop vuelve a despachar aunque el rol siga activo",
+        rol.is_file()
+        and any("feature dispatch" in a["orden"]
+                for a in next_json(pf).get("acciones", [])),
+        f"{[a['orden'] for a in next_json(pf).get('acciones', [])]}"))
+
+    ref["adapter"] = "talos.adapter.otro"
+    refp.write_text(json.dumps(ref))
+    acciones = next_json(pf).get("acciones", [])
+    results.append(check(
+        "y tambien si la referencia la produjo otro adapter que el ligado hoy",
+        any("feature dispatch" in a["orden"] for a in acciones),
+        f"{[a['orden'] for a in acciones]}"))
+    results.append(check(
+        "el motivo nombra el desajuste de procedencia, no 'espera evidencia'",
+        any("adapter" in a["porque"] for a in acciones),
+        f"{[a['porque'] for a in acciones]}"))
+
     # Regla 38.5.5: el nucleo no nombra a Herdr. Donde se abre una ventana lo
     # resuelve el adapter, que es quien conoce el runtime.
     for f in ("cli/commands/run.sh", "cli/commands/feature.sh",

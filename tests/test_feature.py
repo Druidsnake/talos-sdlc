@@ -81,6 +81,51 @@ def state_of(root, fid):
     return json.loads(f.read_text())
 
 
+SPY = """#!/bin/sh
+# Adapter espia: registra que le pidieron y responde lo minimo viable.
+printf '%s\\t%s\\n' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"
+case "$1" in
+    create_session)
+        echo '{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}' ;;
+    start_agent)
+        echo '{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}' ;;
+    *)
+        echo '{"status":"ok","dry_run":false,"result":{}}' ;;
+esac
+"""
+
+
+def espia(root, impl="talos.adapter.spy"):
+    """Liga ExecutionAdapter a un adapter que anota lo que le piden.
+
+    Se toca la tabla generada, que es la fuente que usa el resolvedor del
+    nucleo: cambiar la ligadura es exactamente lo que hace una instalacion al
+    pasar de simulacion a produccion.
+    """
+    d = root / ".talos" / "adapters" / "spy"
+    if not d.is_dir():
+        d.mkdir(parents=True)
+        (d / "run.sh").write_text(SPY)
+        (d / "run.sh").chmod(0o755)
+    tabla = root / ".talos" / "hooks" / "generated" / "capabilities.tsv"
+    filas = []
+    for linea in tabla.read_text().splitlines():
+        campos = linea.split("\t")
+        if len(campos) > 3 and campos[0] == "ExecutionAdapter":
+            campos[2], campos[3] = impl, "adapters/spy"
+            linea = "\t".join(campos)
+        filas.append(linea)
+    tabla.write_text("\n".join(filas) + "\n")
+    return root / "spy.log"
+
+
+def spy_lines(log, op):
+    if not log.is_file():
+        return []
+    return [l.split("\t", 1)[1] if "\t" in l else ""
+            for l in log.read_text().splitlines() if l.startswith(op + "\t")]
+
+
 def events(root):
     """El EventLog son segmentos .ndjson, un evento por linea."""
     d = root / "orchestration" / "events"
@@ -361,6 +406,75 @@ def main():
         "el ExecutionAdapter no conoce roles ni scope (seccion 38.5)",
         "roles.yaml" not in adapter_src and "write_paths" not in adapter_src
         and "current-role" not in adapter_src))
+
+    # ---------- la referencia del agente lleva procedencia ----------
+    #
+    # Un ExecutionAdapter devuelve ids que solo el sabe interpretar. Guardar el
+    # pane pelado, sin decir quien lo produjo, hacia que al cambiar la ligadura
+    # el paso siguiente le mandara a un adapter productivo un id fabricado por
+    # el simulador: el backend contestaba "no existe" y el fallo aparecia a dos
+    # comandos de distancia de su causa.
+
+    pa = project()
+    talos(pa, "feature", "start", "F001")
+    log = espia(pa)
+    code, out = talos(pa, "feature", "dispatch", "F001", "--role", "Developer")
+    ref_p = pa / "orchestration" / "features" / "F001" / ".agent"
+    results.append(check(
+        "dispatch registra la referencia del agente",
+        code == 0 and ref_p.is_file(), f"exit={code} {out[-300:]}"))
+    ref = json.loads(ref_p.read_text()) if ref_p.is_file() else {}
+    results.append(check(
+        "la referencia dice QUE adapter la produjo (regla 37.4.3.5 del lado del dato)",
+        ref.get("adapter") == "talos.adapter.spy", f"{ref}"))
+    results.append(check(
+        "y guarda el nombre que Talos le puso al agente",
+        ref.get("name") == "talos_f001", f"{ref}"))
+    results.append(check(
+        "el pane queda como dato de la referencia, no como archivo suelto",
+        ref.get("pane") == "spy:pane"
+        and not (pa / "orchestration" / "features" / "F001" / ".pane").exists(),
+        f"{ref}"))
+
+    # El target de una operacion de agente es el NOMBRE, no el pane. Un pane
+    # puede quedar vacio, reciclado o con el shell de una persona; el nombre lo
+    # controla Talos.
+    code, out = talos(pa, "feature", "work", "F001")
+    prompts = spy_lines(log, "prompt_agent")
+    results.append(check(
+        "work le habla al agente por su nombre, no por el pane",
+        code == 0 and prompts and '"target":"talos_f001"' in prompts[0]
+        and '"target":"spy:pane"' not in prompts[0],
+        f"exit={code} {prompts[:1]}"))
+    esperas = spy_lines(log, "wait_agent")
+    results.append(check(
+        "y espera por el mismo target con el que encargo",
+        esperas and '"target":"talos_f001"' in esperas[0], f"{esperas[:1]}"))
+
+    # LA REGRESION: cambiar la ligadura invalida la referencia vieja.
+    espia(pa, impl="talos.adapter.otro")
+    code, out = talos(pa, "feature", "work", "F001")
+    results.append(check(
+        "RECHAZA usar una referencia que produjo otro ExecutionAdapter",
+        code == 2 and "otro adapter" in out, f"exit={code} {out[-300:]}"))
+    results.append(check(
+        "y dice cual quedo registrada y cual esta ligada hoy",
+        "talos.adapter.spy" in out and "talos.adapter.otro" in out, out[-300:]))
+    results.append(check(
+        "no se le entrego trabajo a nadie con la referencia invalida",
+        len(spy_lines(log, "prompt_agent")) == 1,
+        f"{spy_lines(log, 'prompt_agent')}"))
+
+    # El rol y la referencia se sueltan juntos. Una referencia que sobrevive al
+    # rol apunta a un agente que ya nadie gobierna.
+    talos(pa, "feature", "release", "F001")
+    results.append(check(
+        "release suelta tambien la referencia del agente",
+        not ref_p.exists()))
+    code, out = talos(pa, "feature", "work", "F001")
+    results.append(check(
+        "sin referencia, work manda a despachar en vez de adivinar un target",
+        code == 2 and "dispatch" in out, f"exit={code} {out[-300:]}"))
 
     # ---------- el ejecutor no fuerza ----------
 

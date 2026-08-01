@@ -32,7 +32,10 @@ USO
     talos feature advance <ID> --to <ESTADO>
                                   ejecuta la transicion si el gate autoriza
     talos feature next <ID>       que transiciones salen del estado actual
-    talos feature work <ID>       le da al agente despachado el trabajo de la feature
+    talos feature work <ID> [--agent <NOMBRE>]
+                                  le da al agente despachado el trabajo de la
+                                  feature. Sin --agent usa el que registro
+                                  dispatch, si lo produjo el adapter ligado
     talos feature commit <ID>     observa git y sella CommitRef
     talos feature collect <ID>    recoge el entregable del rol como evidencia
     talos feature test <ID> --pane <PANE> --command "<CMD>"
@@ -83,6 +86,8 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 . "$SYS/hooks/lib/role.sh"
 # shellcheck source=../../hooks/lib/resolve-capability.sh
 . "$SYS/hooks/lib/resolve-capability.sh"
+# shellcheck source=../../hooks/lib/agent-ref.sh
+. "$SYS/hooks/lib/agent-ref.sh"
 
 PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
 
@@ -228,27 +233,42 @@ fi
 # termine.
 
 if [ "$sub" = work ]; then
-    PANE=""
+    TARGET=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --pane) PANE="${2:?falta el pane}"; shift 2 ;;
+            --agent) TARGET="${2:?falta el agente}"; shift 2 ;;
             *) shift ;;
         esac
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
     need_plan
-    # El pane lo dejo dispatch: no hace falta repetirlo en cada paso.
-    [ -z "$PANE" ] && [ -f "orchestration/features/$FEAT/.pane" ] && \
-        PANE=$(cat "orchestration/features/$FEAT/.pane")
+    # La referencia la dejo dispatch: no hace falta repetirla en cada paso.
+    #
+    # Se apunta al NOMBRE del agente, no al pane donde quedo. El nombre lo puso
+    # Talos al despachar y no cambia; el pane es del runtime, puede quedar
+    # vacio, reciclado o con el shell de una persona. Es la misma leccion que
+    # ya aplica la reconciliacion de start_agent en la capa de adapters.
+    if [ -z "$TARGET" ]; then
+        set +e
+        talos_agent_ref_check "$FEAT"; _arc=$?
+        set -e
+        if [ "$_arc" -ne 0 ]; then
+            echo "talos ${TALOS_VERSION:-?}"
+            echo ""
+            talos_agent_ref_explain "$FEAT" "$_arc"
+            exit 2
+        fi
+        TARGET=$(talos_agent_ref_field "$FEAT" name)
+    fi
 
     ROLE=$(talos_role_current 2>/dev/null || echo "")
     [ -n "$ROLE" ] || { echo "talos: no hay rol activo; despacha primero" >&2
-                        echo "talos: talos feature dispatch $FEAT --role Developer --pane <PANE>" >&2
+                        echo "talos: talos feature dispatch $FEAT --role Developer" >&2
                         exit 2; }
 
     echo "talos ${TALOS_VERSION:-?}"
     echo ""
-    printf '  feature  %s\n  rol      %s\n\n' "$FEAT" "$ROLE"
+    printf '  feature  %s\n  rol      %s\n  agente   %s\n\n' "$FEAT" "$ROLE" "$TARGET"
 
     encargo=$("$PY" - "$PLAN" "$FEAT" <<'PYEOF'
 import json, sys
@@ -286,12 +306,19 @@ PYEOF
     esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
     set +e
     out=$(talos_capability_run ExecutionAdapter prompt_agent \
-          "{\"target\":\"$PANE\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
+          "{\"target\":\"$TARGET\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
     rc=$?
     set -e
     if [ "$rc" -ne 0 ]; then
         echo "  FALL el ExecutionAdapter no pudo entregar el trabajo"
         printf '%s\n' "$out" | sed 's/^/    /' | head -3
+        echo ""
+        # Un agente puede MORIRSE: que se haya despachado no prueba que siga
+        # vivo. Si el backend no lo encuentra, la referencia esta obsoleta y
+        # el paso que corresponde es despachar de nuevo, no reintentar este.
+        echo "  Si el agente $TARGET ya no existe, la referencia quedo vieja:"
+        printf '    talos feature release %s\n    talos feature dispatch %s --role %s\n' \
+            "$FEAT" "$FEAT" "$ROLE"
         exit 5
     fi
     echo "  ok   trabajo entregado al agente"
@@ -308,7 +335,7 @@ PYEOF
     printf '  ..   esperando a que el agente termine\n'
     set +e
     talos_capability_run ExecutionAdapter wait_agent \
-        "{\"target\":\"$PANE\",\"timeout_ms\":\"900000\"}" >/dev/null 2>&1
+        "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" >/dev/null 2>&1
     set -e
 
     tareas="orchestration/features/$FEAT/tasks"
@@ -455,8 +482,20 @@ if [ "$sub" = test ]; then
         esac
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    [ -z "$PANE" ] && [ -f "orchestration/features/$FEAT/.pane" ] && \
-        PANE=$(cat "orchestration/features/$FEAT/.pane")
+    # run_command es la unica operacion que necesita el PANE y no el nombre del
+    # agente: corre un comando en una terminal, no le habla a un agente.
+    if [ -z "$PANE" ]; then
+        set +e
+        talos_agent_ref_check "$FEAT"; _arc=$?
+        set -e
+        if [ "$_arc" -ne 0 ]; then
+            echo "talos ${TALOS_VERSION:-?}"
+            echo ""
+            talos_agent_ref_explain "$FEAT" "$_arc"
+            exit 2
+        fi
+        PANE=$(talos_agent_ref_field "$FEAT" pane)
+    fi
     [ -n "$PANE" ] || { echo "talos: falta --pane y no hay uno registrado" >&2; exit 1; }
     [ -n "$CMD" ]  || { echo "talos: falta --command" >&2; exit 1; }
 
@@ -530,11 +569,18 @@ if [ "$sub" = release ]; then
     talos_role_deactivate
     # Lo que instalo el shim lo retira el shim. El nucleo no sabe que dejo:
     # eso es especifico del runtime.
-    for _rf in orchestration/features/*/.runtime; do
-        [ -f "$_rf" ] || continue
-        _sh="$SYS/hooks/agent/$(cat "$_rf")/install.sh"
-        [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall | sed 's/^/  /'
-        rm -f "$_rf"
+    for _fd in orchestration/features/*; do
+        [ -d "$_fd" ] || continue
+        _rf="$_fd/.runtime"
+        if [ -f "$_rf" ]; then
+            _sh="$SYS/hooks/agent/$(cat "$_rf")/install.sh"
+            [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall | sed 's/^/  /'
+            rm -f "$_rf"
+        fi
+        # La referencia al agente se suelta con el rol. Sobrevivirlo la deja
+        # apuntando a un agente que ya nadie gobierna, y el paso siguiente le
+        # manda trabajo igual.
+        talos_agent_ref_clear "$(basename "$_fd")"
     done
     if [ -n "$actual" ]; then
         echo "rol $actual liberado: Talos ya no gobierna esta sesion"
@@ -647,9 +693,12 @@ if [ "$sub" = dispatch ]; then
         exit 2
     fi
     aargs=""
+    # El nombre es la identidad del agente para todo lo que venga despues. Lo
+    # elige Talos, no el runtime: por eso se calcula una vez y se guarda.
+    AGENTE="talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')"
     set +e
     out=$(talos_capability_run ExecutionAdapter start_agent \
-          "{\"name\":\"talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
+          "{\"name\":\"$AGENTE\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
     rc=$?
     set -e
     if [ "$rc" -ne 0 ]; then
@@ -660,10 +709,13 @@ if [ "$sub" = dispatch ]; then
         echo "  Rol liberado: no queda gobernando una sesion que no arranco."
         exit 5
     fi
-    printf '  agente   arrancado por el ExecutionAdapter\n'
-    # Quien siga -work, test- necesita saber donde quedo. Sin esto habria que
-    # pasarle el pane a mano en cada paso.
-    printf '%s\n' "$PANE" > "orchestration/features/$FEAT/.pane"
+    printf '  agente   %s arrancado por el ExecutionAdapter\n' "$AGENTE"
+    # Quien siga -work, test- necesita saber a quien le habla. Se guarda CON el
+    # id del adapter que lo produjo: un id de un ExecutionAdapter no significa
+    # nada en otro, y sin procedencia el paso siguiente no puede darse cuenta.
+    _ref=$(printf '%s' "$out" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+    talos_agent_ref_write "$FEAT" \
+        "$(talos_capability_impl ExecutionAdapter)" "$AGENTE" "$PANE" "$_ref"
     # Quien libere el rol necesita saber a que shim pedirle que se retire.
     printf '%s\n' "$_shim" > "orchestration/features/$FEAT/.runtime"
     echo ""
