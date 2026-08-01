@@ -372,6 +372,24 @@ CASES = [
 ]
 
 
+
+def check_evidence_id_patterns():
+    """Todo schema que hable de ids de evidencia tiene que usar el MISMO patron.
+
+    task-result.schema.json usaba ^ev-[A-Za-z0-9]+$ mientras evidence y event
+    usaban ^ev-[A-Za-z0-9][A-Za-z0-9-]*$. Un id valido segun evidence.schema
+    podia referenciarse desde un evento y no desde un task-result: la cadena se
+    cortaba justo donde el Developer tiene que citar la medicion que lo habilita
+    a declararse done.
+    """
+    import re as _re
+    encontrados = {}
+    for path in sorted(SCHEMAS.glob("*.json")):
+        for m in _re.finditer(r'"\^ev-[^"]*"', path.read_text()):
+            encontrados.setdefault(m.group(0), []).append(path.name)
+    return encontrados
+
+
 def main():
     failures = []
     passed = 0
@@ -391,8 +409,23 @@ def main():
             for e in errors[:2]:
                 print(f"       -> {e.message[:120]}")
 
+    # Coherencia entre schemas: todo el que hable de ids de evidencia tiene que
+    # usar el MISMO patron, o la cadena de referencias se corta.
+    patrones = check_evidence_id_patterns()
+    if len(patrones) <= 1:
+        passed += 1
+        print(f"  ok   [cross] los {sum(len(v) for v in patrones.values())} "
+              f"schemas que citan ids de evidencia usan un unico patron")
+    else:
+        failures.append(("cross", "patrones de id de evidencia divergentes",
+                         True, [], "un id valido debe poder citarse desde cualquier schema"))
+        print("  FALLA[cross] hay mas de un patron de id de evidencia")
+        for pat, files in patrones.items():
+            print(f"       {pat} -> {files}")
+
     print()
-    print(f"{passed}/{len(CASES)} casos correctos")
+    # +1 por el check de coherencia entre schemas, que no es un caso de CASES.
+    print(f"{passed}/{len(CASES) + 1} casos correctos")
     if failures:
         print(f"{len(failures)} schemas NO enforzan su requisito")
         return 1

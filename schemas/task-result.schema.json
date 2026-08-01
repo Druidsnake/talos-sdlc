@@ -25,7 +25,7 @@
     },
     "test_report_refs": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^ev-[A-Za-z0-9]+$" },
+      "items": { "type": "string", "pattern": "^ev-[A-Za-z0-9][A-Za-z0-9-]*$" },
       "description": "Ids de evidencia LocalTestReport producidos por el ExecutionAdapter. El Developer no puede afirmar un resultado de pruebas: solo referenciarlo."
     },
     "blockers": {
