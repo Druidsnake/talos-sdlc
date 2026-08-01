@@ -88,6 +88,8 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 . "$SYS/hooks/lib/resolve-capability.sh"
 # shellcheck source=../../hooks/lib/agent-ref.sh
 . "$SYS/hooks/lib/agent-ref.sh"
+# shellcheck source=../../hooks/lib/model.sh
+. "$SYS/hooks/lib/model.sh"
 
 PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
 
@@ -593,7 +595,7 @@ fi
 # ---------- dispatch ----------
 
 if [ "$sub" = dispatch ]; then
-    ROLE=""; PANE=""; KIND="claude"
+    ROLE=""; PANE=""; KIND=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --role) ROLE="${2:?falta el rol}"; shift 2 ;;
@@ -604,6 +606,23 @@ if [ "$sub" = dispatch ]; then
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
     [ -n "$ROLE" ] || { echo "talos: falta --role" >&2; exit 1; }
+
+    # El modelo sale del TIER que el plan le puso a la feature, y el tier lo
+    # eligio el riesgo (seccion 20.1). El nucleo no nombra modelos: traduce por
+    # config/models.yaml, que es la unica fuente de esa correspondencia (20.3).
+    MODELO=""; PROVEEDOR=""
+    if TIER=$(talos_tier_of_feature "$FEAT" 2>/dev/null); then
+        if _mp=$(talos_model_for_tier "$TIER" 2>/dev/null); then
+            MODELO=$(printf '%s' "$_mp" | cut -f1)
+            PROVEEDOR=$(printf '%s' "$_mp" | cut -f2)
+        fi
+    fi
+    # Sin --kind, el runtime es el proveedor que declara el tier. Cablear uno
+    # por defecto haria que cambiar de proveedor en la config despachara igual
+    # el agente de antes, con el modelo de otro.
+    [ -n "$KIND" ] || KIND="$PROVEEDOR"
+    [ -n "$KIND" ] || { echo "talos: no hay runtime: pasa --kind o declara provider en config/models.yaml" >&2
+                        exit 2; }
 
     echo "talos ${TALOS_VERSION:-?}"
     echo ""
@@ -692,7 +711,21 @@ if [ "$sub" = dispatch ]; then
         talos_role_deactivate
         exit 2
     fi
+    # agent_args son argumentos NATIVOS del agente: como se le pide un modelo
+    # es vocabulario del runtime, asi que lo traduce su shim. El nucleo pasa el
+    # modelo y el proveedor, y no sabe que bandera sale del otro lado.
     aargs=""
+    _traductor="$SYS/hooks/agent/$_shim/agent-args.sh"
+    if [ -n "$MODELO" ] && [ -x "$_traductor" ]; then
+        aargs=$("$_traductor" "$MODELO" "$PROVEEDOR" || echo "")
+    fi
+    if [ -n "$aargs" ]; then
+        printf '  modelo   %s (tier %s, proveedor %s)\n' "$MODELO" "${TIER:-?}" "$PROVEEDOR"
+    else
+        # Silencio aca significa "arranca con el modelo que tenga configurado el
+        # runtime". Decirlo evita creer que el tier del plan se esta aplicando.
+        printf '  modelo   el del runtime: el tier %s no se pudo traducir\n' "${TIER:-?}"
+    fi
     # El nombre es la identidad del agente para todo lo que venga despues. Lo
     # elige Talos, no el runtime: por eso se calcula una vez y se guarda.
     AGENTE="talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')"

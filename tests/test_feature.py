@@ -476,6 +476,45 @@ def main():
         "sin referencia, work manda a despachar en vez de adivinar un target",
         code == 2 and "dispatch" in out, f"exit={code} {out[-300:]}"))
 
+    # ---------- el runtime y el modelo salen de la config ----------
+    #
+    # El nucleo no nombra modelos: conoce tiers (seccion 20.3). El plan le pone
+    # el tier a la feature por su RIESGO, config/models.yaml traduce tier a
+    # modelo y proveedor, y el shim del runtime traduce eso a la bandera nativa
+    # que entiende su agente. Cablear un runtime por defecto haria que cambiar
+    # de proveedor en la config despachara igual el agente de antes.
+    pm = project()
+    talos(pm, "feature", "start", "F001")
+    logm = espia(pm)
+    (pm / ".talos" / "config" / "models.yaml").write_text(
+        "version: 1\ntiers:\n"
+        "  fast:\n    model: proveedor-x/modelo-y\n    provider: opencode\n"
+        "  balanced:\n    model: b\n    provider: opencode\n"
+        "  deep:\n    model: d\n    provider: opencode\n")
+    code, out = talos(pm, "feature", "dispatch", "F001", "--role", "Developer")
+    results.append(check(
+        "dispatch elige el runtime que declara el proveedor del tier",
+        code == 0 and (pm / "orchestration" / "features" / "F001" / ".runtime").is_file()
+        and (pm / "orchestration" / "features" / "F001" / ".runtime").read_text().strip() == "opencode",
+        f"exit={code} {out[-300:]}"))
+    arranques = spy_lines(logm, "start_agent")
+    results.append(check(
+        "y le pasa el modelo del tier como argumento nativo del agente",
+        arranques and "--model proveedor-x/modelo-y" in arranques[0],
+        f"{arranques[:1]}"))
+    results.append(check(
+        "el despacho dice que modelo y que tier quedaron aplicados",
+        "proveedor-x/modelo-y" in out and "tier fast" in out, out[-400:]))
+
+    # Un modelo de otro proveedor no se le pasa a este runtime: arrancaria con
+    # una cadena que no resuelve y fallaria lejos de aca.
+    ajeno = subprocess.run(
+        [str(ROOT / "hooks" / "agent" / "opencode" / "agent-args.sh"),
+         "claude-opus-5", "claude"], capture_output=True, text=True)
+    results.append(check(
+        "el shim ignora un modelo que no es de su proveedor",
+        ajeno.stdout.strip() == "", f"emitio {ajeno.stdout!r}"))
+
     # ---------- el ejecutor no fuerza ----------
 
     # Sin evidencia, el ejecutor no avanza aunque se lo pida directo.

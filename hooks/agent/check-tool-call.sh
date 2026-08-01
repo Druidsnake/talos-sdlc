@@ -50,8 +50,12 @@ path="$2"
 # Herramientas que escriben en el sistema de archivos.
 # Bash queda fuera a proposito: no se puede saber de forma confiable que
 # rutas toca un comando arbitrario. Ver hooks/agent/README.md.
+# Los nombres son de varios runtimes a proposito: este archivo decide, y los
+# shims solo extraen. Un runtime nuevo agrega su vocabulario aca, no su propia
+# copia de la politica.
 case "$tool" in
     Write|Edit|MultiEdit|NotebookEdit|write_file|edit_file|create_file) ;;
+    write|edit|patch) ;;
     *) exit 0 ;;
 esac
 

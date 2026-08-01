@@ -93,6 +93,12 @@ expect permite "sin rol activo Talos no gobierna"     env -u TALOS_ROLE ./hooks/
 expect bloquea "Edit de Reviewer sobre codigo"        call Reviewer Edit src/auth.ts
 expect permite "ruta con prefijo ./"                  call Developer Write ./src/auth.ts
 
+# Vocabulario de otros runtimes. La politica vive aca una sola vez; los shims
+# solo extraen herramienta y ruta del formato de su agente.
+expect bloquea "write en minuscula tambien escribe"   call Developer write spec/SPEC.md
+expect bloquea "edit en minuscula tambien escribe"    call Developer edit spec/SPEC.md
+expect bloquea "patch tambien escribe"                call Developer patch spec/SPEC.md
+
 # En macOS /tmp y /var son enlaces a /private/...: un runtime que resuelve
 # enlaces manda la ruta fisica. Compararla en texto contra la raiz logica la
 # ve fuera del proyecto y deniega algo que esta adentro.
@@ -100,6 +106,19 @@ fisica=$(CDPATH='' cd -P -- "$PWD" && pwd)
 expect permite "ruta fisica equivalente a la raiz"    call Developer Write "$fisica/src/auth.ts"
 expect bloquea "y la fisica no relaja el alcance"     call Developer Write "$fisica/spec/SPEC.md"
 
+echo ""
+echo "=== mecanismo 2 en vivo: shim de opencode ==="
+oc() {
+    printf '%s' "$2" | TALOS_ROLE="$1" ./hooks/agent/opencode/pre-tool-use.sh
+}
+expect bloquea "write de opencode sobre spec/" \
+    oc Developer '{"tool":"write","args":{"filePath":"spec/SPEC.md"}}'
+expect permite "write de opencode sobre src/" \
+    oc Developer '{"tool":"write","args":{"filePath":"src/auth.ts"}}'
+expect permite "payload que no parsea no bloquea todo" \
+    oc Developer 'no soy json'
+expect bloquea "edit de opencode sobre spec/" \
+    oc Developer '{"tool":"edit","args":{"filePath":"spec/SPEC.md"}}'
 
 echo ""
 echo "=== mecanismo 2 en vivo: shim de Claude Code ==="
