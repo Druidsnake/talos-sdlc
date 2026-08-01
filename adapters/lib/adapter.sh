@@ -77,23 +77,53 @@ talos_idempotency_key() {
     }
 }
 
-# ---------- ledger de acciones simuladas ----------
+# ---------- ledger de acciones ----------
 #
-# Un adapter dry-run que no deja rastro no es auditable. El ledger es lo que
-# hace que "already_exists" sea comprobable en un reintento, que es la unica
-# forma de demostrar idempotencia sin backend externo.
+# Un adapter que no deja rastro no es auditable. El ledger es lo que hace que
+# "already_exists" sea comprobable en un reintento, que es la unica forma de
+# demostrar idempotencia sin backend externo.
+#
+# CADA ENTRADA DICE QUIEN LA ESCRIBIO, y una consulta solo acepta las propias.
+#
+# La idempotency key de la seccion 38.2.4 es sha256(run_id:feature:op:args), y
+# el run_id sale del runtime del proyecto: es estable entre sesiones. Con un
+# ledger compartido y sin procedencia, un adapter productivo consultaba una
+# clave que habia escrito el SIMULADOR, recibia already_exists y devolvia un id
+# fabricado sin ejecutar nada. Reportaba exito habiendo creado nada, y el
+# recurso inexistente reventaba en el paso siguiente.
+#
+# La key no cambia: la formula es contrato (38.2.4). Lo que cambia es que el
+# ledger deja de mentir sobre de quien es cada linea.
 
 talos_ledger_path() {
     printf '%s/orchestration/dry-run/ledger.tsv' "${TALOS_PROJECT_ROOT:-.}"
 }
 
+# talos_adapter_id
+# El id declarado en el manifiesto del adapter que se esta ejecutando. Sale de
+# adapter.yaml, que vive junto a run.sh: ningun adapter necesita repetirlo.
+talos_adapter_id() {
+    _self=$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd) || {
+        printf '%s' "-"; return 0
+    }
+    _id=$(sed -n 's/^id:[[:space:]]*\([^[:space:]#]*\).*/\1/p' "$_self/adapter.yaml" 2>/dev/null | head -1)
+    [ -n "$_id" ] || _id="-"
+    printf '%s' "$_id"
+}
+
 # talos_ledger_lookup <key>  -> imprime el resource_ref guardado, o falla
+#
+# Falla tambien cuando la entrada la escribio OTRO adapter: un recurso creado
+# por otra implementacion no es un recurso que este pueda dar por existente.
+# Las entradas viejas sin columna de procedencia caen en el mismo caso, que es
+# lo correcto: sin saber quien las escribio no se les puede creer.
 talos_ledger_lookup() {
     _ledger=$(talos_ledger_path)
     [ -f "$_ledger" ] || return 1
-    _hit=$(grep -- "^$1	" "$_ledger" 2>/dev/null | head -1) || return 1
+    _me=$(talos_adapter_id)
+    _hit=$(awk -F'\t' -v k="$1" -v a="$_me" '$1 == k && $4 == a { print $3; exit }' "$_ledger")
     [ -n "$_hit" ] || return 1
-    printf '%s' "$_hit" | cut -f3
+    printf '%s' "$_hit"
 }
 
 # talos_ledger_record <key> <operation> <resource_ref_json>
@@ -102,12 +132,12 @@ talos_ledger_record() {
     mkdir -p "$(dirname "$_ledger")"
     if [ ! -f "$_ledger" ]; then
         {
-            echo "# Acciones simuladas por los adapters dry-run."
+            echo "# Acciones registradas por los adapters."
             echo "# El modo dry-run-only NO produce evidencia verificable (regla 37.4.4.2)."
-            echo "# formato: <idempotency_key>\t<operation>\t<resource_ref_json>"
+            echo "# formato: <idempotency_key>\t<operation>\t<resource_ref_json>\t<adapter>"
         } >"$_ledger"
     fi
-    printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$_ledger"
+    printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$(talos_adapter_id)" >>"$_ledger"
 }
 
 # talos_mutate <operation> <run_id> <feature_id> <semantic_args_json> <resource_ref_json>

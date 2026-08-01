@@ -230,6 +230,55 @@ def main():
         "argumentos distintos si ejecutan el efecto de nuevo",
         veces2 == 2, f"invocaciones: {veces2}"))
 
+    # ---------- el ledger no cruza adapters ----------
+    #
+    # La idempotency key es sha256(run_id:feature:op:args) y el run_id sale del
+    # runtime del proyecto: es estable entre sesiones. Con un ledger compartido
+    # y sin procedencia, el adapter productivo consultaba una clave escrita por
+    # el SIMULADOR, recibia already_exists y devolvia un id fabricado sin
+    # ejecutar nada. Reportaba exito habiendo creado nada, y el recurso
+    # inexistente reventaba recien en el paso siguiente.
+    tally2 = pathlib.Path(tempfile.mkdtemp()) / "invocaciones"
+    contador2 = fake_herdr("0.7.5", tally=str(tally2))
+    compartido = tempfile.mkdtemp()
+    entorno = {"TALOS_PROJECT_ROOT": compartido,
+               "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+
+    # El simulador escribe primero, con los MISMOS run_id, feature y argumentos.
+    subprocess.run([str(ROOT / "adapters" / "exec_dryrun" / "run.sh"),
+                    "create_workspace", json.dumps({"label": "x"})],
+                   capture_output=True, text=True,
+                   env={"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home()),
+                        **entorno})
+    led = pathlib.Path(compartido) / "orchestration" / "dry-run" / "ledger.tsv"
+    results.append(check(
+        "cada linea del ledger dice que adapter la escribio",
+        led.is_file() and any(
+            l.split("\t")[-1] == "talos.adapter.exec_dryrun"
+            for l in led.read_text().splitlines() if not l.startswith("#")),
+        led.read_text() if led.is_file() else "sin ledger"))
+
+    r = run_adapter("create_workspace", {"label": "x"},
+                    env={"TALOS_HERDR_BIN": str(contador2), **entorno})
+    veces3 = len(tally2.read_text().split()) if tally2.exists() else 0
+    results.append(check(
+        "el adapter productivo NO le cree al ledger del simulador",
+        veces3 == 1 and '"status":"created"' in r[1],
+        f"invocaciones={veces3} {r[1][:120]}"))
+    results.append(check(
+        "y no devuelve el id fabricado por la simulacion",
+        "exec:workspace" not in r[1], r[1][:120]))
+
+    # Lo propio se sigue respetando: la idempotencia no se rompio para arreglar
+    # la procedencia.
+    r2 = run_adapter("create_workspace", {"label": "x"},
+                     env={"TALOS_HERDR_BIN": str(contador2), **entorno})
+    veces4 = len(tally2.read_text().split())
+    results.append(check(
+        "pero SI le cree a sus propias entradas (seccion 38.2)",
+        veces4 == 1 and '"status":"already_exists"' in r2[1],
+        f"invocaciones={veces4} {r2[1][:120]}"))
+
     # Ninguna operacion mutante puede quedar con la forma vieja.
     fuente = (ADAPTER / "run.sh").read_text()
     results.append(check(
