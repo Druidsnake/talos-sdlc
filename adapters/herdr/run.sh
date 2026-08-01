@@ -140,10 +140,20 @@ case "$op" in
 
     create_session)
         check_version >/dev/null || exit 2
-        _ws=$(json_get workspace_id)
+        # Una sesion de ejecucion se realiza como un pane HERMANO, no como un
+        # tab. Con un tab hay que cambiar de pestaña para ver al agente; con un
+        # pane queda al lado de la consola, que es el punto de mirarlo.
+        # El anchor sale del entorno de Herdr, no del nucleo. Donde esta
+        # parado quien llama es asunto del runtime de ejecucion, y el nucleo no
+        # tiene por que conocer una variable de Herdr (regla 38.5.5).
+        _anchor=$(json_get pane)
+        [ -n "$_anchor" ] || _anchor="${HERDR_PANE_ID:-}"
+        _cwd=$(json_get cwd)
+        _dir=$(json_get direction); [ -n "$_dir" ] || _dir=right
         # shellcheck disable=SC2086
-        talos_mutate_run "$op" "$run" "$feat" "$args" tab_id \
-            herdr_do tab create ${_ws:+--workspace} ${_ws:+"$_ws"}
+        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+            herdr_do pane split ${_anchor:+"$_anchor"} --direction "$_dir" \
+                ${_cwd:+--cwd} ${_cwd:+"$_cwd"} --no-focus
         ;;
 
     start_agent)
@@ -164,8 +174,12 @@ case "$op" in
         # Misma leccion que con GitHub: para un recurso que puede dejar de
         # existir, la fuente de verdad es el backend, no el registro local.
         if [ "$DRY" != 1 ]; then
+            # Se busca por NOMBRE, que es lo que Talos controla, y no por
+            # pane: un pane puede tener un agente muerto que herdr todavia
+            # lista, o el shell de una persona. El nombre lo puso Talos al
+            # despachar, asi que encontrarlo significa que ESTE agente vive.
             _vivo=$("$HERDR" agent list 2>/dev/null \
-                    | tr '}' '\n' | grep -F "\"pane_id\":\"$_pane\"" | head -1)
+                    | tr '}' '\n' | grep -F "\"name\":\"$_name\"" | head -1)
             if [ -n "$_vivo" ]; then
                 _tid=$(printf '%s' "$_vivo" | first_id terminal_id)
                 _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
@@ -181,6 +195,13 @@ case "$op" in
                     "$(printf '%s' "$_out" | talos_json_string)" >&2
                 exit 5
             }
+            # Un id extraido de una respuesta cualquiera no prueba que el
+            # agente exista. Se verifica que quedo vivo con el nombre pedido.
+            if ! "$HERDR" agent list 2>/dev/null | grep -qF "\"name\":\"$_name\""; then
+                printf '{"status":"error","error_class":"adapter","operation":"start_agent",' >&2
+                printf '"message":"herdr no reporto el agente %s vivo despues de arrancarlo"}\n' >&2 "$_name"
+                exit 5
+            fi
             _tid=$(printf '%s' "$_out" | first_id terminal_id)
             talos_ledger_record "$_key" "$op" "{\"id\":\"$_tid\",\"url\":null}"
             printf '{"status":"created","resource_ref":{"id":"%s","url":null},' "$_tid"

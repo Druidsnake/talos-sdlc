@@ -19,10 +19,7 @@ usage() {
 talos next - que sigue, derivado de los artefactos aprobados
 
 USO
-    talos next [--pane <PANE>] [--format json]
-
-    Sin --pane no se proponen los pasos que necesitan un agente: el sistema
-    no elige donde ejecutar por vos.
+    talos next [--format json]
 
 DE DONDE SALE
     spec aprobado          que construir

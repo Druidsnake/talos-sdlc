@@ -26,8 +26,9 @@ talos feature - ejecucion de features
 
 USO
     talos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
-    talos feature dispatch <ID> --role <ROL> --pane <PANE> [--kind KIND]
+    talos feature dispatch <ID> --role <ROL> [--pane <PANE>] [--kind KIND]
                                   despacha un agente con rol y alcance activos
+                                  sin --pane, Talos crea uno
     talos feature advance <ID> --to <ESTADO>
                                   ejecuta la transicion si el gate autoriza
     talos feature next <ID>       que transiciones salen del estado actual
@@ -236,6 +237,9 @@ if [ "$sub" = work ]; then
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
     need_plan
+    # El pane lo dejo dispatch: no hace falta repetirlo en cada paso.
+    [ -z "$PANE" ] && [ -f "orchestration/features/$FEAT/.pane" ] && \
+        PANE=$(cat "orchestration/features/$FEAT/.pane")
 
     ROLE=$(talos_role_current 2>/dev/null || echo "")
     [ -n "$ROLE" ] || { echo "talos: no hay rol activo; despacha primero" >&2
@@ -451,7 +455,9 @@ if [ "$sub" = test ]; then
         esac
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    [ -n "$PANE" ] || { echo "talos: falta --pane" >&2; exit 1; }
+    [ -z "$PANE" ] && [ -f "orchestration/features/$FEAT/.pane" ] && \
+        PANE=$(cat "orchestration/features/$FEAT/.pane")
+    [ -n "$PANE" ] || { echo "talos: falta --pane y no hay uno registrado" >&2; exit 1; }
     [ -n "$CMD" ]  || { echo "talos: falta --command" >&2; exit 1; }
 
     echo "talos ${TALOS_VERSION:-?}"
@@ -544,7 +550,6 @@ if [ "$sub" = dispatch ]; then
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
     [ -n "$ROLE" ] || { echo "talos: falta --role" >&2; exit 1; }
-    [ -n "$PANE" ] || { echo "talos: falta --pane" >&2; exit 1; }
 
     echo "talos ${TALOS_VERSION:-?}"
     echo ""
@@ -563,6 +568,29 @@ if [ "$sub" = dispatch ]; then
     # pasar todo. Es preferible no despachar.
     if ! talos_role_activate "$ROLE" "$FEAT"; then
         exit 2
+    fi
+    # Sin pane, Talos crea el suyo. Pedirle a una persona que elija uno la
+    # obliga a saber cual esta libre, y el candidato obvio -donde esta
+    # tipeando- es justo el que no sirve: ahi vive su shell.
+    # Talos se arma la ventana que necesita. El pane donde corre el
+    # orquestador es su CONSOLA: ahi va el log, no un agente. Pedirle a una
+    # persona que elija un pane la obliga a saber cual esta libre, y el
+    # candidato obvio -donde esta tipeando- es justo el que no sirve.
+    if [ -z "$PANE" ]; then
+        set +e
+        _ses=$(talos_capability_run ExecutionAdapter create_session \
+               "{\"cwd\":\"$PROJ\",\"direction\":\"right\"}" 2>&1)
+        _src=$?
+        set -e
+        if [ "$_src" -ne 0 ]; then
+            echo "  FALL no se pudo abrir un pane para el agente"
+            printf '%s\n' "$_ses" | sed 's/^/    /' | head -3
+            talos_role_deactivate
+            exit 5
+        fi
+        PANE=$(printf '%s' "$_ses" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+        [ -n "$PANE" ] || { echo "  FALL el adapter no devolvio un pane"; talos_role_deactivate; exit 5; }
+        printf '  pane     %s (abierto por Talos, al lado de la consola)\n' "$PANE"
     fi
     printf '  rol      %s (activo)\n' "$ROLE"
     printf '  feature  %s\n' "$FEAT"
@@ -596,6 +624,9 @@ if [ "$sub" = dispatch ]; then
         exit 5
     fi
     printf '  agente   arrancado por el ExecutionAdapter\n'
+    # Quien siga -work, test- necesita saber donde quedo. Sin esto habria que
+    # pasarle el pane a mano en cada paso.
+    printf '%s\n' "$PANE" > "orchestration/features/$FEAT/.pane"
     echo ""
     echo "  El rol queda activo hasta  talos feature release $FEAT"
     exit 0

@@ -150,11 +150,13 @@ def trabajo_pendiente(root, fid, presentes, pane):
         "*/task-result.json")) if (root / "orchestration" / "features" / fid / "tasks").is_dir() else []
 
     # 1. Sin rol activo no hay quien trabaje. Despachar es lo primero.
+    #    Ya no hace falta que alguien elija un pane: Talos crea el suyo.
     if not rol.is_file():
-        return {"feature": fid,
-                "orden": f"talos feature dispatch {fid} --role Developer --pane {pane}",
-                "porque": "no hay agente despachado para esta feature",
-                "necesita_pane": True}
+        orden = f"talos feature dispatch {fid} --role Developer"
+        if pane and pane != "<PANE>":
+            orden += f" --pane {pane}"
+        return {"feature": fid, "orden": orden,
+                "porque": "no hay agente despachado para esta feature"}
 
     # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
     #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
@@ -162,10 +164,8 @@ def trabajo_pendiente(root, fid, presentes, pane):
     if not entregable and iteraciones_agotadas(root, fid):
         return None
     if not entregable:
-        return {"feature": fid,
-                "orden": f"talos feature work {fid} --pane {pane}",
-                "porque": "el agente esta despachado y no dejo su entregable",
-                "necesita_pane": True}
+        return {"feature": fid, "orden": f"talos feature work {fid}",
+                "porque": "el agente esta despachado y no dejo su entregable"}
 
     # 3. Con entregable pero sin CommitRef, falta observar git.
     if "CommitRef" not in presentes:
@@ -175,9 +175,8 @@ def trabajo_pendiente(root, fid, presentes, pane):
     # 4. Sin medicion propia no hay evidencia verificable de avance.
     if "LocalTestReport" not in presentes:
         return {"feature": fid,
-                "orden": f"talos feature test {fid} --pane {pane} --command \"python3 -m pytest tests/ -q\"",
-                "porque": "falta la unica evidencia verificable que se puede producir",
-                "necesita_pane": True}
+                "orden": f"talos feature test {fid} --command \"python3 -m pytest tests/ -q\"",
+                "porque": "falta la unica evidencia verificable que se puede producir"}
 
     # 5. El entregable existe en disco pero nadie lo valido ni lo sello.
     if "TaskResultSet" not in presentes:
@@ -293,13 +292,12 @@ def main(argv):
                 # lo que convierte al loop en algo que llega a un producto y no
                 # solo en algo que mueve estados.
                 info["motivo"] = "espera evidencia"
-                paso = trabajo_pendiente(root, fid, presentes, pane or "<PANE>")
+                # Ya no hace falta que nadie elija un pane: Talos abre el
+                # suyo. La proyeccion propone el trabajo sin condiciones.
+                paso = trabajo_pendiente(root, fid, presentes, pane)
                 if paso:
                     info["trabajo"] = paso["orden"]
-                    if pane or not paso.get("necesita_pane"):
-                        out["acciones"].append(paso)
-                    else:
-                        info["motivo"] = "necesita un pane para trabajar"
+                    out["acciones"].append(paso)
 
         out["features"].append(info)
 

@@ -122,8 +122,8 @@ def main():
                          f001["estado"] == "FEATURE_IN_PROGRESS", f001["estado"]))
 
     results.append(check(
-        "el loop se detiene cuando no hay nada autorizado",
-        "nada mas que el loop pueda avanzar" in out, out[-300:]))
+        "el loop deja constancia de lo que hizo en la consola",
+        "[01]" in out and "consola" in out, out[-300:]))
 
     results.append(check(
         "y NO avanza F001 sin la evidencia que exige DEV_GATE",
@@ -154,31 +154,30 @@ def main():
     # plantaba, porque la transicion siguiente pide evidencia que solo un
     # agente puede producir.
 
-    def next_con_pane(root, pane="w9:p1"):
-        code, out = talos(root, "next", "--pane", pane, "--format", "json")
-        try:
-            return json.loads(out)
-        except json.JSONDecodeError:
-            return {}
-
-    d = next_con_pane(p)
+    # Nadie tiene que elegir un pane: Talos abre el suyo por el
+    # ExecutionAdapter. El pane donde corre el orquestador es su consola.
+    #
+    # Se mira un proyecto FRESCO: en el de arriba el loop ya despacho, asi que
+    # el siguiente paso ya no es dispatch sino work.
+    pf = proyecto()
+    talos(pf, "feature", "start", "F001")
+    d = next_json(pf)
     ordenes = [a["orden"] for a in d.get("acciones", [])]
     results.append(check(
-        "con pane, el loop propone despachar un agente",
+        "el loop propone despachar sin que nadie le diga donde",
         any("feature dispatch" in o for o in ordenes), f"{ordenes}"))
+    results.append(check(
+        "y la orden no arrastra un pane",
+        all("--pane" not in o for o in ordenes), f"{ordenes}"))
 
-    # Sin pane no se propone: Talos no elige donde ejecutar por vos.
-    d2 = next_json(p)
-    results.append(check(
-        "SIN pane no propone nada que necesite un agente",
-        not any("dispatch" in a["orden"] or "work" in a["orden"]
-                for a in d2.get("acciones", [])),
-        f"{[a['orden'] for a in d2.get('acciones', [])]}"))
-    results.append(check(
-        "y lo dice, en vez de callarse",
-        any(f.get("motivo") == "necesita un pane para trabajar"
-            for f in d2.get("features", [])),
-        f"{[f.get('motivo') for f in d2.get('features', [])]}"))
+    # Regla 38.5.5: el nucleo no nombra a Herdr. Donde se abre una ventana lo
+    # resuelve el adapter, que es quien conoce el runtime.
+    for f in ("cli/commands/run.sh", "cli/commands/feature.sh",
+              "hooks/lib/next.py"):
+        txt = (ROOT / f).read_text()
+        results.append(check(
+            f"{f} no conoce variables de Herdr (regla 38.5.5)",
+            "HERDR_" not in txt, f))
 
     # La secuencia respeta el orden en que la evidencia se puede obtener.
     src_next = (ROOT / "hooks" / "lib" / "next.py").read_text()
@@ -189,9 +188,8 @@ def main():
         pos == sorted(pos), f"{list(zip(orden_esperado, pos))}"))
 
     results.append(check(
-        "run acepta --pane y avisa cuando falta",
-        "--pane" in (ROOT / "cli" / "commands" / "run.sh").read_text()
-        and "no elige donde ejecutar" in (ROOT / "cli" / "commands" / "run.sh").read_text()))
+        "run no pide un pane: Talos se arma la ventana que necesita",
+        "--pane" not in (ROOT / "cli" / "commands" / "run.sh").read_text()))
 
     # ---------- convergencia ----------
     #
