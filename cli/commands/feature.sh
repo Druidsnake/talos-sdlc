@@ -31,6 +31,8 @@ USO
     talos feature advance <ID> --to <ESTADO>
                                   ejecuta la transicion si el gate autoriza
     talos feature next <ID>       que transiciones salen del estado actual
+    talos feature work <ID>       le da al agente despachado el trabajo de la feature
+    talos feature commit <ID>     observa git y sella CommitRef
     talos feature collect <ID>    recoge el entregable del rol como evidencia
     talos feature test <ID> --pane <PANE> --command "<CMD>"
                                   corre una verificacion y sella LocalTestReport
@@ -216,6 +218,127 @@ if [ "$sub" = advance ]; then
            echo "  Se emitio talos.transition.rejected (regla 22.6.2)." ;;
     esac
     exit "$rc"
+fi
+
+# ---------- work ----------
+#
+# dispatch arranca al agente con su rol y su alcance, pero no le dice que
+# construir. Esto le entrega el trabajo concreto de la feature y espera a que
+# termine.
+
+if [ "$sub" = work ]; then
+    PANE=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --pane) PANE="${2:?falta el pane}"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    need_plan
+
+    ROLE=$(talos_role_current 2>/dev/null || echo "")
+    [ -n "$ROLE" ] || { echo "talos: no hay rol activo; despacha primero" >&2
+                        echo "talos: talos feature dispatch $FEAT --role Developer --pane <PANE>" >&2
+                        exit 2; }
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  feature  %s\n  rol      %s\n\n' "$FEAT" "$ROLE"
+
+    encargo=$("$PY" - "$PLAN" "$FEAT" <<'PYEOF'
+import json, sys
+plan = json.loads(open(sys.argv[1]).read())
+f = next((x for x in plan["features"] if x["id"] == sys.argv[2]), None)
+if f is None:
+    raise SystemExit(2)
+partes = [
+    f"Implementa {f['id']}: {f['title']}.",
+    "",
+    f.get("description") or "",
+    "",
+    "El spec aprobado manda. Leelo antes de escribir:",
+    *[f"  spec/{r}" for r in (f.get("spec_refs") or [])],
+    *[f"  spec/{r}" for r in (f.get("acceptance_refs") or [])],
+    "",
+    "Escribi el codigo Y sus tests. Un criterio de aceptacion sin test no",
+    "esta cumplido. Los casos de rechazo son obligatorios.",
+    "",
+    "Cuando termines, deja tu entregable en:",
+    f"  orchestration/features/{f['id']}/tasks/T01/task-result.json",
+    "que tiene que validar contra .talos/schemas/task-result.schema.json.",
+    "Sin ese archivo tu trabajo no existe para el sistema.",
+]
+print("\n".join(x for x in partes if x is not None))
+PYEOF
+) || { echo "talos: $FEAT no esta en el plan" >&2; exit 2; }
+
+    printf '%s\n' "$encargo" | sed 's/^/    /' | head -6
+    echo "    ..."
+    echo ""
+
+    # El texto va como semantic_args del adapter: quien ejecuta es el
+    # ExecutionAdapter, y el nucleo no sabe con que agente esta hablando.
+    esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+    set +e
+    out=$(talos_capability_run ExecutionAdapter prompt_agent \
+          "{\"target\":\"$PANE\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        echo "  FALL el ExecutionAdapter no pudo entregar el trabajo"
+        printf '%s\n' "$out" | sed 's/^/    /' | head -3
+        exit 5
+    fi
+    echo "  ok   trabajo entregado al agente"
+    echo "  El agente esta trabajando. Mira su pane."
+    exit 0
+fi
+
+# ---------- commit ----------
+#
+# El catalogo de la seccion 23.4 dice que CommitRef lo produce el
+# CoordinationAdapter, pero la seccion 38.4 no define ninguna operacion de
+# commit para ese adapter. Un commit no es una mutacion que Talos ordene: es un
+# hecho de git que Talos OBSERVA. Por eso sale verifiable:true, y de la unica
+# forma en que eso es cierto: el sha se puede revalidar contra el repo
+# (regla 23.3.4).
+
+if [ "$sub" = commit ]; then
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    rama="feature/$FEAT"
+    if ! git rev-parse --verify --quiet "$rama" >/dev/null 2>&1; then
+        rama=$(git rev-parse --abbrev-ref HEAD)
+    fi
+    sha=$(git rev-parse "$rama" 2>/dev/null || echo "")
+    [ -n "$sha" ] || { echo "talos: no se pudo leer el estado de git" >&2; exit 2; }
+
+    # Un commit que no existe no se inventa: si no hay nada nuevo respecto de
+    # main, no hay trabajo que referenciar.
+    base=$(git merge-base "$rama" main 2>/dev/null || echo "")
+    if [ -n "$base" ] && [ "$base" = "$sha" ]; then
+        echo "talos: $rama no tiene commits propios; no hay CommitRef que sellar" >&2
+        echo "talos: el agente todavia no commiteo su trabajo" >&2
+        exit 3
+    fi
+
+    msg=$(git log -1 --pretty=%s "$sha" 2>/dev/null || echo "")
+    mkdir -p "$EVDIR"
+    evid="ev-$FEAT-commit-$(date -u +%Y%m%d%H%M%S)"
+    cat > "$EVDIR/$evid.json" <<EOF2
+{"id":"$evid","kind":"CommitRef","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "produced_by":"core:Orchestrator","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "digest":"pendiente","verifiable":true,
+ "payload":{"sha":"$sha","branch":"$rama","message":"$(printf '%s' "$msg" | sed 's/"/\\"/g')"}}
+EOF2
+    "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  rama     %s\n  sha      %s\n  mensaje  %s\n' "$rama" "$sha" "$msg"
+    printf '  sellada  CommitRef (verifiable: true, revalidable contra el repo)\n'
+    exit 0
 fi
 
 # ---------- collect ----------

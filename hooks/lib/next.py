@@ -76,6 +76,8 @@ def render(d):
         for f in d["features"]:
             riesgo = str(f.get("riesgo") or "-")
             print(f"  {f['id']:<6} {f['estado']:<22} {riesgo:<9} {f['motivo']}")
+            if f.get("trabajo"):
+                print(f"           .. {f['trabajo']}")
             for s in f.get("salidas", []):
                 marca = "->" if not s["falta"] else "  "
                 falta = "" if not s["falta"] else "  falta: " + ", ".join(s["falta"])
@@ -100,6 +102,55 @@ def emitir(out, formato):
     return 0
 
 
+def trabajo_pendiente(root, fid, presentes, pane):
+    """Los pasos que PRODUCEN el trabajo, no los que mueven el estado.
+
+    El loop sabia mover la maquina de estados pero no causar que se hiciera el
+    trabajo: proponia start y advance, y nada mas. Con eso arrancaba una
+    feature y se plantaba, porque la transicion siguiente pide evidencia que
+    solo un agente puede producir.
+
+    Cada paso de aca produce una evidencia concreta, y se propone uno por vez
+    en el orden en que la evidencia se puede obtener.
+    """
+    rol = root / "orchestration" / ".current-role"
+    entregable = list((root / "orchestration" / "features" / fid / "tasks").glob(
+        "*/task-result.json")) if (root / "orchestration" / "features" / fid / "tasks").is_dir() else []
+
+    # 1. Sin rol activo no hay quien trabaje. Despachar es lo primero.
+    if not rol.is_file():
+        return {"feature": fid,
+                "orden": f"talos feature dispatch {fid} --role Developer --pane {pane}",
+                "porque": "no hay agente despachado para esta feature",
+                "necesita_pane": True}
+
+    # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
+    if not entregable:
+        return {"feature": fid,
+                "orden": f"talos feature work {fid} --pane {pane}",
+                "porque": "el agente esta despachado y no dejo su entregable",
+                "necesita_pane": True}
+
+    # 3. Con entregable pero sin CommitRef, falta observar git.
+    if "CommitRef" not in presentes:
+        return {"feature": fid, "orden": f"talos feature commit {fid}",
+                "porque": "hay entregable y falta sellar el commit"}
+
+    # 4. Sin medicion propia no hay evidencia verificable de avance.
+    if "LocalTestReport" not in presentes:
+        return {"feature": fid,
+                "orden": f"talos feature test {fid} --pane {pane} --command \"python3 -m pytest tests/ -q\"",
+                "porque": "falta la unica evidencia verificable que se puede producir",
+                "necesita_pane": True}
+
+    # 5. El entregable existe en disco pero nadie lo valido ni lo sello.
+    if "TaskResultSet" not in presentes:
+        return {"feature": fid, "orden": f"talos feature collect {fid}",
+                "porque": "el entregable esta y falta validarlo y sellarlo"}
+
+    return None
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__.strip(), file=sys.stderr)
@@ -107,6 +158,7 @@ def main(argv):
     root = pathlib.Path(argv[1])
     transiciones = leer_transiciones(argv[2])
     formato = argv[3] if len(argv) > 3 else "texto"
+    pane = argv[4] if len(argv) > 4 else None
 
     out = {"programa": "SIN_PLAN", "spec": None, "features": [], "acciones": []}
 
@@ -191,8 +243,20 @@ def main(argv):
                         "porque": f"{t['id']}: toda la evidencia esta presente",
                     })
             sin_falta = [s for s in info["salidas"] if not s["falta"]]
-            info["motivo"] = ("puede avanzar" if sin_falta
-                              else "espera evidencia")
+            if sin_falta:
+                info["motivo"] = "puede avanzar"
+            else:
+                # Nada autorizado todavia: falta producir la evidencia. Esto es
+                # lo que convierte al loop en algo que llega a un producto y no
+                # solo en algo que mueve estados.
+                info["motivo"] = "espera evidencia"
+                paso = trabajo_pendiente(root, fid, presentes, pane or "<PANE>")
+                if paso:
+                    info["trabajo"] = paso["orden"]
+                    if pane or not paso.get("necesita_pane"):
+                        out["acciones"].append(paso)
+                    else:
+                        info["motivo"] = "necesita un pane para trabajar"
 
         out["features"].append(info)
 

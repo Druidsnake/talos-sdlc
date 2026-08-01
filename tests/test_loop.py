@@ -142,6 +142,52 @@ def main():
         "abandonar sigue siendo una decision humana explicita",
         "FEATURE_ABANDONED" in (ROOT / "hooks" / "lib" / "next.py").read_text()))
 
+    # ---------- la secuencia de trabajo ----------
+    #
+    # El loop movia estados pero no causaba que se hiciera el trabajo:
+    # proponia start y advance y nada mas. Con eso arrancaba una feature y se
+    # plantaba, porque la transicion siguiente pide evidencia que solo un
+    # agente puede producir.
+
+    def next_con_pane(root, pane="w9:p1"):
+        code, out = talos(root, "next", "--pane", pane, "--format", "json")
+        try:
+            return json.loads(out)
+        except json.JSONDecodeError:
+            return {}
+
+    d = next_con_pane(p)
+    ordenes = [a["orden"] for a in d.get("acciones", [])]
+    results.append(check(
+        "con pane, el loop propone despachar un agente",
+        any("feature dispatch" in o for o in ordenes), f"{ordenes}"))
+
+    # Sin pane no se propone: Talos no elige donde ejecutar por vos.
+    d2 = next_json(p)
+    results.append(check(
+        "SIN pane no propone nada que necesite un agente",
+        not any("dispatch" in a["orden"] or "work" in a["orden"]
+                for a in d2.get("acciones", [])),
+        f"{[a['orden'] for a in d2.get('acciones', [])]}"))
+    results.append(check(
+        "y lo dice, en vez de callarse",
+        any(f.get("motivo") == "necesita un pane para trabajar"
+            for f in d2.get("features", [])),
+        f"{[f.get('motivo') for f in d2.get('features', [])]}"))
+
+    # La secuencia respeta el orden en que la evidencia se puede obtener.
+    src_next = (ROOT / "hooks" / "lib" / "next.py").read_text()
+    orden_esperado = ["dispatch", "work", "commit", "test", "collect"]
+    pos = [src_next.index(f"feature {x}") for x in orden_esperado]
+    results.append(check(
+        "los pasos de trabajo van en el orden en que la evidencia se obtiene",
+        pos == sorted(pos), f"{list(zip(orden_esperado, pos))}"))
+
+    results.append(check(
+        "run acepta --pane y avisa cuando falta",
+        "--pane" in (ROOT / "cli" / "commands" / "run.sh").read_text()
+        and "no elige donde ejecutar" in (ROOT / "cli" / "commands" / "run.sh").read_text()))
+
     # ---------- la cota ----------
 
     run_src = (ROOT / "cli" / "commands" / "run.sh").read_text()

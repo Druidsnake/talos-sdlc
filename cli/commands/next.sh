@@ -19,7 +19,10 @@ usage() {
 talos next - que sigue, derivado de los artefactos aprobados
 
 USO
-    talos next [--format json]
+    talos next [--pane <PANE>] [--format json]
+
+    Sin --pane no se proponen los pasos que necesitan un agente: el sistema
+    no elige donde ejecutar por vos.
 
 DE DONDE SALE
     spec aprobado          que construir
@@ -46,6 +49,13 @@ TABLA="$SYS/hooks/generated/transitions.tsv"
 [ -f "$TABLA" ] || { echo "talos: falta la tabla de transiciones" >&2; exit 2; }
 
 FORMATO=texto
-[ "${1:-}" = "--format" ] && [ "${2:-}" = json ] && FORMATO=json
+PANE=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --format) [ "${2:-}" = json ] && FORMATO=json; shift 2 ;;
+        --pane)   PANE="${2:?falta el pane}"; shift 2 ;;
+        *) shift ;;
+    esac
+done
 
-exec "$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" "$FORMATO"
+exec "$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" "$FORMATO" "$PANE"

@@ -33,9 +33,10 @@ usage() {
 talos run - avanza mientras los gates autoricen
 
 USO
-    talos run [--max N] [--dry-run]
+    talos run [--pane <PANE>] [--max N] [--dry-run]
 
 OPCIONES
+    --pane P     donde despachar agentes; sin esto el loop solo mueve estados
     --max N      cota de pasos (default 20)
     --dry-run    muestra que haria, sin ejecutar nada
 
@@ -65,9 +66,11 @@ USAGE
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
 DRY=0
+PANE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --max)     MAX_PASOS="${2:?falta el maximo}"; shift 2 ;;
+        --pane)    PANE="${2:?falta el pane}"; shift 2 ;;
         --dry-run) DRY=1; shift ;;
         *) shift ;;
     esac
@@ -85,6 +88,11 @@ CLI="$SYS/cli/talos"
 echo "talos ${TALOS_VERSION:-?}"
 echo ""
 [ "$DRY" -eq 1 ] && echo "  modo dry-run: no se ejecuta nada" && echo ""
+if [ -z "$PANE" ]; then
+    echo "  sin --pane: el loop solo movera estados, no despachara agentes"
+    echo "  Talos no elige donde ejecutar por vos."
+    echo ""
+fi
 
 # Regla 33.4: si se excede el presupuesto, Talos DEBE pausar o escalar. El
 # loop es justamente lo que puede gastar sin que nadie mire, asi que se
@@ -112,7 +120,7 @@ while [ "$paso" -lt "$MAX_PASOS" ]; do
         salida=4
         break
     fi
-    data=$("$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" json 2>/dev/null) || {
+    data=$("$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" json "$PANE" 2>/dev/null) || {
         echo "  no se pudo derivar el estado"; exit 2; }
 
     orden=$(printf '%s' "$data" | "$PY" -c '
@@ -171,5 +179,5 @@ fi
 
 echo ""
 echo "  estado final:"
-"$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" texto 2>/dev/null | sed -n '4,12p'
+"$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" texto "$PANE" 2>/dev/null | sed -n '4,14p'
 exit "$salida"
