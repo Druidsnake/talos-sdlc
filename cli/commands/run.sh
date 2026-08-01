@@ -133,9 +133,20 @@ print(a[0]["orden"] if a else "")
 
     if [ -z "$orden" ]; then
         prog=$(printf '%s' "$data" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["programa"])')
+        # Un loop que se planta sin decir por que obliga a adivinar entre
+        # "termino" y "no puede seguir". No es lo mismo.
+        frenos=$(printf '%s' "$data" | "$PY" -c '
+import json,sys
+for f in (json.load(sys.stdin).get("frenos") or []):
+    print(f"    {f[\"feature\"]}: {f[\"porque\"]}")
+' 2>/dev/null)
         echo ""
         if [ "$prog" = PROGRAM_DONE ]; then
             echo "  PROGRAM_DONE: todas las features llegaron a un estado terminal."
+        elif [ -n "$frenos" ]; then
+            echo "  el loop se detiene porque el avance esta frenado:"
+            printf '%s\n' "$frenos"
+            salida=4
         else
             echo "  nada mas que el loop pueda avanzar por su cuenta."
             echo "  Lo que falta es evidencia o una decision humana, no un comando."

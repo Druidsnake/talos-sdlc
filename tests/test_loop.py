@@ -208,6 +208,16 @@ def main():
     results.append(check(
         "cada encargo consume una iteracion",
         "budget consume" in src_feat))
+
+    # Un loop que se planta sin decir por que obliga a adivinar entre
+    # "termino" y "no puedo seguir". No es lo mismo.
+    results.append(check(
+        "cuando el avance esta frenado, el loop dice el motivo",
+        "frenos" in src_next and "el avance esta frenado" in src_next))
+    results.append(check(
+        "y run lo muestra en la consola",
+        "el loop se detiene porque el avance esta frenado" in
+        (ROOT / "cli" / "commands" / "run.sh").read_text()))
     results.append(check(
         "work espera a que el agente termine antes de devolver",
         "wait_agent" in src_feat and "esperando a que el agente" in src_feat,

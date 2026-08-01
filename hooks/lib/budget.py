@@ -112,6 +112,11 @@ def evaluar(root, fid=None):
 
         excedidos = [k for k, lim in limites.items()
                      if lim is not None and consumido[k] > lim]
+        # Estar justo en el limite no es estar dentro: es no tener nada mas.
+        # Reportarlo como "ok" hace que quien lea el numero crea que puede
+        # seguir, y despues el sistema se planta sin explicacion.
+        agotados = [k for k, lim in limites.items()
+                    if lim is not None and consumido[k] == lim]
 
         # Regla 33.8: si el presupuesto no da para el tier que el plan pidio,
         # se ESCALA. No se elige otro tier: el routing por capacidad no se
@@ -126,6 +131,9 @@ def evaluar(root, fid=None):
         if excedidos:
             estado_fila = "excedido"
             peor = max(peor, 3)
+        elif agotados:
+            estado_fila = "agotado"
+            peor = max(peor, 3)
         elif tier_asequible is False:
             estado_fila = "tier_inasequible"
             peor = max(peor, 4)
@@ -133,7 +141,7 @@ def evaluar(root, fid=None):
         filas.append({
             "feature": f["id"], "tier": tier, "estado": estado_fila,
             "limites": limites, "consumido": consumido,
-            "excedidos": excedidos,
+            "excedidos": excedidos, "agotados": agotados,
             "tier_asequible": tier_asequible,
             "sin_limite": all(v is None for v in limites.values()),
         })
@@ -155,19 +163,22 @@ def render(filas, peor):
         def par(k, suf=""):
             l = lim[k]
             return f"{con[k]}{suf}/{l if l is not None else '-'}{suf if l is not None else ''}"
-        marca = {"ok": "ok  ", "excedido": "FALL", "tier_inasequible": "ESC "}[r["estado"]]
+        marca = {"ok": "ok  ", "excedido": "FALL", "agotado": "FALL",
+                 "tier_inasequible": "ESC "}[r["estado"]]
         print(f"  {marca} {r['feature']:<7} {str(r['tier'] or '-'):<9} {r['estado']:<18} "
               f"usd {par('cost_usd')}  iter {par('iterations')}  min {par('wall_minutes')}")
         if r["sin_limite"]:
             print("           sin limites declarados")
         for k in r["excedidos"]:
             print(f"           excedido: {k}")
+        for k in r.get("agotados", []):
+            print(f"           agotado: {k} llego a su limite, no queda margen")
         if r["tier_asequible"] is False:
             print(f"           el saldo no alcanza para el tier {r['tier']}")
             print("           se ESCALA: el tier no se degrada (reglas 33.7 y 33.8)")
     print()
     if peor == 3:
-        print("  Hay presupuesto excedido. Talos pausa o escala (regla 33.4).")
+        print("  Presupuesto agotado o excedido. Talos pausa o escala (regla 33.4).")
     elif peor == 4:
         print("  El presupuesto no alcanza para el tier requerido.")
         print("  Escalar es la unica salida: bajar el tier resolveria el numero")

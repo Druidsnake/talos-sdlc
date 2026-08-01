@@ -102,6 +102,10 @@ def render(d):
         for a in d["acciones"]:
             print(f"    {a['orden']}")
             print(f"      {a['porque']}")
+    elif d.get("frenos"):
+        print("  el avance esta frenado:")
+        for f in d["frenos"]:
+            print(f"    {f['feature']}: {f['porque']}")
     else:
         print("  nada listo para avanzar por su cuenta.")
         print("  Lo que falta es evidencia o una decision humana, no un comando.")
@@ -162,7 +166,11 @@ def trabajo_pendiente(root, fid, presentes, pane):
     #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
     #    insistir, es no converger.
     if not entregable and iteraciones_agotadas(root, fid):
-        return None
+        # Se devuelve el motivo, no None. Un loop que se planta sin decir por
+        # que obliga a adivinar entre "termino" y "no puede".
+        return {"feature": fid, "orden": None,
+                "porque": "las iteraciones del presupuesto se agotaron "
+                          "y el agente no dejo entregable (regla 33.3)"}
     if not entregable:
         return {"feature": fid, "orden": f"talos feature work {fid}",
                 "porque": "el agente esta despachado y no dejo su entregable"}
@@ -195,7 +203,8 @@ def main(argv):
     formato = argv[3] if len(argv) > 3 else "texto"
     pane = argv[4] if len(argv) > 4 else None
 
-    out = {"programa": "SIN_PLAN", "spec": None, "features": [], "acciones": []}
+    out = {"programa": "SIN_PLAN", "spec": None, "features": [],
+           "acciones": [], "frenos": []}
 
     # El spec manda: sin spec aprobado no hay nada que planificar (regla 29.1).
     man = root / "spec" / "manifest.yaml"
@@ -295,9 +304,15 @@ def main(argv):
                 # Ya no hace falta que nadie elija un pane: Talos abre el
                 # suyo. La proyeccion propone el trabajo sin condiciones.
                 paso = trabajo_pendiente(root, fid, presentes, pane)
-                if paso:
+                if paso and paso.get("orden"):
                     info["trabajo"] = paso["orden"]
                     out["acciones"].append(paso)
+                elif paso:
+                    # Hay un motivo concreto para no proponer nada. Decirlo es
+                    # la diferencia entre "no queda nada" y "no puedo seguir".
+                    info["motivo"] = paso["porque"]
+                    out.setdefault("frenos", []).append(
+                        {"feature": fid, "porque": paso["porque"]})
 
         out["features"].append(info)
 

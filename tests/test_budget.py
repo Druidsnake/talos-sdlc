@@ -110,6 +110,18 @@ def main():
     results.append(check("las iteraciones tambien cuentan (regla 33.3)",
                          peor == 3 and "iterations" in filas[0]["excedidos"]))
 
+    # Estar JUSTO en el limite no es estar dentro: es no tener nada mas.
+    # Reportarlo como ok hacia creer que se podia seguir, y el sistema se
+    # plantaba despues sin explicacion.
+    p = proyecto([feat("F001", budget={"max_iterations": 3})],
+                 {"F001": {"cost_usd": 0, "iterations": 3, "wall_minutes": 0}})
+    filas, peor = b.evaluar(p)
+    results.append(check(
+        "en el limite exacto reporta agotado, no ok",
+        peor == 3 and filas[0]["estado"] == "agotado"
+        and "iterations" in filas[0]["agotados"],
+        f"{filas[0]}"))
+
     # ---------- el caso 33.8 ----------
     #
     # Dentro del limite total, pero sin saldo para UNA invocacion del tier que
