@@ -30,6 +30,7 @@ QUE CREA
     orchestration/state.json    estado del programa
     orchestration/locks.json    leases activos
     orchestration/.gitignore    excluye events/ y evidence/
+    .gitignore                  agrega .talos/ si esta vendoreado
 
     Es idempotente: correrlo dos veces no pisa nada.
     Valida lo que genera; si Talos produce algo invalido, falla.
@@ -102,6 +103,24 @@ evidence/
 dry-run/
 EOF
     note "creado orchestration/.gitignore"
+fi
+
+# Talos vendoreado son cientos de archivos. Sin decidir que hacer con ellos,
+# quedan como ruido permanente en el work tree del proyecto: cada git status
+# los lista y tapan lo que la persona si esta cambiando.
+#
+# Se ignora por defecto. Fijar la version de Talos con el proyecto es una
+# decision valida, y para tomarla alcanza con borrar la linea; dejar el ruido
+# sin decidir no es una decision, es un descuido.
+if [ -d .talos ] && ! grep -qE '^/?\.talos/?$' .gitignore 2>/dev/null; then
+    {
+        [ -f .gitignore ] && [ -s .gitignore ] && echo ""
+        echo "# Talos vendoreado. Son cientos de archivos del sistema, no del producto."
+        echo "# Si preferis fijar la version de Talos junto al proyecto, borra esta linea."
+        echo ".talos/"
+    } >> .gitignore
+    note "agregado .talos/ a .gitignore"
+    created=$((created + 1))
 fi
 
 if [ "$WITH_SPEC" -eq 1 ]; then
