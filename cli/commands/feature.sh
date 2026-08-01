@@ -528,6 +528,14 @@ fi
 if [ "$sub" = release ]; then
     actual=$(talos_role_current 2>/dev/null || echo "")
     talos_role_deactivate
+    # Lo que instalo el shim lo retira el shim. El nucleo no sabe que dejo:
+    # eso es especifico del runtime.
+    for _rf in orchestration/features/*/.runtime; do
+        [ -f "$_rf" ] || continue
+        _sh="$SYS/hooks/agent/$(cat "$_rf")/install.sh"
+        [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall | sed 's/^/  /'
+        rm -f "$_rf"
+    done
     if [ -n "$actual" ]; then
         echo "rol $actual liberado: Talos ya no gobierna esta sesion"
     else
@@ -608,8 +616,37 @@ if [ "$sub" = dispatch ]; then
     talos_role_brief "$ROLE" "$FEAT" > "$brief_file"
     printf '  brief    %s (%s lineas)\n' "$brief_file" "$(wc -l < "$brief_file" | tr -d ' ')"
 
-    # El nucleo compone la identidad; el adapter solo arranca el proceso.
-    aargs="--append-system-prompt $(printf '%s' "$brief_file")"
+    # El nucleo compone la identidad. COMO se la entrega a un agente concreto
+    # es especifico de su runtime, asi que lo hace el shim de ese runtime.
+    #
+    # Antes se pasaba --append-system-prompt con la RUTA del brief. Esa opcion
+    # espera el texto: el agente recibia la cadena "orchestration/.../brief.md"
+    # como system prompt y arrancaba sin instrucciones ni alcance, sin que nada
+    # lo dijera.
+    _rt=$(printf '%s' "$KIND" | tr 'A-Z' 'a-z')
+    # El nombre del runtime lo elige el adapter; el del shim, el producto que
+    # envuelve. Los une hooks/agent/runtimes.tsv, en la capa de shims.
+    _shim=$(grep -v '^#' "$SYS/hooks/agent/runtimes.tsv" 2>/dev/null \
+            | awk -F'\t' -v k="$_rt" '$1 == k {print $2; exit}')
+    [ -n "$_shim" ] || _shim="$_rt"
+    instalador="$SYS/hooks/agent/$_shim/install.sh"
+    if [ -x "$instalador" ]; then
+        if "$instalador" "$PROJ" "$SYS" "$brief_file"; then
+            printf '  ok   enforcement instalado en el runtime %s\n' "$KIND"
+        else
+            echo "  FALL no se pudo instalar el enforcement en el runtime"
+            echo "  Sin el hook, el alcance queda declarado y no impuesto."
+            talos_role_deactivate
+            exit 5
+        fi
+    else
+        echo "  FALL no hay shim de enforcement para el runtime $KIND"
+        echo "  Despachar sin bloqueo seria despachar sin alcance."
+        echo "  Ver hooks/agent/README.md: un shim por runtime."
+        talos_role_deactivate
+        exit 2
+    fi
+    aargs=""
     set +e
     out=$(talos_capability_run ExecutionAdapter start_agent \
           "{\"name\":\"talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
@@ -627,6 +664,8 @@ if [ "$sub" = dispatch ]; then
     # Quien siga -work, test- necesita saber donde quedo. Sin esto habria que
     # pasarle el pane a mano en cada paso.
     printf '%s\n' "$PANE" > "orchestration/features/$FEAT/.pane"
+    # Quien libere el rol necesita saber a que shim pedirle que se retire.
+    printf '%s\n' "$_shim" > "orchestration/features/$FEAT/.runtime"
     echo ""
     echo "  El rol queda activo hasta  talos feature release $FEAT"
     exit 0

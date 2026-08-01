@@ -1,0 +1,9 @@
+# Que shim sirve a que runtime.
+#
+# El nombre del runtime lo elige el ExecutionAdapter -herdr los llama claude,
+# codex, opencode-, y los shims se llaman por el producto al que envuelven.
+# Esta tabla une las dos cosas EN LA CAPA DE SHIMS, para que el nucleo no tenga
+# que conocer el vocabulario de ningun adapter.
+#
+# formato: <runtime>\t<directorio del shim>
+claude	claude-code

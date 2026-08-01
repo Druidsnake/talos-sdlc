@@ -19,7 +19,25 @@ set -eu
 
 AGENT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 HOOKS_DIR=$(dirname "$AGENT_DIR")
-ROOT=$(dirname "$HOOKS_DIR")
+SYS=$(dirname "$HOOKS_DIR")
+
+# Dos raices distintas, como exige la seccion 8:
+#   SYS   -> donde vive Talos      (.talos/ vendoreado, o el repo si se autohospeda)
+#   ROOT  -> donde vive el trabajo (spec/, orchestration/, src/)
+#
+# Confundirlas rompe el bloqueo entero y en silencio: con Talos vendoreado,
+# dirname(hooks/) da .talos/, ahi no hay orchestration/.current-role, el rol
+# queda vacio y la regla "sin rol la llamada pasa" deja pasar TODO.
+#
+# Es decir: el mecanismo 2 quedaba inerte justo en la instalacion normal.
+if [ -n "${TALOS_PROJECT_ROOT:-}" ]; then
+    ROOT="$TALOS_PROJECT_ROOT"
+else
+    case "$SYS" in
+        */.talos) ROOT=$(dirname "$SYS") ;;
+        *)        ROOT="$SYS" ;;
+    esac
+fi
 
 if [ $# -ne 2 ]; then
     echo "uso: check-tool-call.sh <herramienta> <ruta>" >&2

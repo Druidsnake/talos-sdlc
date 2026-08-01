@@ -322,6 +322,38 @@ def main():
     results.append(check("Developer NO puede tocar los workflows de CI",
                          scope("Developer", ".github/workflows/ci.yml") != 0))
 
+    # EL BLOQUEO CON TALOS VENDOREADO.
+    #
+    # check-tool-call.sh calculaba la raiz como dirname(hooks/), que con Talos
+    # en .talos/ da .talos/ y no el proyecto. Ahi no hay
+    # orchestration/.current-role, el rol quedaba vacio, y la regla "sin rol la
+    # llamada pasa" dejaba pasar TODO. El mecanismo 2 estaba inerte justo en la
+    # instalacion normal, y sin decirlo.
+    vend = project()
+    (vend / "orchestration").mkdir(exist_ok=True)
+    (vend / "orchestration" / ".current-role").write_text("Developer\n")
+
+    def hook(path_rel, root):
+        payload = json.dumps({"tool_name": "Write",
+                              "tool_input": {"file_path": path_rel}})
+        p = subprocess.run(
+            [str(root / ".talos" / "hooks" / "agent" / "claude-code" / "pre-tool-use.sh")],
+            input=payload, capture_output=True, text=True, cwd=root,
+            env={"PATH": "/usr/bin:/bin:/usr/local/bin",
+                 "HOME": str(pathlib.Path.home())})
+        return p.returncode
+
+    results.append(check(
+        "con Talos vendoreado, el bloqueo PERMITE lo que el rol permite",
+        hook("src/a.py", vend) == 0))
+    results.append(check(
+        "y DENIEGA lo que el rol prohibe (mecanismo 2 vivo con .talos/)",
+        hook("spec/x.md", vend) != 0,
+        "sin esto el bloqueo queda inerte en toda instalacion normal"))
+    results.append(check(
+        "tambien deniega orchestration/, que es del sistema",
+        hook("orchestration/state.json", vend) != 0))
+
     # El adapter no puede saber de roles: que rol se despacha es politica del
     # nucleo, lanzar el proceso es ciclo de vida (seccion 38.5).
     adapter_src = (ROOT / "adapters" / "herdr" / "run.sh").read_text()

@@ -191,6 +191,23 @@ def main():
         "run no pide un pane: Talos se arma la ventana que necesita",
         "--pane" not in (ROOT / "cli" / "commands" / "run.sh").read_text()))
 
+    # El alcance tiene que quedar IMPUESTO, no solo declarado. dispatch instala
+    # el hook en el runtime del agente; sin eso el brief es una sugerencia.
+    src_feat0 = (ROOT / "cli" / "commands" / "feature.sh").read_text()
+    results.append(check(
+        "dispatch instala el enforcement en el runtime, o no despacha",
+        "install.sh" in src_feat0 and "Despachar sin bloqueo" in src_feat0,
+        "un alcance declarado y no impuesto lo cumple el agente por criterio"))
+    # Se miran las lineas de CODIGO: los comentarios que explican por que NO
+    # usar algo tienen que poder nombrarlo.
+    codigo = [l for l in src_feat0.splitlines() if not l.lstrip().startswith("#")]
+    results.append(check(
+        "el nucleo no conoce settings.json ni CLAUDE.md: eso es del shim",
+        not any("settings.json" in l or "CLAUDE.md" in l
+                or "append-system-prompt" in l for l in codigo),
+        [l.strip()[:70] for l in codigo
+         if "settings.json" in l or "CLAUDE.md" in l or "append-system" in l]))
+
     # ---------- convergencia ----------
     #
     # La primera corrida real repitio "feature work" veinte veces hasta que la
