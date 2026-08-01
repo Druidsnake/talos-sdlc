@@ -86,9 +86,32 @@ echo "talos ${TALOS_VERSION:-?}"
 echo ""
 [ "$DRY" -eq 1 ] && echo "  modo dry-run: no se ejecuta nada" && echo ""
 
+# Regla 33.4: si se excede el presupuesto, Talos DEBE pausar o escalar. El
+# loop es justamente lo que puede gastar sin que nadie mire, asi que se
+# verifica antes de cada paso y no solo al principio.
+presupuesto_ok() {
+    set +e
+    "$PY" "$SYS/hooks/lib/budget.py" check "$PROJ" >/dev/null 2>&1
+    _brc=$?
+    set -e
+    return "$_brc"
+}
+
 paso=0
 salida=0
 while [ "$paso" -lt "$MAX_PASOS" ]; do
+    if ! presupuesto_ok; then
+        brc=$?
+        echo ""
+        case "$brc" in
+            4) echo "  el presupuesto no alcanza para el tier requerido: el loop escala"
+               echo "  Bajar el tier no es una opcion (reglas 33.7 y 33.8)." ;;
+            *) echo "  presupuesto excedido: el loop pausa (regla 33.4)" ;;
+        esac
+        echo "  Ver  talos budget"
+        salida=4
+        break
+    fi
     data=$("$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" json 2>/dev/null) || {
         echo "  no se pudo derivar el estado"; exit 2; }
 

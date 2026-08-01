@@ -35,6 +35,7 @@ run "herdr: adapter productivo y cascada de binarios" $PY tests/test_herdr.py
 run "github: CoordinationAdapter y reconciliacion" $PY tests/test_github.py
 run "merge: MergeGate y CIAdapter" $PY tests/test_merge.py
 run "loop: proyeccion y orquestador" $PY tests/test_loop.py
+run "presupuestos: limites sin degradar el tier" $PY tests/test_budget.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 
