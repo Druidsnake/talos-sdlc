@@ -36,6 +36,13 @@ CAMINOS_DE_FRACASO = {
 TERMINAL = {"FEATURE_DONE", "FEATURE_FAILED", "FEATURE_ABANDONED"}
 
 
+def cargar(p, default=None):
+    try:
+        return json.loads(pathlib.Path(p).read_text())
+    except (json.JSONDecodeError, OSError):
+        return default
+
+
 def leer_transiciones(path):
     filas = []
     for linea in pathlib.Path(path).read_text().splitlines():
@@ -108,6 +115,25 @@ def emitir(out, formato):
     return 0
 
 
+def iteraciones_agotadas(root, fid):
+    """El limite de iteraciones del presupuesto es el limite de reintentos.
+
+    Un loop que reencarga trabajo mientras no haya entregable no converge: si
+    el agente no entrega, la condicion nunca cambia. La regla 33.3 ya define
+    cuantas veces se puede intentar una feature; no hace falta inventar otro
+    numero.
+    """
+    plan = cargar(root / "orchestration" / "program-plan.json", {}) or {}
+    f = next((x for x in plan.get("features", []) if x.get("id") == fid), None)
+    if not f:
+        return False
+    lim = (f.get("budget") or {}).get("max_iterations")
+    if lim is None:
+        return False
+    st = cargar(root / "orchestration" / "features" / fid / "state.json", {}) or {}
+    return (st.get("budget_consumed") or {}).get("iterations", 0) >= lim
+
+
 def trabajo_pendiente(root, fid, presentes, pane):
     """Los pasos que PRODUCEN el trabajo, no los que mueven el estado.
 
@@ -131,6 +157,10 @@ def trabajo_pendiente(root, fid, presentes, pane):
                 "necesita_pane": True}
 
     # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
+    #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
+    #    insistir, es no converger.
+    if not entregable and iteraciones_agotadas(root, fid):
+        return None
     if not entregable:
         return {"feature": fid,
                 "orden": f"talos feature work {fid} --pane {pane}",

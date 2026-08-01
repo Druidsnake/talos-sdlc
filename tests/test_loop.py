@@ -193,6 +193,35 @@ def main():
         "--pane" in (ROOT / "cli" / "commands" / "run.sh").read_text()
         and "no elige donde ejecutar" in (ROOT / "cli" / "commands" / "run.sh").read_text()))
 
+    # ---------- convergencia ----------
+    #
+    # La primera corrida real repitio "feature work" veinte veces hasta que la
+    # cota la corto. El ledger dejaba pasar el primer encargo y devolvia
+    # already_exists en los siguientes, asi que la condicion "no hay
+    # entregable" no cambiaba nunca.
+
+    src_next = (ROOT / "hooks" / "lib" / "next.py").read_text()
+    results.append(check(
+        "reencargar trabajo esta acotado por las iteraciones del presupuesto",
+        "iteraciones_agotadas" in src_next and "33.3" in src_next,
+        "el limite de reintentos ya existe en la spec; no hace falta otro"))
+
+    src_feat = (ROOT / "cli" / "commands" / "feature.sh").read_text()
+    results.append(check(
+        "cada encargo consume una iteracion",
+        "budget consume" in src_feat))
+    results.append(check(
+        "work espera a que el agente termine antes de devolver",
+        "wait_agent" in src_feat and "esperando a que el agente" in src_feat,
+        "devolver apenas se entrega el prompt deja a quien llama sin saber si hubo trabajo"))
+
+    # El adapter no puede creerle al ledger sobre un recurso que puede morirse.
+    src_herdr = (ROOT / "adapters" / "herdr" / "run.sh").read_text()
+    results.append(check(
+        "start_agent reconcilia contra los agentes vivos, no contra el ledger",
+        "agent list" in src_herdr and "puede MORIRSE" in src_herdr,
+        "el ledger dice que se hizo una vez; no dice que siga corriendo"))
+
     # ---------- la cota ----------
 
     run_src = (ROOT / "cli" / "commands" / "run.sh").read_text()

@@ -291,7 +291,31 @@ PYEOF
         exit 5
     fi
     echo "  ok   trabajo entregado al agente"
-    echo "  El agente esta trabajando. Mira su pane."
+
+    # Cada encargo consume una iteracion (regla 33.3). Sin esto el loop
+    # reencarga para siempre: la primera vez el ledger lo deja pasar, y de ahi
+    # en adelante devuelve already_exists sin hacer nada, asi que la condicion
+    # "no hay entregable" nunca cambia. El limite de iteraciones del
+    # presupuesto ES el limite de reintentos; no hace falta inventar otro.
+    "$SYS/cli/talos" budget consume "$FEAT" 0 1 0 >/dev/null 2>&1 || true
+
+    # Esperar a que el agente se asiente. Devolver apenas se entrega el prompt
+    # deja a quien llama sin forma de saber si hubo trabajo.
+    printf '  ..   esperando a que el agente termine\n'
+    set +e
+    talos_capability_run ExecutionAdapter wait_agent \
+        "{\"target\":\"$PANE\",\"timeout_ms\":\"900000\"}" >/dev/null 2>&1
+    set -e
+
+    tareas="orchestration/features/$FEAT/tasks"
+    if [ -d "$tareas" ] && [ -n "$(find "$tareas" -name task-result.json 2>/dev/null | head -1)" ]; then
+        echo "  ok   el agente dejo su entregable"
+        exit 0
+    fi
+    echo "  --   el agente termino sin dejar entregable"
+    echo ""
+    echo "  Sin ese archivo su trabajo no existe para el sistema."
+    echo "  Mira su pane: puede haber quedado esperando algo."
     exit 0
 fi
 

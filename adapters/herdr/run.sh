@@ -153,6 +153,40 @@ case "$op" in
             talos_error precondition "start_agent requiere name, kind y pane"
             exit 5
         }
+
+        # RECONCILIACION, no consulta al ledger.
+        #
+        # El ledger dice "esto ya se hizo una vez". Un agente puede MORIRSE:
+        # que se haya arrancado no significa que este corriendo. Confiar en el
+        # ledger devuelve already_exists sobre un pane vacio, y quien llamo se
+        # queda esperando a un agente que no existe.
+        #
+        # Misma leccion que con GitHub: para un recurso que puede dejar de
+        # existir, la fuente de verdad es el backend, no el registro local.
+        if [ "$DRY" != 1 ]; then
+            _vivo=$("$HERDR" agent list 2>/dev/null \
+                    | tr '}' '\n' | grep -F "\"pane_id\":\"$_pane\"" | head -1)
+            if [ -n "$_vivo" ]; then
+                _tid=$(printf '%s' "$_vivo" | first_id terminal_id)
+                _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+                printf '{"status":"already_exists","resource_ref":{"id":"%s","url":null},' "$_tid"
+                printf '"idempotency_key":"%s","dry_run":false}\n' "$_key"
+                exit 0
+            fi
+            # No hay agente vivo: si el ledger tiene una entrada vieja, esta
+            # obsoleta. Se arranca igual.
+            _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+            _out=$(herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane") || {
+                printf '{"status":"error","error_class":"adapter","operation":"start_agent","message":%s}\n' \
+                    "$(printf '%s' "$_out" | talos_json_string)" >&2
+                exit 5
+            }
+            _tid=$(printf '%s' "$_out" | first_id terminal_id)
+            talos_ledger_record "$_key" "$op" "{\"id\":\"$_tid\",\"url\":null}"
+            printf '{"status":"created","resource_ref":{"id":"%s","url":null},' "$_tid"
+            printf '"idempotency_key":"%s","dry_run":false}\n' "$_key"
+            exit 0
+        fi
         # agent_args son argumentos NATIVOS del agente, opacos para el
         # adapter. Quien despacha decide que identidad e instrucciones lleva;
         # el adapter solo lo arranca (seccion 38.5).
