@@ -41,9 +41,16 @@ def proyecto(features, consumos=None, costos=None):
             "last_event_seq": 0, "updated_at": "2026-08-01T00:00:00Z",
             "budget_consumed": c}))
     if costos:
+        # Formato de models-config.schema.json, no uno propio. El costo por
+        # invocacion sale de cost_per_mtok_* y de la estimacion de tokens que
+        # declara budget.py, no de un numero suelto.
         (d / "config").mkdir(exist_ok=True)
-        (d / "config" / "models.yaml").write_text(
-            "".join(f"{k}_cost_usd: {v}\n" for k, v in costos.items()))
+        lineas = ["version: 1", "tiers:"]
+        for tier, mtok_in in costos.items():
+            lineas += [f"  {tier}:", f"    model: modelo-{tier}",
+                       f"    cost_per_mtok_input: {mtok_in}",
+                       f"    cost_per_mtok_output: 0"]
+        (d / "config" / "models.yaml").write_text("\n".join(lineas) + "\n")
     return d
 
 
@@ -70,6 +77,13 @@ def main():
     results.append(check(
         "el modulo nombra explicitamente la regla 33.8",
         "33.8" in src and "degradar silenciosamente" in src))
+
+    # El costo sale del schema, no de un formato inventado. Tener dos verdades
+    # sobre la misma cosa es como empiezan a divergir.
+    results.append(check(
+        "el costo se lee del formato de models-config.schema.json",
+        "cost_per_mtok_input" in src and "_cost_usd:" not in src,
+        "un schema existe para no tener dos verdades sobre la misma cosa"))
 
     # Ningun camino del codigo devuelve un tier distinto del pedido.
     results.append(check(
@@ -103,7 +117,7 @@ def main():
 
     p = proyecto([feat("F002", tier="deep", budget={"max_cost_usd": 1.0})],
                  {"F002": {"cost_usd": 0.0, "iterations": 0, "wall_minutes": 0}},
-                 costos={"deep": 1.5, "balanced": 0.4, "fast": 0.05})
+                 costos={"deep": 15.0, "balanced": 4.0, "fast": 0.5})
     filas, peor = b.evaluar(p)
     results.append(check(
         "sin saldo para el tier requerido, escala (regla 33.8)",
@@ -116,7 +130,7 @@ def main():
     # Con saldo suficiente para el tier pedido, sigue.
     p = proyecto([feat("F002", tier="deep", budget={"max_cost_usd": 5.0})],
                  {"F002": {"cost_usd": 0.0, "iterations": 0, "wall_minutes": 0}},
-                 costos={"deep": 1.5})
+                 costos={"deep": 15.0})
     filas, peor = b.evaluar(p)
     results.append(check("con saldo para el tier pedido, no frena",
                          peor == 0 and filas[0]["tier_asequible"] is True))

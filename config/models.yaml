@@ -1,0 +1,34 @@
+version: 1
+
+# Mapeo capability_tier -> modelo concreto. Ver talos-0.0.6.md seccion 20.3.
+#
+# El nucleo NO conoce identificadores de modelo: solo tiers. Este archivo es
+# el unico lugar donde un tier se convierte en un modelo, igual que
+# config/extensions.yaml es el unico donde una capacidad se convierte en un
+# adapter. Cambiar de proveedor se hace aca y en ningun otro lado.
+#
+# El tier lo elige el plan por el RIESGO de la feature, no por el precio. El
+# presupuesto puede frenar la ejecucion, nunca bajar el tier (reglas 33.7 y
+# 33.8).
+
+tiers:
+  # Trabajo mecanico y acotado: el riesgo bajo no justifica gastar mas.
+  fast:
+    model: minimax-m3
+    provider: opencode
+    cost_per_mtok_input: 0.30
+    cost_per_mtok_output: 1.20
+
+  # El caso normal.
+  balanced:
+    model: claude-sonnet-5
+    provider: claude
+    cost_per_mtok_input: 3.00
+    cost_per_mtok_output: 15.00
+
+  # Riesgo alto o critico. El plan pide deep cuando equivocarse sale caro.
+  deep:
+    model: claude-opus-5
+    provider: claude
+    cost_per_mtok_input: 15.00
+    cost_per_mtok_output: 75.00

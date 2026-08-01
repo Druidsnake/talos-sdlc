@@ -48,23 +48,40 @@ def estado(root, fid):
     return cargar(root / "orchestration" / "features" / fid / "state.json", {}) or {}
 
 
-def costo_estimado_tier(root, tier):
-    """Costo por invocacion que declara config/models.yaml, si existe.
+def costo_estimado_tier(root, tier, tokens_por_invocacion=100_000):
+    """Costo estimado de una invocacion del tier, segun config/models.yaml.
 
-    Sin ese dato no se inventa un numero: se devuelve None y el chequeo de
-    asequibilidad se reporta como indeterminado, no como aprobado.
+    Lee la estructura que define models-config.schema.json -tiers.<tier> con
+    cost_per_mtok_input y cost_per_mtok_output- y no un formato propio. Un
+    schema existe para no tener dos verdades sobre la misma cosa.
+
+    Sin ese dato no se inventa un numero: se devuelve None y la asequibilidad
+    queda indeterminada, no aprobada.
+
+    tokens_por_invocacion es una estimacion declarada, no una medicion. Sirve
+    para comparar contra un presupuesto; el consumo real se registra aparte.
     """
+    try:
+        import yaml
+    except ImportError:
+        return None
     for cand in ("config/models.yaml", ".talos/config/models.yaml"):
         f = root / cand
         if not f.is_file():
             continue
-        for linea in f.read_text().splitlines():
-            s = linea.strip()
-            if s.startswith(f"{tier}_cost_usd:"):
-                try:
-                    return float(s.split(":", 1)[1].strip())
-                except ValueError:
-                    return None
+        try:
+            cfg = yaml.safe_load(f.read_text()) or {}
+        except yaml.YAMLError:
+            return None
+        t = ((cfg.get("tiers") or {}).get(tier) or {})
+        ent = t.get("cost_per_mtok_input")
+        sal = t.get("cost_per_mtok_output")
+        if ent is None and sal is None:
+            return None
+        # Se asume una salida de un decimo de la entrada: es una estimacion
+        # declarada, no una medicion, y esta puesta aca para poder revisarla.
+        mtok = tokens_por_invocacion / 1_000_000
+        return (ent or 0) * mtok + (sal or 0) * mtok * 0.1
     return None
 
 
