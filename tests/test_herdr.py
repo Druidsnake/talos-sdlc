@@ -287,6 +287,17 @@ def main():
         '"operation":"%s","message":%s' in (ROOT / "adapters" / "lib" / "adapter.sh").read_text(),
         "el error generico obliga a reproducir a mano lo que el adapter ya sabia"))
 
+    # Un pane recien abierto todavia no llego a su prompt. herdr responde
+    # agent_pane_busy por una carrera de un par de segundos, y sin reintento el
+    # despacho falla por algo que se resuelve solo.
+    results.append(check(
+        "start_agent reintenta acotado ante un pane que aun no esta listo",
+        "agent_pane_busy" in fuente and "_intentos" in fuente,
+        "una carrera de arranque no deberia costar el despacho"))
+    results.append(check(
+        "y el reintento tiene tope: un pane ocupado de verdad falla diciendolo",
+        "no quedo disponible tras" in fuente))
+
     # ---------- el nucleo sigue sin nombrar a Herdr ----------
 
     # Regla 38.5.5: el nucleo NO DEBE nombrar a Herdr fuera del registry y la

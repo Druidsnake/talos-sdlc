@@ -190,11 +190,38 @@ case "$op" in
             # No hay agente vivo: si el ledger tiene una entrada vieja, esta
             # obsoleta. Se arranca igual.
             _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
-            _out=$(herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane") || {
-                printf '{"status":"error","error_class":"adapter","operation":"start_agent","message":%s}\n' \
-                    "$(printf '%s' "$_out" | talos_json_string)" >&2
-                exit 5
-            }
+
+            # Un pane recien abierto todavia no llego a su prompt: el shell
+            # esta arrancando. herdr responde agent_pane_busy y quien pidio el
+            # agente se queda sin el, por una carrera de un par de segundos.
+            #
+            # Se reintenta acotado. Si el pane esta ocupado de verdad -por el
+            # shell de una persona, o por un agente que herdr todavia lista- el
+            # reintento se agota y falla diciendolo, que es lo correcto.
+            _intentos=0
+            while :; do
+                if _out=$(herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane"); then
+                    break
+                fi
+                case "$_out" in
+                    *agent_pane_busy*)
+                        _intentos=$((_intentos + 1))
+                        if [ "$_intentos" -ge 10 ]; then
+                            printf '{"status":"error","error_class":"adapter","operation":"start_agent",' >&2
+                            printf '"message":"el pane %s no quedo disponible tras %s intentos",' >&2 \
+                                "$_pane" "$_intentos"
+                            printf '"backend":%s}\n' >&2 "$(printf '%s' "$_out" | talos_json_string)"
+                            exit 5
+                        fi
+                        sleep 2
+                        ;;
+                    *)
+                        printf '{"status":"error","error_class":"adapter","operation":"start_agent","message":%s}\n' \
+                            "$(printf '%s' "$_out" | talos_json_string)" >&2
+                        exit 5
+                        ;;
+                esac
+            done
             # Un id extraido de una respuesta cualquiera no prueba que el
             # agente exista. Se verifica que quedo vivo con el nombre pedido.
             if ! "$HERDR" agent list 2>/dev/null | grep -qF "\"name\":\"$_name\""; then
