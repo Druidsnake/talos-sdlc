@@ -332,6 +332,20 @@ def main():
         bool(errors),
     ))
 
+    # doctor tiene que detectar que su tabla ya no coincide con su registry.
+    # Una proyeccion desincronizada hace que Talos resuelva contra una ligadura
+    # que su propia configuracion ya no declara, y en silencio: reporta las
+    # capacidades sanas leyendo la tabla vieja. Es la clase de deriva que Talos
+    # existe para detectar, aplicada al propio sistema.
+    doc = (ROOT / "cli" / "commands" / "doctor.sh").read_text()
+    results.append(check(
+        "doctor verifica que la tabla de capacidades no derive del registry",
+        "registro_al_dia" in doc and "build-registry.py" in doc))
+    results.append(check(
+        "y si no puede verificarlo lo dice, en vez de saltearse en silencio",
+        "no se pudo verificar la deriva" in doc,
+        "un check que puede no correr sin avisar hace asumir que paso"))
+
     # ---------- comportamiento en ejecucion ----------
 
     # Regla 37.4.4.1: dry-run-only corre sin ninguna herramienta externa

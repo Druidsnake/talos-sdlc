@@ -135,6 +135,11 @@ fi
 # registry. Ver hooks/lib/resolve-capability.sh.
 # shellcheck source=../../hooks/lib/resolve-capability.sh
 . "$SYS/hooks/lib/resolve-capability.sh"
+# gate.sh trae talos_python. Sin sourcearlo, el chequeo de deriva de mas abajo
+# no corria y no lo decia: un check que puede saltearse en silencio es peor que
+# no tenerlo, porque quien lo lee asume que paso.
+# shellcheck source=../../hooks/lib/gate.sh
+. "$SYS/hooks/lib/gate.sh"
 
 if [ -f "$SYS/config/system.yaml" ]; then
     exec_mode=$(grep -E '^execution_mode:' "$SYS/config/system.yaml" | head -1 \
@@ -147,6 +152,35 @@ if [ -f "$SYS/config/system.yaml" ]; then
 else
     exec_mode=""
     record fail si modo_ejecucion "falta config/system.yaml" "reinstala Talos"
+fi
+
+# La tabla de capacidades es una PROYECCION de config/extensions.yaml. Si
+# quedan desincronizadas, Talos resuelve contra una ligadura que su propia
+# configuracion ya no declara, y lo hace en silencio: reporta las capacidades
+# sanas leyendo la tabla vieja.
+#
+# Es la clase de deriva que Talos existe para detectar. Aplicarla al propio
+# sistema no es opcional.
+if ! talos_capability_table >/dev/null 2>&1; then
+    :
+elif ! _dpy=$(talos_python 2>/dev/null); then
+    record warn si registro_al_dia "sin python: no se pudo verificar la deriva" \
+        "instala python3 para que doctor pueda comprobarlo"
+elif [ ! -d "$SYS/tools" ]; then
+    record warn si registro_al_dia "sin tools/: no se pudo verificar la deriva" \
+        "reinstala Talos con tools/"
+else
+    _tmp=$(mktemp -d)
+    cp -R "$SYS/config" "$SYS/adapters" "$SYS/tools" "$_tmp/" 2>/dev/null
+    mkdir -p "$_tmp/hooks/generated"
+    if (cd "$_tmp" && "$_dpy" tools/build-registry.py >/dev/null 2>&1) \
+       && cmp -s "$_tmp/hooks/generated/capabilities.tsv" "$TALOS_CAP_TABLE"; then
+        record ok si registro_al_dia "la tabla coincide con extensions.yaml" ""
+    else
+        record fail si registro_al_dia "la tabla NO coincide con extensions.yaml" \
+            "python3 tools/build-registry.py"
+    fi
+    rm -rf "$_tmp"
 fi
 
 if talos_capability_table >/dev/null 2>&1; then
