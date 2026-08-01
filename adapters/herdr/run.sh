@@ -153,8 +153,19 @@ case "$op" in
             talos_error precondition "start_agent requiere name, kind y pane"
             exit 5
         }
-        talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
-            herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane"
+        # agent_args son argumentos NATIVOS del agente, opacos para el
+        # adapter. Quien despacha decide que identidad e instrucciones lleva;
+        # el adapter solo lo arranca (seccion 38.5).
+        _aargs=$(json_get agent_args)
+        if [ -n "$_aargs" ]; then
+            # shellcheck disable=SC2086
+            talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
+                herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane" \
+                    -- $_aargs
+        else
+            talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
+                herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane"
+        fi
         ;;
 
     prompt_agent)

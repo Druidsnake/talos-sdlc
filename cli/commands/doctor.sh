@@ -112,7 +112,9 @@ else
 fi
 
 # ---------- artefactos del sistema ----------
-for f in VERSION system/rules.yaml config/roles.yaml hooks/generated/write-scope.rules; do
+# roles/ pasa a ser requerido: sin las instrucciones no se puede despachar
+# un agente con rol, y despacharlo sin rol seria despacharlo sin scope.
+for f in VERSION system/rules.yaml config/roles.yaml hooks/generated/write-scope.rules roles/developer.md; do
     if [ -f "$SYS/$f" ]; then
         record ok si "archivo:$f" "presente" ""
     else

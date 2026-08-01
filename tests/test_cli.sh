@@ -35,7 +35,7 @@ git config user.name "Prueba"
 git config user.email "prueba@ejemplo.com"
 
 mkdir -p .talos
-for d in cli hooks schemas system config adapters; do cp -R "$SYS/$d" .talos/; done
+for d in cli hooks schemas system config adapters roles; do cp -R "$SYS/$d" .talos/; done
 cp "$SYS/VERSION" .talos/
 [ -d "$SYS/.venv" ] && cp -R "$SYS/.venv" .venv
 

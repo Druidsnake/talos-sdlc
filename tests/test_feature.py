@@ -43,7 +43,7 @@ def project():
     """Proyecto desechable con Talos vendoreado y un plan valido."""
     d = pathlib.Path(tempfile.mkdtemp())
     (d / ".talos").mkdir()
-    for sub in ("cli", "hooks", "schemas", "system", "config", "adapters"):
+    for sub in ("cli", "hooks", "schemas", "system", "config", "adapters", "roles"):
         shutil.copytree(ROOT / sub, d / ".talos" / sub)
     shutil.copy(ROOT / "VERSION", d / ".talos" / "VERSION")
     if (ROOT / ".venv").is_dir():
@@ -239,6 +239,74 @@ def main():
     results.append(check(
         "un start rechazado no deja lease huerfano",
         len(doc["leases"]) == 1, f"{[x['resource'] for x in doc['leases']]}"))
+
+    # ---------- despacho con rol (secciones 18 a 21) ----------
+    #
+    # Hasta ahora roles/ y config/roles.yaml eran declaraciones que nunca
+    # llegaban al agente: Talos lanzaba un agente pelado, con permisos
+    # completos. El enforcement existia del lado del sistema y no del lado del
+    # trabajo, que es donde tiene que estar.
+
+    prol = project()
+    talos(prol, "feature", "start", "F001")
+
+    # Fail-closed: un rol que no esta en el registro de scope no se despacha.
+    # Sin scope, el bloqueo dejaria pasar todo.
+    code, out = talos(prol, "feature", "dispatch", "F001",
+                      "--role", "Intruso", "--pane", "w1:p1")
+    results.append(check(
+        "RECHAZA despachar un rol que no existe en el registro de scope",
+        code == 2 and "desconocido" in out, f"exit={code}"))
+
+    results.append(check(
+        "un despacho rechazado no deja rol activo",
+        not (prol / "orchestration" / ".current-role").exists()))
+
+    # No se despacha un agente sobre una feature que no arranco.
+    code, out = talos(prol, "feature", "dispatch", "F002",
+                      "--role", "Developer", "--pane", "w1:p1")
+    results.append(check(
+        "RECHAZA despachar sobre una feature que no esta en curso",
+        code == 2 and "FEATURE_IN_PROGRESS" in out, f"exit={code}"))
+
+    # El brief lleva instrucciones Y alcance: las instrucciones solas no dicen
+    # que rutas puede tocar en esta corrida.
+    script = (f'. "{ROOT}/hooks/lib/role.sh"; talos_role_brief Developer F001')
+    brief = subprocess.run(["sh", "-c", script], capture_output=True, text=True,
+                           env={"PATH": "/usr/bin:/bin",
+                                "TALOS_SYSTEM_ROOT": str(ROOT),
+                                "HOME": str(pathlib.Path.home())}).stdout
+    results.append(check(
+        "el brief declara el alcance concreto de escritura",
+        "permitido  src/**" in brief and "prohibido  spec/**" in brief,
+        brief[:200]))
+    results.append(check(
+        "el brief incluye las instrucciones del rol",
+        "Rol: Developer" in brief, brief[-200:]))
+    results.append(check(
+        "el brief dice que el bloqueo no negocia",
+        "no consulta al agente" in brief))
+
+    # El mecanismo 2 tiene que denegar de verdad con ese rol.
+    def scope(role, path):
+        return subprocess.run(
+            [str(ROOT / "hooks" / "check-write-scope.sh"), role, path],
+            capture_output=True).returncode
+
+    results.append(check("Developer PUEDE escribir en src/", scope("Developer", "src/a.ts") == 0))
+    results.append(check("Developer NO puede escribir en spec/", scope("Developer", "spec/x.md") != 0))
+    results.append(check("Developer NO puede escribir en orchestration/",
+                         scope("Developer", "orchestration/state.json") != 0))
+    results.append(check("Developer NO puede tocar los workflows de CI",
+                         scope("Developer", ".github/workflows/ci.yml") != 0))
+
+    # El adapter no puede saber de roles: que rol se despacha es politica del
+    # nucleo, lanzar el proceso es ciclo de vida (seccion 38.5).
+    adapter_src = (ROOT / "adapters" / "herdr" / "run.sh").read_text()
+    results.append(check(
+        "el ExecutionAdapter no conoce roles ni scope (seccion 38.5)",
+        "roles.yaml" not in adapter_src and "write_paths" not in adapter_src
+        and "current-role" not in adapter_src))
 
     # ---------- el ejecutor no fuerza ----------
 

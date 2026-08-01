@@ -26,8 +26,11 @@ talos feature - ejecucion de features
 
 USO
     talos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
+    talos feature dispatch <ID> --role <ROL> --pane <PANE> [--kind KIND]
+                                  despacha un agente con rol y alcance activos
     talos feature list            estado de todas las features del plan
     talos feature show <ID>       detalle de una feature
+    talos feature release <ID>    suelta el rol activo
 
 QUE HACE start
     1. verifica que la feature exista en el plan y que sus dependencias esten
@@ -44,6 +47,17 @@ QUE HACE start
     El adapter que crea issue y rama sale del registry, no esta cableado.
     En dry-run-only las operaciones se simulan y quedan en el ledger.
 
+QUE HACE dispatch
+    1. verifica que la feature este en FEATURE_IN_PROGRESS
+    2. verifica que el rol exista en el registro de scope
+    3. activa el rol: a partir de ahi toda escritura del agente pasa por el
+       mecanismo 2 y se deniega fuera de write_paths
+    4. compone el brief -instrucciones del rol + alcance concreto- y arranca
+       el agente por el ExecutionAdapter
+
+    El rol lo fija Talos, no lo elige el agente. Un rol desconocido no se
+    despacha: sin scope, el bloqueo dejaria pasar todo.
+
 SALIDA
     0  la feature quedo en FEATURE_IN_PROGRESS
     1  error de uso
@@ -56,6 +70,8 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
 # shellcheck source=../../hooks/lib/transition.sh
 . "$SYS/hooks/lib/transition.sh"
+# shellcheck source=../../hooks/lib/role.sh
+. "$SYS/hooks/lib/role.sh"
 # shellcheck source=../../hooks/lib/resolve-capability.sh
 . "$SYS/hooks/lib/resolve-capability.sh"
 
@@ -100,8 +116,92 @@ if [ "$sub" = show ]; then
     exit 0
 fi
 
+# ---------- release ----------
+
+if [ "$sub" = release ]; then
+    actual=$(talos_role_current 2>/dev/null || echo "")
+    talos_role_deactivate
+    if [ -n "$actual" ]; then
+        echo "rol $actual liberado: Talos ya no gobierna esta sesion"
+    else
+        echo "no habia rol activo"
+    fi
+    exit 0
+fi
+
+# ---------- dispatch ----------
+
+if [ "$sub" = dispatch ]; then
+    ROLE=""; PANE=""; KIND="claude"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --role) ROLE="${2:?falta el rol}"; shift 2 ;;
+            --pane) PANE="${2:?falta el pane}"; shift 2 ;;
+            --kind) KIND="${2:?falta el kind}"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$ROLE" ] || { echo "talos: falta --role" >&2; exit 1; }
+    [ -n "$PANE" ] || { echo "talos: falta --pane" >&2; exit 1; }
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+
+    # Un agente no se despacha sobre una feature que no arranco.
+    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
+    if [ "$est" != FEATURE_IN_PROGRESS ]; then
+        printf '  FALL %s esta en %s, no en FEATURE_IN_PROGRESS\n' "$FEAT" "${est:--}"
+        echo ""
+        echo "  Un Developer se despacha sobre trabajo en curso. Arranca con:"
+        echo "    talos feature start $FEAT"
+        exit 2
+    fi
+
+    # Fail-closed: sin rol conocido no hay scope, y sin scope el bloqueo deja
+    # pasar todo. Es preferible no despachar.
+    if ! talos_role_activate "$ROLE" "$FEAT"; then
+        exit 2
+    fi
+    printf '  rol      %s (activo)\n' "$ROLE"
+    printf '  feature  %s\n' "$FEAT"
+    printf '  pane     %s\n\n' "$PANE"
+
+    printf '  alcance de escritura que se le impone:\n'
+    talos_role_scope "$ROLE" | while IFS='	' read -r v g; do
+        [ -z "$v" ] && continue
+        printf '    %-9s %s\n' "$v" "$g"
+    done
+    echo ""
+
+    brief_file="orchestration/features/$FEAT/brief.md"
+    mkdir -p "$(dirname "$brief_file")"
+    talos_role_brief "$ROLE" "$FEAT" > "$brief_file"
+    printf '  brief    %s (%s lineas)\n' "$brief_file" "$(wc -l < "$brief_file" | tr -d ' ')"
+
+    # El nucleo compone la identidad; el adapter solo arranca el proceso.
+    aargs="--append-system-prompt $(printf '%s' "$brief_file")"
+    set +e
+    out=$(talos_capability_run ExecutionAdapter start_agent \
+          "{\"name\":\"talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        printf '  FALL el ExecutionAdapter no pudo arrancar el agente\n'
+        printf '%s\n' "$out" | sed 's/^/    /' | head -4
+        talos_role_deactivate
+        echo ""
+        echo "  Rol liberado: no queda gobernando una sesion que no arranco."
+        exit 5
+    fi
+    printf '  agente   arrancado por el ExecutionAdapter\n'
+    echo ""
+    echo "  El rol queda activo hasta  talos feature release $FEAT"
+    exit 0
+fi
+
 [ "$sub" = start ] || { echo "talos: subcomando desconocido: $sub" >&2
-                        echo "talos: disponibles: start, list, show" >&2; exit 1; }
+                        echo "talos: disponibles: start, dispatch, list, show, release" >&2; exit 1; }
 [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
 
 # ---------- start ----------
