@@ -36,6 +36,10 @@ case "$op" in
         talos_mutate "$op" "$run" "$feat" "$args" \
             '{"id":"exec:agent","url":null}'
         ;;
+    close_session)
+        talos_mutate "$op" "$run" "$feat" "$args" \
+            '{"id":"exec:closed","url":null}'
+        ;;
     prompt_agent|run_command)
         # at_most_once: respuesta no reproducible / efectos de lado arbitrarios.
         talos_mutate "$op" "$run" "$feat" "$args" \

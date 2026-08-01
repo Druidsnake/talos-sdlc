@@ -467,10 +467,22 @@ def main():
 
     # El rol y la referencia se sueltan juntos. Una referencia que sobrevive al
     # rol apunta a un agente que ya nadie gobierna.
-    talos(pa, "feature", "release", "F001")
+    #
+    # Se vuelve a ligar el adapter que abrio la sesion: cerrar un panel cuyo id
+    # es de otro adapter seria cerrarle el panel a cualquiera.
+    espia(pa)
+    code, out = talos(pa, "feature", "release", "F001")
     results.append(check(
         "release suelta tambien la referencia del agente",
         not ref_p.exists()))
+    cierres = spy_lines(log, "close_session")
+    results.append(check(
+        "y cierra la sesion que Talos abrio (seccion 38.5)",
+        cierres and '"pane":"spy:pane"' in cierres[0],
+        f"{cierres[:1]} {out[-200:]}"))
+    results.append(check(
+        "el cierre se reporta a quien libera",
+        "spy:pane" in out and "cerrada" in out, out[-300:]))
     code, out = talos(pa, "feature", "work", "F001")
     results.append(check(
         "sin referencia, work manda a despachar en vez de adivinar un target",

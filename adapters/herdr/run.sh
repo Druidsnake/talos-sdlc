@@ -268,6 +268,28 @@ case "$op" in
                 ${_tmo:+--timeout} ${_tmo:+"$_tmo"}
         ;;
 
+    close_session)
+        check_version >/dev/null || exit 2
+        _pane=$(json_get pane)
+        [ -n "$_pane" ] || {
+            talos_error precondition "close_session requiere pane"
+            exit 5
+        }
+        # Cerrar un panel que ya no existe NO es un error: el resultado que se
+        # pedia -que no este- ya se cumple. Fallar aca obligaria a quien libera
+        # una feature a distinguir entre "no pude cerrar" y "no habia nada que
+        # cerrar", y lo dejaria sin poder soltar el rol por un panel que una
+        # persona ya cerro a mano.
+        if [ "$DRY" != 1 ] && ! "$HERDR" pane list 2>/dev/null | grep -qF "\"pane_id\":\"$_pane\""; then
+            printf '{"status":"already_exists","resource_ref":{"id":"%s","url":null},' "$_pane"
+            printf '"idempotency_key":"%s","dry_run":false,"note":"el panel ya no existe"}\n' \
+                "$(talos_idempotency_key "$run" "$feat" "$op" "$args")"
+            exit 0
+        fi
+        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+            herdr_do pane close "$_pane"
+        ;;
+
     wait_agent)
         check_version >/dev/null || exit 2
         _target=$(json_get target); _until=$(json_get until); _timeout=$(json_get timeout_ms)

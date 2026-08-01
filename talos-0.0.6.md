@@ -1893,8 +1893,11 @@ El adapter de Herdr ES responsable del **ciclo de vida de procesos**:
 - esperar estados,
 - leer salida,
 - ejecutar comandos,
+- cerrar sesiones de ejecución,
 - reportar metadata de ejecución.
 ```
+
+**Corrección respecto de 0.0.6 inicial: la lista declaraba un ciclo de vida sin cierre.** Talos abría sesiones y no cerraba ninguna: cada despacho dejaba un panel ocupando la pantalla, y quien decidiera que una sesión ya no hace falta -una persona o un rol coordinador- no tenía por dónde pedirlo. Un ciclo de vida con nacimiento y sin fin no es un ciclo.
 
 El adapter de Herdr NO DEBE:
 

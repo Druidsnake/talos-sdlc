@@ -37,8 +37,11 @@ REQUIRED = {
 EXPECTED_OPS = {
     "FileSystemAdapter": {"read_file", "write_file", "list_dir", "ensure_dir", "validate_path"},
     "ModelProviderAdapter": {"list_models", "resolve_profile", "invoke_model", "estimate_cost", "report_usage"},
+    # close_session es parte del ciclo de vida (seccion 38.5): un adapter que
+    # abre sesiones y no las cierra deja paneles muertos para siempre.
     "ExecutionAdapter": {"create_workspace", "create_session", "start_agent", "prompt_agent",
-                         "wait_agent", "read_agent", "run_command", "report_metadata"},
+                         "wait_agent", "read_agent", "run_command", "close_session",
+                         "report_metadata"},
     "CoordinationAdapter": {"create_issue", "create_branch", "open_pr", "get_pr_checks",
                             "request_review", "merge_pr"},
     "CIAdapter": {"run_checks", "get_check_status", "publish_report"},

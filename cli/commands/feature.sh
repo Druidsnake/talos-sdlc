@@ -579,10 +579,28 @@ if [ "$sub" = release ]; then
             [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall | sed 's/^/  /'
             rm -f "$_rf"
         fi
-        # La referencia al agente se suelta con el rol. Sobrevivirlo la deja
+        _fid=$(basename "$_fd")
+        # Talos abrio la sesion: Talos la cierra. Dejarla abierta acumula
+        # paneles muertos ocupando pantalla, y quien mira la maquina no puede
+        # distinguir un agente trabajando de uno que ya nadie gobierna.
+        #
+        # Un cierre fallido NO impide soltar el rol: el rol es lo que gobierna
+        # la sesion, y quedarse con el rol tomado por un panel que no se pudo
+        # cerrar es peor que un panel de mas.
+        if _pane=$(talos_agent_ref_field "$_fid" pane 2>/dev/null); then
+            if [ -n "$_pane" ] && talos_agent_ref_check "$_fid" 2>/dev/null; then
+                if talos_capability_run ExecutionAdapter close_session \
+                       "{\"pane\":\"$_pane\"}" >/dev/null 2>&1; then
+                    printf '  sesion %s cerrada\n' "$_pane"
+                else
+                    printf '  la sesion %s no se pudo cerrar: revisala a mano\n' "$_pane"
+                fi
+            fi
+        fi
+        # La referencia al agente se suelta con el rol. Sobrevivirla la deja
         # apuntando a un agente que ya nadie gobierna, y el paso siguiente le
         # manda trabajo igual.
-        talos_agent_ref_clear "$(basename "$_fd")"
+        talos_agent_ref_clear "$_fid"
     done
     if [ -n "$actual" ]; then
         echo "rol $actual liberado: Talos ya no gobierna esta sesion"

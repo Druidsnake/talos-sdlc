@@ -45,6 +45,12 @@ operations:
     timeout_seconds: 900
     max_attempts: 1
 
+  - name: close_session
+    mutating: true
+    idempotency: required
+    timeout_seconds: 30
+    max_attempts: 3
+
   - name: wait_agent
     mutating: false
     timeout_seconds: 900
