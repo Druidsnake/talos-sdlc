@@ -46,6 +46,8 @@ EMPEZAR
 TRABAJAR
     talos spec check [ruta]       valida el spec del producto
     talos status                  estado del proyecto
+    talos next                    que sigue, derivado del spec y el plan
+    talos run [--max N]           avanza mientras los gates autoricen
     talos rules [topic]           reglas activas y su mecanismo
     talos adapters                capacidades y que implementacion las satisface
     talos gate <maq> <de> <a>     evalua si una transicion esta autorizada
@@ -96,7 +98,7 @@ case "$cmd" in
     version|--version)
         echo "talos $TALOS_VERSION"
         ;;
-    init|doctor|status|rules|adapters|gate)
+    init|doctor|status|rules|adapters|gate|next|run)
         exec "$CLI_DIR/commands/$cmd.sh" "$@"
         ;;
     spec)
