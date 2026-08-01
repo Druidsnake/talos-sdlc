@@ -118,3 +118,46 @@ talos_role_brief() {
     printf -- '--- instrucciones del rol ---\n\n'
     cat "$_ins"
 }
+
+# ---------- contrato de salida (evidencia que produce el rol) ----------
+
+TALOS_ROLE_OUTPUT="${TALOS_ROLE_OUTPUT:-$TALOS_ROLE_SYS/hooks/generated/role-output.tsv}"
+
+# talos_role_output <rol>  -> <schema><TAB><plantilla-de-ruta>
+talos_role_output() {
+    [ -f "$TALOS_ROLE_OUTPUT" ] || return 1
+    _row=$(grep -v '^#' "$TALOS_ROLE_OUTPUT" | awk -F'\t' -v r="$1" '$1 == r {print $2 "\t" $3; exit}')
+    [ -n "$_row" ] || return 1
+    printf '%s' "$_row"
+}
+
+# talos_role_output_path <rol> <feature_id> [task_id]
+# Resuelve la plantilla. Un {task_id} sin valor queda como comodin para buscar.
+talos_role_output_path() {
+    _tpl=$(talos_role_output "$1" | cut -f2) || return 1
+    _p=$(printf '%s' "$_tpl" | sed "s|{feature_id}|$2|g")
+    if [ -n "${3:-}" ]; then
+        printf '%s' "$_p" | sed "s|{task_id}|$3|g"
+    else
+        printf '%s' "$_p" | sed "s|{task_id}|*|g"
+    fi
+}
+
+# talos_role_output_schema <rol>
+talos_role_output_schema() {
+    talos_role_output "$1" | cut -f1
+}
+
+# La evidencia que produce un agente NO es verificable salvo que traiga salida
+# de una herramienta determinista (regla 23.3.6). El kind se deduce del schema
+# del entregable, no se elige a dedo.
+talos_role_evidence_kind() {
+    case "$1" in
+        task-result)    printf 'TaskResultSet' ;;
+        review)         printf 'Review' ;;
+        program-plan)   printf 'ProgramPlan' ;;
+        feature-state)  printf 'FeatureStateSet' ;;
+        spec-manifest)  printf 'SpecDraft' ;;
+        *)              return 1 ;;
+    esac
+}

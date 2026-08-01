@@ -19,6 +19,7 @@ except ImportError:
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "config" / "roles.yaml"
 OUT = ROOT / "hooks" / "generated" / "write-scope.rules"
+OUT_ARTIFACTS = ROOT / "hooks" / "generated" / "role-output.tsv"
 
 
 def main():
@@ -41,6 +42,25 @@ def main():
 
     rules = sum(1 for line in lines if "\t" in line)
     print(f"escrito {OUT.relative_to(ROOT)}: {rules} reglas, {len(cfg['roles'])} roles")
+
+    # Contrato de salida por rol. Sin esto, "el rol entrega X" es una nota en
+    # un YAML que nadie consulta al momento de recoger la evidencia.
+    art = [
+        "# GENERADO por tools/build-rules.py - NO EDITAR A MANO",
+        "# fuente: config/roles.yaml (output_artifact)",
+        "# formato: <rol>\\t<schema>\\t<plantilla-de-ruta>",
+        "# La plantilla admite {feature_id} y {task_id}.",
+        "",
+    ]
+    n_art = 0
+    for role, spec in sorted(cfg["roles"].items()):
+        oa = spec.get("output_artifact")
+        if not oa:
+            continue
+        art.append(f"{role}\t{oa['schema']}\t{oa['path']}")
+        n_art += 1
+    OUT_ARTIFACTS.write_text("\n".join(art) + "\n")
+    print(f"escrito {OUT_ARTIFACTS.relative_to(ROOT)}: {n_art} contratos de salida")
     return 0
 
 

@@ -1,0 +1,10 @@
+# GENERADO por tools/build-rules.py - NO EDITAR A MANO
+# fuente: config/roles.yaml (output_artifact)
+# formato: <rol>\t<schema>\t<plantilla-de-ruta>
+# La plantilla admite {feature_id} y {task_id}.
+
+Developer	task-result	orchestration/features/{feature_id}/tasks/{task_id}/task-result.json
+FeatureLead	feature-state	orchestration/features/{feature_id}/feature-state.json
+Planner	program-plan	orchestration/program-plan.json
+Reviewer	review	orchestration/reports/{feature_id}/review.json
+SpecAssistant	spec-manifest	spec/manifest.yaml

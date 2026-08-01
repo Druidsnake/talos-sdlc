@@ -28,6 +28,9 @@ USO
     talos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
     talos feature dispatch <ID> --role <ROL> --pane <PANE> [--kind KIND]
                                   despacha un agente con rol y alcance activos
+    talos feature collect <ID>    recoge el entregable del rol como evidencia
+    talos feature test <ID> --pane <PANE> --command "<CMD>"
+                                  corre una verificacion y sella LocalTestReport
     talos feature list            estado de todas las features del plan
     talos feature show <ID>       detalle de una feature
     talos feature release <ID>    suelta el rol activo
@@ -114,6 +117,158 @@ if [ "$sub" = show ]; then
     [ -f "$sf" ] || { echo "talos: $FEAT no arranco todavia" >&2; exit 2; }
     "$PY" -m json.tool "$sf"
     exit 0
+fi
+
+# ---------- collect ----------
+#
+# La otra mitad de la costura: ya controlamos que ENTRA al agente (rol y
+# alcance); esto controla que SALE. El rol declara su entregable en
+# config/roles.yaml y hasta ahora nadie lo recogia.
+
+if [ "$sub" = collect ]; then
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    ROLE=$(talos_role_current 2>/dev/null || echo "")
+    [ -n "$ROLE" ] || { echo "talos: no hay rol activo; nada que recoger" >&2
+                        echo "talos: talos feature dispatch $FEAT --role <ROL> --pane <PANE>" >&2
+                        exit 2; }
+
+    schema=$(talos_role_output_schema "$ROLE") || {
+        echo "talos: el rol $ROLE no declara entregable" >&2; exit 2; }
+    patron=$(talos_role_output_path "$ROLE" "$FEAT")
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  rol       %s\n  entregable %s\n  schema    %s\n\n' "$ROLE" "$patron" "$schema"
+
+    # shellcheck disable=SC2086
+    encontrados=$(ls $patron 2>/dev/null || true)
+    if [ -z "$encontrados" ]; then
+        echo "  FALL el agente no dejo su entregable"
+        echo ""
+        echo "  Sin ese archivo su trabajo no existe para el sistema."
+        echo "  Ver roles/$(printf '%s' "$ROLE" | tr 'A-Z' 'a-z').md"
+        exit 3
+    fi
+
+    mkdir -p "$EVDIR"
+    n=0; malos=0
+    for art in $encontrados; do
+        printf '  %s\n' "$art"
+        if ! "$SYS/hooks/validate-artifact.sh" "$schema" "$art" >/dev/null 2>&1; then
+            printf '    FALL no valida contra %s.schema.json\n' "$schema"
+            malos=$((malos + 1))
+            continue
+        fi
+        printf '    ok   valida contra %s.schema.json\n' "$schema"
+
+        kind=$(talos_role_evidence_kind "$schema") || kind=TaskResultSet
+        dg=$(shasum -a 256 "$art" 2>/dev/null | awk '{print $1}')
+        evid="ev-$FEAT-$(basename "$art" .json)-$(date -u +%Y%m%d%H%M%S)-$n"
+        # Regla 23.3.6: la evidencia producida por un agente NO es verificable
+        # salvo que traiga salida de una herramienta determinista. Un entregable
+        # que el agente escribio es su palabra, no una medicion.
+        cat > "$EVDIR/$evid.json" <<EOF2
+{"id":"$evid","kind":"$kind","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "produced_by":"role:$ROLE","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "artifact_refs":["$art"],"digest":"pendiente","verifiable":false,
+ "payload":{"schema":"$schema","artifact_sha256":"$dg"}}
+EOF2
+        "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
+        printf '    ok   sellada como %s (verifiable: false)\n' "$kind"
+        n=$((n + 1))
+    done
+
+    echo ""
+    if [ "$malos" -gt 0 ]; then
+        echo "  $malos entregable(s) invalido(s): no se sellaron"
+        echo "  Un entregable que no valida contra su schema no es evidencia."
+        exit 3
+    fi
+    printf '  %s evidencia(s) recogida(s)\n' "$n"
+    echo "  Es la palabra del agente, no una medicion: no satisface un gate critico."
+    exit 0
+fi
+
+# ---------- test ----------
+#
+# La unica evidencia VERIFICABLE que el ExecutionAdapter puede producir hoy.
+# Regla 30.4.3: LocalTestReport es evidencia de avance, no de pase.
+
+if [ "$sub" = test ]; then
+    PANE=""; CMD=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --pane)    PANE="${2:?falta el pane}"; shift 2 ;;
+            --command) CMD="${2:?falta el comando}"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$PANE" ] || { echo "talos: falta --pane" >&2; exit 1; }
+    [ -n "$CMD" ]  || { echo "talos: falta --command" >&2; exit 1; }
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  feature  %s\n  comando  %s\n\n' "$FEAT" "$CMD"
+
+    outdir="orchestration/reports/$FEAT"
+    mkdir -p "$outdir" "$EVDIR"
+    log="$outdir/localtest-$(date -u +%Y%m%d%H%M%S).log"
+    rcfile="$log.rc"
+
+    # La salida va a un archivo, no a la pantalla. Leer el pane es poco fiable:
+    # lo que sale de la pantalla alternativa no vuelve, y el ancho del pane
+    # decide cuanto se conserva. Un archivo es determinista.
+    wrapped="{ $CMD ; } > $log 2>&1 ; echo \$? > $rcfile"
+    # Si el adapter no pudo lanzar el comando, no tiene sentido esperar dos
+    # minutos por un codigo de salida que nunca va a llegar.
+    set +e
+    disp=$(talos_capability_run ExecutionAdapter run_command \
+           "{\"pane\":\"$PANE\",\"command\":\"$wrapped\"}" 2>&1)
+    drc=$?
+    set -e
+    if [ "$drc" -ne 0 ]; then
+        echo "  FALL el ExecutionAdapter no pudo lanzar el comando"
+        printf '%s\n' "$disp" | sed 's/^/    /' | head -3
+        exit 5
+    fi
+
+    # Esperar el codigo de salida. Sin el no hay medicion, solo una suposicion.
+    waited=0
+    while [ ! -f "$rcfile" ] && [ "$waited" -lt 120 ]; do
+        sleep 2; waited=$((waited + 2))
+    done
+    if [ ! -f "$rcfile" ]; then
+        echo "  FALL el comando no termino en ${waited}s"
+        echo "  Sin codigo de salida no hay evidencia: no se sella nada."
+        exit 3
+    fi
+
+    rc=$(cat "$rcfile")
+    printf '  exit     %s\n' "$rc"
+    printf '  salida   %s\n\n' "$log"
+    tail -6 "$log" 2>/dev/null | sed 's/^/    /'
+
+    dg=$(shasum -a 256 "$log" 2>/dev/null | awk '{print $1}')
+    evid="ev-$FEAT-localtest-$(date -u +%Y%m%d%H%M%S)"
+    # verifiable: true. Es salida de una herramienta determinista con su codigo
+    # de salida, no la afirmacion de un agente (regla 23.3.6).
+    cat > "$EVDIR/$evid.json" <<EOF2
+{"id":"$evid","kind":"LocalTestReport","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "produced_by":"adapter:ExecutionAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "artifact_refs":["$log"],"digest":"pendiente","verifiable":true,
+ "payload":{"command":"$(printf '%s' "$CMD" | sed 's/"/\\"/g')","exit_code":$rc,"log_sha256":"$dg"}}
+EOF2
+    "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
+
+    echo ""
+    printf '  sellada  LocalTestReport (verifiable: true)\n'
+    echo "  Regla 30.4.3: es evidencia de AVANCE, no de pase."
+    echo "  El pase lo determina el CheckRunSet del CIAdapter."
+    [ "$rc" -eq 0 ] && exit 0
+    exit 3
 fi
 
 # ---------- release ----------
