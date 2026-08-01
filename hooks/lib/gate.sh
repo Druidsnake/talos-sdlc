@@ -152,10 +152,24 @@ talos_gate_eval() {
         _reasons="{\"code\":\"NO_EVIDENCE_REQUIRED\",\"status\":\"pass\",\"detail\":\"-\"},"
     fi
 
-    # Regla 24.4.6: un gate humano nunca decide por su cuenta que se avanza.
+    # Regla 24.4.6: un gate humano no decide por su cuenta que se avanza.
+    #
+    # Pero "no decide por su cuenta" no es "ignora la decision ya tomada". Si la
+    # transicion exige HumanDecision o HumanApproval y esa evidencia esta
+    # presente, la persona YA decidio: volver a pedirla dejaria esas
+    # transiciones fuera de alcance para siempre.
+    #
+    # needs_human es para cuando falta la decision, no para cuando sobra.
     if [ "$_decision" = pass ] && _gate_is_in "$_gate" $TALOS_HUMAN_GATES; then
-        _decision=needs_human
-        _reasons="$_reasons{\"code\":\"HUMAN_REQUIRED\",\"status\":\"pass\",\"detail\":\"$_gate exige decision humana\"},"
+        case "$_requires" in
+            *Human*)
+                _reasons="$_reasons{\"code\":\"HUMAN_DECIDED\",\"status\":\"pass\",\"detail\":\"decision humana presente\"},"
+                ;;
+            *)
+                _decision=needs_human
+                _reasons="$_reasons{\"code\":\"HUMAN_REQUIRED\",\"status\":\"skip\",\"detail\":\"$_gate espera una decision humana\"},"
+                ;;
+        esac
     fi
 
     # Regla 37.4.4.3: dry-run-only no puede alcanzar FEATURE_MERGED.

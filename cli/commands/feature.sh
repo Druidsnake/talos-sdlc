@@ -28,6 +28,9 @@ USO
     talos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
     talos feature dispatch <ID> --role <ROL> --pane <PANE> [--kind KIND]
                                   despacha un agente con rol y alcance activos
+    talos feature advance <ID> --to <ESTADO>
+                                  ejecuta la transicion si el gate autoriza
+    talos feature next <ID>       que transiciones salen del estado actual
     talos feature collect <ID>    recoge el entregable del rol como evidencia
     talos feature test <ID> --pane <PANE> --command "<CMD>"
                                   corre una verificacion y sella LocalTestReport
@@ -117,6 +120,102 @@ if [ "$sub" = show ]; then
     [ -f "$sf" ] || { echo "talos: $FEAT no arranco todavia" >&2; exit 2; }
     "$PY" -m json.tool "$sf"
     exit 0
+fi
+
+# ---------- next ----------
+
+if [ "$sub" = next ]; then
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
+    [ -n "$est" ] || { echo "talos: $FEAT no arranco todavia" >&2; exit 2; }
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  %s esta en %s\n\n' "$FEAT" "$est"
+    if talos_is_terminal feature "$est"; then
+        echo "  Estado terminal: no tiene transiciones de salida (regla 22.6.9)."
+        exit 0
+    fi
+    printf '  %-4s %-24s %-18s %-14s %s\n' ID HACIA GATE ACTOR EVIDENCIA
+    # shellcheck disable=SC2034
+    talos_transitions_from feature "$est" | while IFS='	' read -r mm id from to gate cond actor req event; do
+        printf '  %-4s %-24s %-18s %-14s %s\n' "$id" "$to" "$gate" "$actor" "$req"
+    done
+    echo ""
+    echo "  talos feature advance $FEAT --to <ESTADO>"
+    exit 0
+fi
+
+# ---------- advance ----------
+#
+# No hace falta un comando por transicion: la tabla ya describe las 27 y el
+# ejecutor ya es generico. Esto es la superficie que las recorre.
+
+if [ "$sub" = advance ]; then
+    TO=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --to) TO="${2:?falta el estado destino}"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$TO" ]   || { echo "talos: falta --to" >&2; exit 1; }
+
+    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
+    [ -n "$est" ] || { echo "talos: $FEAT no arranco todavia" >&2
+                       echo "talos: talos feature start $FEAT" >&2; exit 2; }
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  feature  %s\n  desde    %s\n  hacia    %s\n' "$FEAT" "$est" "$TO"
+
+    tid=$(talos_transition_id feature "$est" "$TO" 2>/dev/null || echo "")
+    if [ -z "$tid" ]; then
+        echo ""
+        printf '  FALL no existe la transicion %s -> %s en la tabla 22.5\n' "$est" "$TO"
+        echo ""
+        echo "  Regla 22.6.2: toda transicion no listada se rechaza."
+        echo "  Ver las disponibles con  talos feature next $FEAT"
+        exit 3
+    fi
+    printf '  %-8s %s\n\n' "id" "$tid"
+
+    # Regla 22.6.3: la evidencia se presenta ANTES de evaluar el gate. Si la
+    # transicion exige LockRelease, soltar los leases no puede ser consecuencia
+    # de haber transicionado: seria pedir como requisito algo que solo existe
+    # despues. Se sueltan primero y se acuña la evidencia.
+    req=$(talos_transition_requires feature "$est" "$TO" 2>/dev/null || echo "-")
+    case "$req" in
+        *LockRelease*)
+            talos_release_feature_leases "$FEAT" | while read -r l; do
+                [ -n "$l" ] && printf '  ok   lease liberado %s\n' "$l"
+            done
+            ;;
+    esac
+
+    set +e
+    out=$(talos_transition_exec feature "$est" "$TO" "$EVDIR" "$FEAT")
+    rc=$?
+    set -e
+    printf '%s\n' "$out" | while IFS='=' read -r k v; do
+        case "$k" in
+            gate_result) [ -n "$v" ] && printf '  ok   GateResult %s\n' "$(basename "$v")" ;;
+            event)       [ -n "$v" ] && printf '  ok   evento %s\n' "$v" ;;
+            seq)         [ -n "$v" ] && printf '  ok   seq %s\n' "$v" ;;
+            lease_released) printf '  ok   lease liberado %s\n' "$v" ;;
+        esac
+    done
+
+    echo ""
+    case "$rc" in
+        0) printf '  %s quedo en %s\n' "$FEAT" "$TO"
+           talos_is_terminal feature "$TO" && \
+             echo "  Estado terminal: los leases de la feature quedaron liberados (regla 22.6.8)." ;;
+        4) echo "  needs_human: registra la decision con  talos human decide $FEAT --decision <D>" ;;
+        *) echo "  el gate rechazo la transicion: la feature no avanzo"
+           echo "  Se emitio talos.transition.rejected (regla 22.6.2)." ;;
+    esac
+    exit "$rc"
 fi
 
 # ---------- collect ----------

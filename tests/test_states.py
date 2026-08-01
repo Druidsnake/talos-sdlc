@@ -209,12 +209,23 @@ def main():
         code == 0 and passing["decision"] == "pass", f"exit={code}",
     ))
 
-    # Regla 24.4.6: un gate humano nunca resuelve pass por su cuenta.
+    # Regla 24.4.6, leida entera: el gate humano no decide por su cuenta, pero
+    # tampoco ignora una decision ya tomada. Pedirla de nuevo cuando ya esta
+    # dejaria las diecisiete transiciones humanas fuera de alcance para siempre.
     code, out = gate("feature", "FEATURE_HUMAN_REVIEW", "FEATURE_MERGING",
                      evidence=evidence_dir([("HumanApproval", True)]))
     results.append(check(
-        "un gate humano resuelve needs_human, no pass (regla 24.4.6)",
-        code == 4 and json.loads(out)["decision"] == "needs_human", f"exit={code}",
+        "un gate humano AVANZA cuando la decision humana esta presente",
+        code == 0 and "HUMAN_DECIDED" in out, f"exit={code} {out[:200]}",
+    ))
+
+    # needs_human es para cuando FALTA la decision, no para cuando sobra.
+    code, out = gate("feature", "FEATURE_HUMAN_REVIEW", "FEATURE_MERGING",
+                     evidence=evidence_dir([]))
+    results.append(check(
+        "y NO avanza cuando la decision humana falta",
+        code == 3 and "HumanApproval" in json.loads(out)["missing_evidence"],
+        f"exit={code}",
     ))
 
     # Regla 23.3.5: evidencia no verificable no satisface un gate critico.

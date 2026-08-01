@@ -73,6 +73,24 @@ talos_feature_write() {
 EOF
 }
 
+# talos_mint_lock_release <feature> <lease_id>
+# Un lease liberado tiene que dejar constancia: la tabla 22.5 exige LockRelease
+# como evidencia de F27, y una evidencia que nadie produce vuelve la transicion
+# inalcanzable.
+talos_mint_lock_release() {
+    _py=$(talos_python) || return 1
+    _ev="orchestration/evidence/ev-$1-lockrelease-$(date -u +%Y%m%d%H%M%S)"
+    mkdir -p orchestration/evidence
+    cat >"$_ev.json" <<EOF
+{"id":"$(basename "$_ev")","kind":"LockRelease","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$1",
+ "produced_by":"core:LockManager","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "digest":"pendiente","verifiable":true,"payload":{"lease_id":"$2"}}
+EOF
+    "$_py" "$TALOS_TR_SYS/hooks/lib/evidence.py" seal "$_ev.json" >/dev/null 2>&1
+    printf '%s' "$_ev.json"
+}
+
 # talos_release_feature_leases <feature>
 # Regla 22.6.8: al alcanzar un estado terminal se liberan todos los leases.
 talos_release_feature_leases() {
@@ -83,6 +101,7 @@ talos_release_feature_leases() {
         | while read -r _lid; do
             [ -z "$_lid" ] && continue
             "$_py" "$TALOS_TR_SYS/hooks/lib/lock.py" release "$TALOS_LOCKS" "$_lid" >/dev/null 2>&1
+            talos_mint_lock_release "$1" "$_lid" >/dev/null 2>&1 || true
             printf '%s\n' "$_lid"
         done
 }

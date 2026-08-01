@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate evidence plan feature merge init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence plan feature merge human init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
@@ -187,6 +187,16 @@ echo "=== planificacion ==="
 expect_exit 2 "plan init se niega con el spec en draft (regla 29.1)" $TALOS plan init
 expect_out "no approved" "dice por que se niega" $TALOS plan init
 expect_exit 2 "plan check sin plan sale 2" $TALOS plan check
+
+echo ""
+echo "=== decision humana y avance generico ==="
+expect_exit 1 "human sin subcomando sale 1" $TALOS human
+expect_out "abandon " "human --help lista el dominio de decisiones" $TALOS human --help
+expect_exit 2 "human decide rechaza una decision fuera del dominio" $TALOS human decide F001 --decision inventada
+expect_out "fuera del dominio" "y dice por que" $TALOS human decide F001 --decision inventada
+expect_exit 2 "feature next sale 2 si la feature no arranco" $TALOS feature next F001
+expect_exit 2 "feature advance sale 2 si la feature no arranco" $TALOS feature advance F001 --to FEATURE_REVIEW
+expect_exit 1 "feature advance sin --to sale 1" $TALOS feature advance F001
 
 echo ""
 total=$((pass + fail))

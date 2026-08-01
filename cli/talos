@@ -53,6 +53,7 @@ TRABAJAR
     talos plan check|init|show    planificacion de programa y PLAN_GATE
     talos feature start|list      ejecuta una feature del plan
     talos merge check|do <F>      MERGE_GATE y merge gobernado
+    talos human approve|decide    registra una decision humana
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -119,6 +120,9 @@ case "$cmd" in
         ;;
     merge)
         exec "$CLI_DIR/commands/merge.sh" "$@"
+        ;;
+    human)
+        exec "$CLI_DIR/commands/human.sh" "$@"
         ;;
     event)
         sub="${1:-}"
