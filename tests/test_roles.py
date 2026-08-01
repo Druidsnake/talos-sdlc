@@ -5,6 +5,7 @@ que no existen. Estos checks detectan esa deriva.
 """
 import json
 import pathlib
+import subprocess
 import sys
 
 import yaml
@@ -56,6 +57,25 @@ def main():
             f"[{name}] instructions apunta a un archivo existente",
             bool(instr) and (ROOT / instr).is_file(),
             f"no existe: {instr}",
+        ))
+
+        # 3.1. Y el resolvedor del nucleo LLEGA a ese archivo.
+        #
+        # Que el YAML apunte a un archivo que existe no prueba nada sobre el
+        # camino caliente: role.sh no lee el YAML, resuelve por convencion.
+        # Comprobar solo lo primero dejaba pasar que FeatureLead y
+        # SpecAssistant -los dos roles de mas de una palabra- se resolvieran a
+        # "featurelead.md" y "specassistant.md", que no existen. Despacharlos
+        # fallaba con "sin archivo de instrucciones" y ningun check lo veia.
+        resuelto = subprocess.run(
+            ["sh", "-c", f'. "{ROOT}/hooks/lib/role.sh"; talos_role_instructions {name}'],
+            capture_output=True, text=True,
+            env={"PATH": "/usr/bin:/bin", "TALOS_SYSTEM_ROOT": str(ROOT)})
+        results.append(check(
+            f"[{name}] el resolvedor del nucleo llega a sus instrucciones",
+            resuelto.returncode == 0
+            and pathlib.Path(resuelto.stdout.strip()) == (ROOT / instr),
+            f"resolvio {resuelto.stdout.strip()!r}, el YAML declara {instr!r}",
         ))
 
         # 4. El schema del artefacto de salida existe

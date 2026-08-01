@@ -44,13 +44,22 @@ talos_role_scope() {
 
 # talos_role_instructions <rol>  -> ruta del archivo de instrucciones
 #
-# Convencion: roles/<rol-en-minuscula>.md. El YAML lo declara, pero leerlo
-# exigiria un parser en el camino caliente; la convencion la verifica
-# tests/test_roles.py, que ya comprueba que config y archivos coincidan.
+# Convencion: roles/<rol-en-kebab>.md. El YAML lo declara, pero leerlo exigiria
+# un parser en el camino caliente.
+#
+# El kebab NO es cosmetico: pasar el nombre a minuscula a secas da
+# "featurelead.md" y el archivo es "feature-lead.md". Con eso, despachar
+# FeatureLead o SpecAssistant fallaba con "sin archivo de instrucciones" -los
+# dos unicos roles de mas de una palabra-, mientras Developer y Reviewer
+# funcionaban. El bug se escondia en que los roles que se probaban a diario
+# eran justo los de una sola palabra.
 talos_role_instructions() {
-    _f="$TALOS_ROLE_SYS/roles/$(printf '%s' "$1" | tr 'A-Z' 'a-z').md"
-    [ -f "$_f" ] || return 1
-    printf '%s' "$_f"
+    _kebab=$(printf '%s' "$1" | sed 's/\([a-z0-9]\)\([A-Z]\)/\1-\2/g' | tr 'A-Z' 'a-z')
+    for _f in "$TALOS_ROLE_SYS/roles/$_kebab.md" \
+              "$TALOS_ROLE_SYS/roles/$(printf '%s' "$1" | tr 'A-Z' 'a-z').md"; do
+        [ -f "$_f" ] && { printf '%s' "$_f"; return 0; }
+    done
+    return 1
 }
 
 # talos_role_activate <rol> [feature_id]
