@@ -1,0 +1,50 @@
+id: talos.adapter.github_ci
+package: talos-adapter-ci
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: CIAdapter
+
+# Con TALOS_DRY_RUN=1 registra la intencion y no dispara workflows.
+supports_dry_run: true
+
+external_binary:
+  name: gh
+  version_range: ">=2.0.0"
+  env_override: TALOS_GH_BIN
+  install_hint: "brew install gh && gh auth login"
+  machine_level: false
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 15
+
+# Regla 30.4.1: el pase de pruebas se determina por el CheckRunSet de este
+# adapter, y por ningun otro camino. Regla 30.4.2: ningun rol agente puede
+# declarar pass sin el. Regla 30.4.3: un LocalTestReport es evidencia de
+# avance, no de pase.
+#
+# Por eso este adapter es la autoridad sobre "pasa o no pasa", y por eso su
+# salida es verificable: sale de CI, no de la afirmacion de alguien.
+operations:
+  - name: run_checks
+    mutating: true
+    idempotency: required
+    timeout_seconds: 1800
+    max_attempts: 2
+
+  - name: get_check_status
+    mutating: false
+    timeout_seconds: 60
+
+  - name: publish_report
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+permissions:
+  - ci:run
+  - ci:read
+  - ci:report

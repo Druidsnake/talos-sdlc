@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # talos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate evidence plan feature init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence plan feature merge init "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $TALOS "$@" --help >/dev/null 2>&1; then
