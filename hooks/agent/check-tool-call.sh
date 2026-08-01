@@ -64,9 +64,18 @@ if [ -z "$role" ]; then
     exit 0
 fi
 
-# Normaliza a ruta relativa a la raiz del proyecto
+# Normaliza a ruta relativa a la raiz del proyecto.
+#
+# Se compara contra la raiz LOGICA y contra la FISICA. En macOS /tmp y /var son
+# enlaces a /private/..., y un runtime que resuelve enlaces manda
+# /private/var/.../src/a.ts mientras la raiz es /var/.../. Comparar prefijos en
+# texto las ve distintas y deniega una ruta que esta dentro del proyecto: el
+# bloqueo pasa a mentir sobre el alcance en cualquier proyecto bajo /tmp.
+ROOT_REAL=$(CDPATH='' cd -P -- "$ROOT" 2>/dev/null && pwd) || ROOT_REAL="$ROOT"
+
 case "$path" in
-    "$ROOT"/*) path="${path#"$ROOT"/}" ;;
+    "$ROOT"/*)      path="${path#"$ROOT"/}" ;;
+    "$ROOT_REAL"/*) path="${path#"$ROOT_REAL"/}" ;;
     /*)
         echo "talos: DENEGADO ruta fuera del proyecto: $path" >&2
         echo "talos: rol $role solo puede escribir dentro de $ROOT" >&2

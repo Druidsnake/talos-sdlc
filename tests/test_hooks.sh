@@ -93,6 +93,14 @@ expect permite "sin rol activo Talos no gobierna"     env -u TALOS_ROLE ./hooks/
 expect bloquea "Edit de Reviewer sobre codigo"        call Reviewer Edit src/auth.ts
 expect permite "ruta con prefijo ./"                  call Developer Write ./src/auth.ts
 
+# En macOS /tmp y /var son enlaces a /private/...: un runtime que resuelve
+# enlaces manda la ruta fisica. Compararla en texto contra la raiz logica la
+# ve fuera del proyecto y deniega algo que esta adentro.
+fisica=$(CDPATH='' cd -P -- "$PWD" && pwd)
+expect permite "ruta fisica equivalente a la raiz"    call Developer Write "$fisica/src/auth.ts"
+expect bloquea "y la fisica no relaja el alcance"     call Developer Write "$fisica/spec/SPEC.md"
+
+
 echo ""
 echo "=== mecanismo 2 en vivo: shim de Claude Code ==="
 shim() {
