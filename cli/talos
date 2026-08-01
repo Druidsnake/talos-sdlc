@@ -31,6 +31,16 @@ export TALOS_CLI_DIR="$CLI_DIR"
 TALOS_VERSION=$(cat "$TALOS_SYSTEM_ROOT/VERSION" 2>/dev/null || echo "desconocida")
 export TALOS_VERSION
 
+# El run_id sale del runtime, no de una variable que alguien recuerde exportar.
+# Sin esto la evidencia queda sellada con "r-unknown" y la regla 22.6.7 -toda
+# transicion reconstruible desde el event log- deja de cumplirse: no se puede
+# reconstruir una corrida cuyos artefactos no dicen a que corrida pertenecen.
+if [ -z "${TALOS_RUN_ID:-}" ] && [ -f "$TALOS_PROJECT_ROOT/orchestration/.meta.json" ]; then
+    TALOS_RUN_ID=$(sed -n 's/.*"run_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+                   "$TALOS_PROJECT_ROOT/orchestration/.meta.json" | head -1)
+fi
+export TALOS_RUN_ID
+
 usage() {
     cat <<'USAGE'
 talos - Guardian del ciclo de desarrollo con IA

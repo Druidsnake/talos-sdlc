@@ -135,6 +135,28 @@ def main():
         nuevo["generation"] > corto["generation"],
         f"{corto['generation']} -> {nuevo['generation']}"))
 
+    # Una feature NO compite consigo misma. La regla 32.4.1 habla de dos
+    # features distintas; sin esta excepcion, un reintento tras una caida deja
+    # a la feature afuera de su propio recurso hasta que venza el TTL.
+    lp3 = str(pathlib.Path(tempfile.mkdtemp()) / "locks.json")
+    primero, _, _ = lock_lib.acquire(lp3, "branch:x", "F001", "r-1", "test")
+    otra_vez, _, conflicto = lock_lib.acquire(lp3, "branch:x", "F001", "r-1", "test")
+    results.append(check(
+        "la misma feature en la misma corrida puede retomar su propio lease",
+        conflicto is None and otra_vez is not None
+        and otra_vez["lease_id"] == primero["lease_id"],
+        f"conflicto={conflicto}"))
+    results.append(check(
+        "y no se otorga un segundo lease sobre el mismo recurso",
+        len(lock_lib.load(lp3)["leases"]) == 1))
+
+    # Otra corrida de la misma feature SI se serializa: la anterior puede
+    # seguir viva y desde aca no se puede saber.
+    _, _, conflicto = lock_lib.acquire(lp3, "branch:x", "F001", "r-2", "test")
+    results.append(check(
+        "otra corrida de la misma feature si espera (el zombi no se asume muerto)",
+        conflicto is not None, f"{conflicto}"))
+
     locks_schema = Draft202012Validator(
         json.loads((SCHEMAS / "locks.schema.json").read_text()))
     results.append(check(

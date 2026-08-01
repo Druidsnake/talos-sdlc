@@ -134,9 +134,14 @@ def main():
     # Lo mas importante: el loop no puede abandonar una feature por su cuenta.
     # F27 sale de cualquier estado y solo exige una decision humana; si el loop
     # la propusiera, terminaria "resolviendo" features abandonandolas.
+    # Declarar el fracaso siempre esta disponible: BLOCKED, FAILED, ESCALATED y
+    # ABANDONED se alcanzan casi desde cualquier estado. Un loop que las
+    # propusiera "resolveria" toda feature dificil marcandola como perdida.
+    FRACASO = ("FEATURE_BLOCKED", "FEATURE_ABANDONED",
+               "FEATURE_FAILED", "FEATURE_ESCALATED")
     results.append(check(
-        "el loop NUNCA propone abandonar una feature",
-        all("FEATURE_ABANDONED" not in a["orden"] for a in d["acciones"]),
+        "el loop NUNCA propone un camino de fracaso",
+        all(not any(f in a["orden"] for f in FRACASO) for a in d["acciones"]),
         f"{d['acciones']}"))
     results.append(check(
         "abandonar sigue siendo una decision humana explicita",

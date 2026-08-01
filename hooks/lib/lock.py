@@ -88,11 +88,20 @@ def acquire(path, resource, feature, run, reason, ttl=DEFAULT_TTL):
     expirados = sweep(doc)
 
     for lease in doc["leases"]:
-        if lease["resource"] == resource:
-            # Regla 32.4.1: si dos features quieren el mismo recurso, se
-            # serializa. No se otorga un segundo lease.
+        if lease["resource"] != resource:
+            continue
+        # La regla 32.4.1 habla de DOS features compitiendo. Una feature en
+        # conflicto consigo misma no es eso: es la misma corrida reintentando.
+        # Sin esta excepcion, un reintento tras una caida deja a la feature
+        # afuera de su propio recurso hasta que venza el TTL.
+        if lease["owner_feature"] == feature and lease["owner_run"] == run:
             save(path, doc)
-            return None, expirados, lease
+            return lease, expirados, None
+        # Distinto duenio, o la misma feature en otra corrida: ahi si se
+        # serializa. Una corrida anterior puede seguir viva, y el fencing token
+        # existe justamente porque no se puede saber desde aca.
+        save(path, doc)
+        return None, expirados, lease
 
     t = now()
     lease = {

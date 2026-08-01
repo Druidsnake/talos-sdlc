@@ -27,6 +27,12 @@ import pathlib
 import sys
 
 TERMINAL_OK = {"FEATURE_DONE"}
+
+# Estados a los que el loop NUNCA propone ir por su cuenta. No son invalidos:
+# son decisiones sobre dar algo por perdido, y eso no lo decide un bucle.
+CAMINOS_DE_FRACASO = {
+    "FEATURE_BLOCKED", "FEATURE_ABANDONED", "FEATURE_FAILED", "FEATURE_ESCALATED",
+}
 TERMINAL = {"FEATURE_DONE", "FEATURE_FAILED", "FEATURE_ABANDONED"}
 
 
@@ -236,7 +242,14 @@ def main(argv):
                     "gate": t["gate"], "actor": t["actor"],
                     "falta": faltan,
                 })
-                if not faltan and t["hacia"] not in ("FEATURE_ABANDONED",):
+                # Un loop autonomo siempre encuentra la salida mas barata, y
+                # declarar el fracaso siempre esta disponible: BLOCKED, FAILED,
+                # ESCALATED y ABANDONED son alcanzables casi desde cualquier
+                # lado. Si el loop las propusiera, "resolveria" toda feature
+                # dificil marcandola como perdida.
+                #
+                # Los caminos de fracaso los toma una persona, no un bucle.
+                if not faltan and t["hacia"] not in CAMINOS_DE_FRACASO:
                     out["acciones"].append({
                         "feature": fid,
                         "orden": f"talos feature advance {fid} --to {t['hacia']}",
