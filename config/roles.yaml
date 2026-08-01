@@ -51,7 +51,11 @@ roles:
       path: orchestration/program-plan.json
 
   FeatureLead:
-    role_minimum_tier: null
+    # Coordina la feature de punta a punta: decide a quien despachar, cuando
+    # hay trabajo hecho y cuando cerrar. Equivocarse ahi no cuesta una tarea,
+    # cuesta la feature entera, asi que el rol exige piso deep por si mismo y
+    # no por el riesgo de la feature que le toque. Seccion 20.4.
+    role_minimum_tier: deep
     instructions: roles/feature-lead.md
     write_paths:
       - "orchestration/features/**"

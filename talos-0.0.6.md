@@ -803,7 +803,7 @@ fast | balanced | deep | null
 | `Planner` | deep |
 | `SpecAssistant` | deep |
 | `Reviewer` | balanced |
-| `FeatureLead` | null |
+| `FeatureLead` | deep |
 | `Developer` | null |
 
 ### 20.5. Algoritmo de selección

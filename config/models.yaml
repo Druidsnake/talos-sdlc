@@ -11,19 +11,18 @@ version: 1
 # presupuesto puede frenar la ejecucion, nunca bajar el tier (reglas 33.7 y
 # 33.8).
 
-# PILOTO: los tres tiers apuntan al mismo modelo a proposito.
+# PILOTO: el trabajo mecanico es barato, la coordinacion no.
 #
-# Es una decision de OPERACION, no de diseño. Mientras se prueba el sistema,
+# fast y balanced comparten modelo a proposito. Mientras se prueba el sistema,
 # lo que se ejercita es el mecanismo -despacho, alcance, evidencia, gates- y no
-# la calidad del razonamiento del agente. Pagar tokens de un modelo caro para
-# comprobar que un gate rechaza sin evidencia es gastar en la parte que no se
-# esta probando.
+# la calidad del razonamiento de quien implementa una tarea acotada. Pagar
+# tokens caros para comprobar que un gate rechaza sin evidencia es gastar en la
+# parte que no se esta probando.
 #
-# EL PRECIO DE ESTO, EXPLICITO: un feature de riesgo critical pide tier deep
-# porque equivocarse sale caro (seccion 20.1), y hoy deep no es mas capaz que
-# fast. La regla 33.7 sigue valiendo -el presupuesto nunca degrada el tier-,
-# pero aca el tier ya viene degradado desde la configuracion. Antes de correr
-# trabajo real de riesgo alto, esta tabla vuelve a tener tres modelos distintos.
+# deep NO se abarata. Es el piso de los roles que coordinan (seccion 20.4) y el
+# tier que el plan pide cuando el riesgo es alto: ahi el error no cuesta una
+# tarea, cuesta la feature entera. La regla 20.5.7 es explicita en que el
+# routing NO DEBE consultar costo.
 tiers:
   # Trabajo mecanico y acotado: el riesgo bajo no justifica gastar mas.
   fast:
@@ -39,9 +38,11 @@ tiers:
     cost_per_mtok_input: 0.30
     cost_per_mtok_output: 1.20
 
-  # Riesgo alto o critico. El plan pide deep cuando equivocarse sale caro.
+  # Riesgo alto o critico, y piso de los roles que coordinan. El plan pide deep
+  # cuando equivocarse sale caro; ahi es donde el gasto se justifica, porque el
+  # error no cuesta una tarea sino la feature entera.
   deep:
-    model: minimax-coding-plan/MiniMax-M3
-    provider: opencode
-    cost_per_mtok_input: 0.30
-    cost_per_mtok_output: 1.20
+    model: claude-opus-5
+    provider: claude
+    cost_per_mtok_input: 15.00
+    cost_per_mtok_output: 75.00

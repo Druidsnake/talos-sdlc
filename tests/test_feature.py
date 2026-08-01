@@ -527,6 +527,57 @@ def main():
         "el shim ignora un modelo que no es de su proveedor",
         ajeno.stdout.strip() == "", f"emitio {ajeno.stdout!r}"))
 
+    # ---------- la chispa: talos boot ----------
+    #
+    # Talos no es inteligente y no tiene por que serlo: abre la sesion, impone
+    # el alcance, valida y evalua gates. Decidir el proximo paso SI requiere un
+    # modelo, y para eso existe el coordinador. boot lo enciende y se retira.
+
+    pb = project()
+    talos(pb, "feature", "start", "F001")
+    logb = espia(pb)
+    (pb / ".talos" / "config" / "models.yaml").write_text(
+        "version: 1\ntiers:\n"
+        "  fast:\n    model: barato\n    provider: opencode\n"
+        "  balanced:\n    model: medio\n    provider: opencode\n"
+        "  deep:\n    model: caro\n    provider: opencode\n")
+    code, out = talos(pb, "boot", "F001")
+    results.append(check(
+        "boot enciende al coordinador de la feature",
+        code == 0, f"exit={code} {out[-400:]}"))
+
+    # F001 es de riesgo bajo y el plan le puso tier fast. FeatureLead declara
+    # piso deep: max() manda (seccion 20.5), y mirar solo la feature dejaba el
+    # minimo del rol declarado y sin efecto.
+    arr = spy_lines(logb, "start_agent")
+    results.append(check(
+        "el tier sale de max(feature, minimo del rol), no solo de la feature",
+        arr and "--model caro" in arr[0] and "--model barato" not in arr[0],
+        f"{arr[:1]}"))
+    results.append(check(
+        "y el despacho lo dice: tier deep sobre una feature fast",
+        "tier deep" in out, out[-400:]))
+
+    pr = spy_lines(logb, "prompt_agent")
+    results.append(check(
+        "boot le entrega el encargo de coordinacion, no una tarea",
+        pr and "coordinador de F001" in pr[0], f"{pr[:1][:1]}"))
+    results.append(check(
+        "el encargo incluye la superficie de comandos: la chispa muestra el camino",
+        pr and "talos feature dispatch F001" in pr[0]
+        and "talos feature advance F001" in pr[0],
+        "sin los comandos, la chispa muestra una intencion y no un camino"))
+    results.append(check(
+        "y le dice explicitamente que Talos deja de conducir",
+        "deja de proponer pasos" in out, out[-300:]))
+
+    # El brief del rol tiene que traer la superficie completa, no solo el
+    # recordatorio del encargo.
+    fl = (ROOT / "roles" / "feature-lead.md").read_text()
+    results.append(check(
+        "el brief del coordinador declara por donde se pasa",
+        "talos feature release" in fl and "El gate decide, no vos" in fl))
+
     # ---------- el ejecutor no fuerza ----------
 
     # Sin evidencia, el ejecutor no avanza aunque se lo pida directo.

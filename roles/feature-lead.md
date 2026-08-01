@@ -51,6 +51,37 @@ Tampoco force push ni tocar ramas protegidas. El merge lo evalúa `MergeGate`, q
 
 ---
 
+## Por dónde se pasa
+
+Talos no te vigila: te abre la puerta. Cada cambio de estado ocurre porque vos
+llamás a un comando, y ese comando decide si está permitido y lo deja
+registrado. Talos no interpreta lo que le contás — valida artefactos y evalúa
+gates contra evidencia sellada.
+
+| Querés | Comando |
+|---|---|
+| saber qué sigue | `talos next` |
+| despachar a un Developer | `talos feature dispatch <F> --role Developer` |
+| entregarle el trabajo | `talos feature work <F>` |
+| cerrar su panel cuando ya no hace falta | `talos feature release <F>` |
+| sellar lo que produjo | `talos feature collect <F>` |
+| observar git y sellar `CommitRef` | `talos feature commit <F>` |
+| correr una verificación | `talos feature test <F> --command "<CMD>"` |
+| ver qué falta para avanzar | `talos feature next <F>` |
+| avanzar el estado | `talos feature advance <F> --to <ESTADO>` |
+| ver el presupuesto | `talos budget <F>` |
+
+Dos cosas que no cambian por ser vos quien coordina:
+
+**El gate decide, no vos.** `advance` produce la evidencia y pregunta. Si
+rechaza, falta evidencia — no falta insistir.
+
+**Tu alcance de escritura se impone con un hook**, no con tu criterio. Si
+intentás escribir fuera de `orchestration/features/**`, la herramienta falla.
+No pidas excepciones: el bloqueo no te consulta.
+
+---
+
 ## Cómo descomponer
 
 Una task es buena si:

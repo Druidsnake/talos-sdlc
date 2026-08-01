@@ -625,11 +625,13 @@ if [ "$sub" = dispatch ]; then
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
     [ -n "$ROLE" ] || { echo "talos: falta --role" >&2; exit 1; }
 
-    # El modelo sale del TIER que el plan le puso a la feature, y el tier lo
-    # eligio el riesgo (seccion 20.1). El nucleo no nombra modelos: traduce por
-    # config/models.yaml, que es la unica fuente de esa correspondencia (20.3).
+    # El tier sale de max(tier de la feature, minimo del rol), que es el
+    # algoritmo de la seccion 20.5. Mirar solo la feature dejaba a un rol que
+    # exige deep -un coordinador, un planificador- corriendo en fast porque la
+    # feature era de riesgo bajo: el minimo del rol quedaba declarado y sin
+    # efecto. El nucleo no nombra modelos: traduce por config/models.yaml (20.3).
     MODELO=""; PROVEEDOR=""
-    if TIER=$(talos_tier_of_feature "$FEAT" 2>/dev/null); then
+    if TIER=$(talos_tier_resolve "$FEAT" "$ROLE" 2>/dev/null); then
         if _mp=$(talos_model_for_tier "$TIER" 2>/dev/null); then
             MODELO=$(printf '%s' "$_mp" | cut -f1)
             PROVEEDOR=$(printf '%s' "$_mp" | cut -f2)
