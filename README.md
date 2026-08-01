@@ -2,7 +2,7 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: `dry-run-only` completo, `partial` alcanzable.** Los ocho pasos del modo están hechos, y existe un `ExecutionAdapter` productivo sobre Herdr: cambiar una línea en `config/extensions.yaml` pasa el sistema a ejecución real de agentes. Faltan el `CoordinationAdapter` y el `CIAdapter` productivos y el `MergeGate` para llegar a `production`. La [ruta de implementación](talos-0.0.6.md#51-ruta-de-implementación-recomendada) define el orden.
+**Estado actual: los trece pasos de la ruta están hechos.** Existen implementaciones productivas de las tres capacidades que tocan el mundo —Herdr para ejecutar agentes, GitHub para coordinar, GitHub Actions para verificar— y el `MergeGate` que gobierna el merge. El repo se queda en `dry-run-only` a propósito: su propia suite no puede depender de tener credenciales ni herramientas instaladas. Lo que falta ya no es infraestructura sino recorrido: sólo dos de las veintisiete transiciones de feature tienen ejecutor.
 
 ---
 
@@ -110,18 +110,19 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
 | Schemas JSON | 25 definidos y verificados con suite de rechazo |
-| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `event` |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `merge`, `event` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
-| Adapters | 5 de simulación + `talos.adapter.herdr` productivo |
+| Adapters | 5 de simulación + 3 productivos (Herdr, GitHub, CI) |
 | Resolución de binarios | cascada de 37.4.5 con verificación de versión |
 | Máquina de estados y gates | 52 transiciones derivadas de la spec, `GateEvaluator` puro |
 | Evidencia | digest verificado, `GateResult` persistido e inmutable |
 | `talos plan` | `PLAN_GATE` completo sobre el grafo de features |
-| `talos feature start` | ejecuta F1 y F2 con lease, issue y rama |
+| `talos feature` | `start`, `dispatch` con rol y alcance, `collect`, `test` |
+| `talos merge` | `MERGE_GATE` con siete condiciones, delega en el adapter |
 | Ejecutor de transiciones | gate, evento y proyección de estado |
 | LockManager | leases con TTL y fencing token |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
-| Suite | 408 checks + shellcheck |
+| Suite | 485 checks + shellcheck |
 
 ---
 
@@ -163,13 +164,21 @@ talos feature start F001
 
 El paso 9 está hecho: `talos.adapter.herdr` implementa `ExecutionAdapter` de verdad. Pasar a `partial` es cambiar una ligadura — ver [`adapters/README.md`](adapters/README.md#pasar-a-modo-partial).
 
-| Paso | Qué falta | Para |
-|---|---|---|
-| 11 | `CoordinationAdapter` productivo (GitHub) | `production` |
-| 12 | `CIAdapter` productivo | `production` |
-| 13 | `MergeGate` | `production` |
+Los trece pasos están hechos. Lo que falta ya no es infraestructura:
 
-Las transiciones que faltan de la tabla 22.5 —de `FEATURE_IN_PROGRESS` en adelante— dependen de que haya agentes ejecutando.
+| Qué | Por qué importa |
+|---|---|
+| Transiciones F4 a F27 | hoy sólo F1 y F2 tienen ejecutor; el resto se evalúa pero nadie las dispara |
+| Loop del orquestador | quien decide el próximo paso sigue siendo una persona tipeando |
+| Presupuestos (sección 33) | declarados en los schemas, nada mide costo ni tokens |
+
+Cambiar de modo es reemplazar ligaduras en `config/extensions.yaml`, no reescribir el núcleo:
+
+```yaml
+ExecutionAdapter:    { implementation: talos.adapter.herdr }
+CoordinationAdapter: { implementation: talos.adapter.github }
+CIAdapter:           { implementation: talos.adapter.github_ci }
+```
 
 Recién después de eso el paso 9 reemplaza el `ExecutionAdapter` dry-run por uno productivo, que es donde los agentes empiezan a trabajar de verdad.
 
