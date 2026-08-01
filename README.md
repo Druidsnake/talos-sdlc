@@ -2,7 +2,9 @@
 
 Talos es un marco normativo para orquestar desarrollo de software asistido por agentes: intake de spec, planificación, desarrollo, revisión, pruebas, aprobación y merge, con trazabilidad completa y supervisión humana en las rutas críticas.
 
-**Estado actual: los trece pasos de la ruta están hechos.** Existen implementaciones productivas de las tres capacidades que tocan el mundo —Herdr para ejecutar agentes, GitHub para coordinar, GitHub Actions para verificar— y el `MergeGate` que gobierna el merge. El repo se queda en `dry-run-only` a propósito: su propia suite no puede depender de tener credenciales ni herramientas instaladas. Lo que falta ya no es infraestructura sino recorrido: sólo dos de las veintisiete transiciones de feature tienen ejecutor.
+**Estado actual: la spec está implementada.** Los trece pasos de la ruta, las veintisiete transiciones de feature, el loop que las recorre y los presupuestos que lo frenan. Hay implementaciones productivas de las tres capacidades que tocan el mundo —Herdr para ejecutar agentes, GitHub para coordinar, GitHub Actions para verificar— y el `MergeGate` que gobierna el merge.
+
+El repo se queda en `dry-run-only` a propósito: su propia suite no puede depender de tener credenciales ni herramientas instaladas. Lo que falta son las [decisiones abiertas](#decisiones-abiertas) y usarlo en serio.
 
 ---
 
@@ -110,7 +112,7 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
 | Schemas JSON | 25 definidos y verificados con suite de rechazo |
-| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `merge`, `event` |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `next`, `run`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `merge`, `human`, `budget`, `event` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
 | Adapters | 5 de simulación + 3 productivos (Herdr, GitHub, CI) |
 | Resolución de binarios | cascada de 37.4.5 con verificación de versión |
@@ -119,10 +121,13 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 | `talos plan` | `PLAN_GATE` completo sobre el grafo de features |
 | `talos feature` | `start`, `dispatch` con rol y alcance, `collect`, `test` |
 | `talos merge` | `MERGE_GATE` con siete condiciones, delega en el adapter |
+| `talos next` / `run` | proyección de qué sigue y loop acotado |
+| `talos human` | la vía por la que una persona acuña su decisión |
+| Presupuestos | frenan la ejecución; nunca degradan el tier |
 | Ejecutor de transiciones | gate, evento y proyección de estado |
 | LockManager | leases con TTL y fencing token |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
-| Suite | 485 checks + shellcheck |
+| Suite | 546 checks + shellcheck |
 
 ---
 
@@ -164,13 +169,15 @@ talos feature start F001
 
 El paso 9 está hecho: `talos.adapter.herdr` implementa `ExecutionAdapter` de verdad. Pasar a `partial` es cambiar una ligadura — ver [`adapters/README.md`](adapters/README.md#pasar-a-modo-partial).
 
-Los trece pasos están hechos. Lo que falta ya no es infraestructura:
+Los trece pasos están hechos, las 27 transiciones son recorribles y el loop avanza lo que los gates autoricen.
 
-| Qué | Por qué importa |
-|---|---|
-| Transiciones F4 a F27 | hoy sólo F1 y F2 tienen ejecutor; el resto se evalúa pero nadie las dispara |
-| Loop del orquestador | quien decide el próximo paso sigue siendo una persona tipeando |
-| Presupuestos (sección 33) | declarados en los schemas, nada mide costo ni tokens |
+```bash
+talos next                 # qué sigue, y qué evidencia falta para cada salida
+talos run                  # avanza mientras esté autorizado; para ante un humano
+talos budget               # consumido contra declarado
+```
+
+Lo que queda son las [decisiones abiertas](#decisiones-abiertas) —D-001 bloquea v0.1.0— y usarlo en un proyecto real el tiempo suficiente para que aparezca lo que ninguna suite anticipa.
 
 Cambiar de modo es reemplazar ligaduras en `config/extensions.yaml`, no reescribir el núcleo:
 
