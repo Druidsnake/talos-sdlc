@@ -1,0 +1,75 @@
+id: talos.adapter.github
+package: talos-adapter-github
+version: 0.0.6
+api_version: "0.0.6"
+core_compatibility: ">=0.0.6"
+
+implements: CoordinationAdapter
+
+# Con TALOS_DRY_RUN=1 registra la intencion y no toca el remoto. Es lo que
+# permite ensayar una corrida productiva sin abrir issues ni PRs de verdad.
+supports_dry_run: true
+
+# git tambien hace falta, pero doctor ya lo verifica como precondition propia
+# (seccion 27.2) y no es especifico de este adapter. Aca se declara lo que sin
+# este adapter nadie exigiria.
+external_binary:
+  name: gh
+  version_range: ">=2.0.0"
+  env_override: TALOS_GH_BIN
+  install_hint: "brew install gh && gh auth login"
+  machine_level: false
+
+health_check:
+  command: run.sh health
+  timeout_seconds: 15
+
+# Las marcadas [M] en la seccion 38.4 son mutantes y REQUIEREN idempotency key.
+#
+# GitHub no acepta claves de idempotencia. La regla 38.2.6 cubre ese caso: si
+# el backend no la soporta de forma nativa, el adapter DEBE reconciliar,
+# buscando el recurso por su key antes de crearlo. Este adapter incrusta la key
+# en el cuerpo del issue y en la descripcion del PR, y la busca antes de mutar.
+operations:
+  - name: create_issue
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: create_branch
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  - name: open_pr
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 3
+
+  - name: get_pr_checks
+    mutating: false
+    timeout_seconds: 60
+
+  - name: request_review
+    mutating: true
+    idempotency: required
+    timeout_seconds: 60
+    max_attempts: 3
+
+  # El merge lo gobierna MergeGate, que es nucleo y no rol (seccion 31). Este
+  # adapter solo ejecuta lo que el gate ya autorizo, y no se reintenta solo:
+  # un merge repetido sobre un PR ya mergeado no es inofensivo.
+  - name: merge_pr
+    mutating: true
+    idempotency: required
+    timeout_seconds: 120
+    max_attempts: 1
+
+permissions:
+  - coord:issue
+  - coord:branch
+  - coord:pr
+  - coord:merge
