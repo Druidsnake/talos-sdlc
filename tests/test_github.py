@@ -96,6 +96,26 @@ echo '{{}}'
     return p
 
 
+def path_sin_gh():
+    """PATH con las utilidades necesarias y SIN gh, en cualquier maquina.
+
+    No alcanza con excluir /opt/homebrew/bin: los runners de CI traen gh en
+    /usr/bin. Y un PATH inexistente tampoco sirve, porque el adapter necesita
+    dirname antes de poder resolver el binario. Se arma un PATH propio con
+    enlaces a lo que hace falta y a nada mas.
+    """
+    d = pathlib.Path(tempfile.mkdtemp()) / "bin"
+    d.mkdir()
+    for tool in ("dirname", "cut", "sed", "grep", "head", "tr", "awk",
+                 "basename", "shasum", "sha256sum", "python3", "git", "wc"):
+        for base in ("/usr/bin", "/bin", "/usr/local/bin"):
+            src = pathlib.Path(base) / tool
+            if src.exists() and not (d / tool).exists():
+                (d / tool).symlink_to(src)
+    assert not (d / "gh").exists()
+    return str(d)
+
+
 def run_adapter(op, args=None, env=None):
     e = {"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home()),
          "TALOS_PROJECT_ROOT": tempfile.mkdtemp(),
@@ -167,11 +187,16 @@ def main():
     results.append(check("RECHAZA cuando gh no esta autenticado",
                          code == 2 and "autenticar" in err, f"exit={code} {err[:120]}"))
 
-    code, out, err = run_adapter("health")
+    # PATH inexistente, no PATH sin homebrew: los runners de CI traen gh en
+    # /usr/bin y mi maquina en /opt/homebrew/bin. Excluir solo uno hacia que el
+    # check pasara aca y fallara alla. Antes de resolver el binario el adapter
+    # solo usa builtins, asi que no necesita PATH.
+    code, out, err = run_adapter("health", env={"PATH": path_sin_gh()})
     results.append(check("sin gh en ningun paso de la cascada sale 2",
-                         code == 2 and "no esta instalado" in err, f"exit={code}"))
+                         code == 2 and "no esta instalado" in err, f"exit={code} {err[:120]}"))
     results.append(check("el error nombra los tres pasos de la cascada",
-                         "TALOS_GH_BIN" in err and ".talos/bin/gh" in err and "PATH" in err))
+                         "TALOS_GH_BIN" in err and ".talos/bin/gh" in err and "PATH" in err,
+                         err[:200]))
 
     # ---------- reconciliacion (regla 38.2.6) ----------
     #
