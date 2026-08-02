@@ -472,7 +472,15 @@ PYWALL
     esac
 
     printf '  ..   esperando el entregable del agente (hasta %ss)\n' "$ESPERA_S"
+    # wait_agent devuelve cuando el agente SE ASIENTA. Un agente asentado ya
+    # no esta trabajando: volver a esperarlo es esperar a alguien que se fue.
+    #
+    # Antes el bucle hacia justo eso -reesperaba a un agente quieto y dormia
+    # hasta agotar el presupuesto-, asi que "nunca arranco" y "trabaja lento"
+    # costaban lo mismo: media hora. La diferencia importa, y se puede ver:
+    # trabajando se mide en el estado, terminado se mide en el artefacto.
     _limite=$(( $(date +%s) + ESPERA_S ))
+    _quieto_desde=""
     while :; do
         set +e
         espera=$(thalos_capability_run ExecutionAdapter wait_agent \
@@ -482,6 +490,20 @@ PYWALL
         # El bloqueo termina la espera igual que el entregable: son las dos
         # formas validas de terminar un encargo.
         [ -f "$BLOQUEO" ] && break
+        case "$espera" in
+            *'"state":"working"'*)
+                _quieto_desde=""
+                ;;
+            *)
+                # Asentado y sin entregable. Se le da una gracia por si se
+                # asienta entre tandas, y si sigue quieto no hay a quien
+                # esperarle.
+                [ -n "$_quieto_desde" ] || _quieto_desde=$(date +%s)
+                if [ "$(( $(date +%s) - _quieto_desde ))" -ge 90 ]; then
+                    break
+                fi
+                ;;
+        esac
         [ "$(date +%s)" -ge "$_limite" ] && break
         sleep 5
     done
@@ -813,9 +835,22 @@ fi
 
 if [ "$sub" = collect ]; then
     [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
-    ROLE=$(thalos_role_current 2>/dev/null || echo "")
-    [ -n "$ROLE" ] || { echo "thalos: no hay rol activo; nada que recoger" >&2
-                        echo "thalos: thalos feature dispatch $FEAT --role <ROL> --pane <PANE>" >&2
+    # El rol sale de la TASK, y el archivo de sesion es el respaldo.
+    #
+    # Al reves fallaba: recoger no necesita que el agente siga despachado -el
+    # entregable ya esta en disco, escrito y firmado por un rol concreto-, y
+    # un loop que retoma un ciclo a medias no tiene rol activo. El paso moria
+    # con "no hay rol activo; nada que recoger" sobre un entregable que estaba
+    # ahi, mandando a despachar de nuevo a alguien que ya habia trabajado.
+    #
+    # Es la misma leccion de siempre: el archivo de rol dice quien gobierna la
+    # sesion AHORA, no quien produjo lo que hay que recoger.
+    ROLE=""
+    _tk="orchestration/features/$FEAT/tasks/T01/task.json"
+    [ -f "$_tk" ] && ROLE=$(sed -n 's/.*"role"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_tk" | head -1)
+    [ -n "$ROLE" ] || ROLE=$(thalos_role_current 2>/dev/null || echo "")
+    [ -n "$ROLE" ] || { echo "thalos: no se sabe que rol produjo el entregable de $FEAT" >&2
+                        echo "thalos: falta $_tk y no hay rol activo" >&2
                         exit 2; }
 
     schema=$(thalos_role_output_schema "$ROLE") || {
