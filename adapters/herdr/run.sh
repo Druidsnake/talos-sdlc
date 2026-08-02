@@ -140,6 +140,22 @@ case "$op" in
 
     create_session)
         check_version >/dev/null || exit 2
+        # Un panel puede cerrarse: lo cierra una persona, o lo cierra el propio
+        # Talos al soltar el rol. Sin esta verificacion, el ledger devolvia
+        # already_exists sobre un panel muerto y el start_agent siguiente
+        # fallaba con "pane not found" -a un comando de distancia de la causa,
+        # y sobre un id que Talos mismo habia cerrado.
+        #
+        # Misma leccion que start_agent ya aplicaba para los agentes: para un
+        # recurso que puede dejar de existir, la fuente de verdad es el
+        # backend, no el registro local.
+        talos_pane_vive() {
+            [ "$DRY" = 1 ] && return 0
+            "$HERDR" pane list 2>/dev/null | grep -qF "\"pane_id\":\"$1\""
+        }
+        # La lee talos_mutate_run, que viene de adapters/lib/adapter.sh.
+        # shellcheck disable=SC2034
+        TALOS_LEDGER_VERIFY=talos_pane_vive
         # Una sesion de ejecucion se realiza como un pane HERMANO, no como un
         # tab. Con un tab hay que cambiar de pestaña para ver al agente; con un
         # pane queda al lado de la consola, que es el punto de mirarlo.

@@ -279,6 +279,65 @@ def main():
         veces4 == 1 and '"status":"already_exists"' in r2[1],
         f"invocaciones={veces4} {r2[1][:120]}"))
 
+    # ---------- el ledger no prueba que el recurso siga existiendo ----------
+    #
+    # El ledger dice "esto se hizo una vez". Un panel puede cerrarse: lo cierra
+    # una persona, o lo cierra el propio Talos al soltar el rol. Creerle al
+    # registro devolvia already_exists sobre un panel muerto, y el start_agent
+    # siguiente fallaba con "pane not found" a un comando de distancia de la
+    # causa, sobre un id que Talos mismo habia cerrado.
+    d = pathlib.Path(tempfile.mkdtemp())
+    panes = d / "panes.json"
+    panes.write_text("")
+    tally3 = d / "veces"
+    fake = d / "herdr"
+    fake.write_text(f"""#!/bin/sh
+case "$1 $2" in
+  "--version ") echo "herdr 0.7.5" ;;
+  "pane list") cat {panes} ;;
+  "pane split"*|"pane split") echo x >> {tally3}; echo '{{"pane_id":"w1:p9"}}' ;;
+  *) echo "{{}}" ;;
+esac
+case "$1" in --version) echo "herdr 0.7.5" ;; esac
+""")
+    fake.chmod(0o755)
+    proy2 = tempfile.mkdtemp()
+    ent = {"TALOS_HERDR_BIN": str(fake), "TALOS_PROJECT_ROOT": proy2,
+           "TALOS_RUN_ID": "r-9", "TALOS_FEATURE_ID": "F001"}
+
+    r1 = run_adapter("create_session", {"cwd": "/x", "direction": "right"}, env=ent)
+    results.append(check(
+        "create_session abre el panel la primera vez",
+        '"status":"created"' in r1[1] and "w1:p9" in r1[1], r1[1][:120] + r1[2][:120]))
+
+    # El panel existe: la segunda llamada NO puede abrir otro.
+    panes.write_text('{"panes":[{"pane_id":"w1:p9"}]}')
+    r2 = run_adapter("create_session", {"cwd": "/x", "direction": "right"}, env=ent)
+    veces = len(tally3.read_text().split()) if tally3.exists() else 0
+    results.append(check(
+        "con el panel vivo respeta la idempotencia y no abre otro",
+        '"status":"already_exists"' in r2[1] and veces == 1,
+        f"veces={veces} {r2[1][:120]}"))
+
+    # LA REGRESION: el panel se cerro. La entrada del ledger quedo obsoleta.
+    panes.write_text('{"panes":[]}')
+    r3 = run_adapter("create_session", {"cwd": "/x", "direction": "right"}, env=ent)
+    veces = len(tally3.read_text().split())
+    results.append(check(
+        "con el panel cerrado NO devuelve el id muerto: abre uno nuevo",
+        '"status":"created"' in r3[1] and veces == 2,
+        f"veces={veces} {r3[1][:150]}"))
+
+    # Y la entrada nueva es la que vale de ahi en mas: con dos filas para la
+    # misma clave, quedarse con la primera devolveria el panel muerto siempre.
+    panes.write_text('{"panes":[{"pane_id":"w1:p9"}]}')
+    r4 = run_adapter("create_session", {"cwd": "/x", "direction": "right"}, env=ent)
+    results.append(check(
+        "y la entrada vigente es la ultima, no la primera",
+        '"status":"already_exists"' in r4[1]
+        and len(tally3.read_text().split()) == 2,
+        r4[1][:150]))
+
     # Ninguna operacion mutante puede quedar con la forma vieja.
     fuente = (ADAPTER / "run.sh").read_text()
     results.append(check(

@@ -117,13 +117,35 @@ talos_adapter_id() {
 # por otra implementacion no es un recurso que este pueda dar por existente.
 # Las entradas viejas sin columna de procedencia caen en el mismo caso, que es
 # lo correcto: sin saber quien las escribio no se les puede creer.
+# Gana la ULTIMA fila, no la primera: cuando una entrada queda obsoleta y la
+# operacion se vuelve a ejecutar, se registra otra con la misma clave. Quedarse
+# con la primera devolveria para siempre el recurso viejo, que es justo el que
+# ya no existe.
 talos_ledger_lookup() {
     _ledger=$(talos_ledger_path)
     [ -f "$_ledger" ] || return 1
     _me=$(talos_adapter_id)
-    _hit=$(awk -F'\t' -v k="$1" -v a="$_me" '$1 == k && $4 == a { print $3; exit }' "$_ledger")
+    _hit=$(awk -F'\t' -v k="$1" -v a="$_me" \
+           '$1 == k && $4 == a { v = $3 } END { if (v != "") print v }' "$_ledger")
     [ -n "$_hit" ] || return 1
     printf '%s' "$_hit"
+}
+
+# talos_ledger_vigente <resource_ref_json>
+#
+# El ledger dice "esto se hizo una vez". NO dice "el recurso sigue existiendo".
+# Para un recurso que puede desaparecer -un panel que alguien cierra, o que
+# cierra el propio Talos al soltar el rol- creerle al registro devuelve
+# already_exists sobre algo que ya no esta, y quien llamo se lleva un id muerto.
+#
+# Un adapter que maneje recursos asi define TALOS_LEDGER_VERIFY con el nombre
+# de una funcion que reciba el id y salga 0 si el recurso vive. Sin esa
+# variable el comportamiento es el de siempre: se le cree al ledger.
+talos_ledger_vigente() {
+    [ -n "${TALOS_LEDGER_VERIFY:-}" ] || return 0
+    _lv_id=$(printf '%s' "$1" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    [ -n "$_lv_id" ] || return 0
+    "$TALOS_LEDGER_VERIFY" "$_lv_id"
 }
 
 # talos_ledger_record <key> <operation> <resource_ref_json>
@@ -179,12 +201,17 @@ talos_mutate_run() {
 
     _key=$(talos_idempotency_key "$_run" "$_feat" "$_op" "$_args") || return 5
 
-    # Consulta ANTES de tocar nada.
+    # Consulta ANTES de tocar nada, y verifica que lo registrado siga vivo
+    # cuando el adapter sabe como comprobarlo.
     if _existing=$(talos_ledger_lookup "$_key"); then
-        printf '{"status":"already_exists","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
-            "$_existing" "$_key" \
-            "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
-        return 0
+        if talos_ledger_vigente "$_existing"; then
+            printf '{"status":"already_exists","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
+                "$_existing" "$_key" \
+                "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
+            return 0
+        fi
+        # La entrada quedo obsoleta: el recurso que nombra ya no existe. Se
+        # ejecuta de nuevo y se registra la nueva, que pasa a ser la vigente.
     fi
 
     # El motivo del backend viaja en el error. "fallo en el backend" no dice
