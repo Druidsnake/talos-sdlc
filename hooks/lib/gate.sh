@@ -178,7 +178,34 @@ talos_gate_eval() {
         _reasons="$_reasons{\"code\":\"MODE_FORBIDS_MERGE\",\"status\":\"fail\",\"detail\":\"dry-run-only no alcanza FEATURE_MERGED\"},"
     fi
 
-    [ "$_cond" != "-" ] && _reasons="$_reasons{\"code\":\"CONDITION_DECLARED\",\"status\":\"skip\",\"detail\":\"$_cond\"},"
+    # La condicion se EVALUA cuando se puede. Declararla y saltearla dejaba dos
+    # transiciones que salen del mismo estado con la misma evidencia siendo
+    # indistinguibles: F6 -la revision pidio cambios- y F7 -la revision
+    # aprobo- exigen las dos un Review, y con la condicion ignorada las dos
+    # pasaban. El loop tomaba la primera y volvia a trabajar sobre algo ya
+    # aprobado, para revisarlo otra vez, para siempre.
+    #
+    # Solo se evaluan las condiciones que tienen respaldo en un artefacto. Una
+    # condicion sin forma de comprobarse se sigue declarando: mentir sobre lo
+    # que se verifico seria peor que no verificar.
+    if [ "$_cond" != "-" ]; then
+        _veredicto=$(talos_gate_verdict "$_feat")
+        case "$_cond:$_veredicto" in
+            pass:approve|changes:request_changes)
+                _reasons="$_reasons{\"code\":\"CONDITION_MET\",\"status\":\"pass\",\"detail\":\"$_cond ($_veredicto)\"},"
+                ;;
+            pass:|changes:)
+                _reasons="$_reasons{\"code\":\"CONDITION_DECLARED\",\"status\":\"skip\",\"detail\":\"$_cond\"},"
+                ;;
+            pass:*|changes:*)
+                _decision=fail
+                _reasons="$_reasons{\"code\":\"CONDITION_NOT_MET\",\"status\":\"fail\",\"detail\":\"$_cond, y la revision dice $_veredicto\"},"
+                ;;
+            *)
+                _reasons="$_reasons{\"code\":\"CONDITION_DECLARED\",\"status\":\"skip\",\"detail\":\"$_cond\"},"
+                ;;
+        esac
+    fi
 
     _gate_emit "$_gate" "$_run" "$_feat" "$_from" "$_to" "$_decision" \
         "${_reasons%,}" "${_missing%,}"
@@ -188,6 +215,21 @@ talos_gate_eval() {
         needs_human) return 4 ;;
         *)           return 3 ;;
     esac
+}
+
+# talos_gate_verdict <feature_id>
+#
+# El veredicto de la revision de la feature, o vacio si todavia no hay una.
+#
+# Se lee del reporte del Reviewer, que es el artefacto que valida contra
+# review.schema.json. No se lee de la evidencia sellada porque el sello prueba
+# que el artefacto no cambio, no que exista: una feature sin revision tiene que
+# poder distinguirse de una revisada, y ausencia es una respuesta valida.
+talos_gate_verdict() {
+    [ -n "${1:-}" ] || return 0
+    _gv_f="${TALOS_PROJECT_ROOT:-.}/orchestration/reports/$1/review.json"
+    [ -f "$_gv_f" ] || return 0
+    sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_gv_f" | head -1
 }
 
 # talos_gate_persist <gate-result-json> <dir-evidencia> [run_id] [feature_id]

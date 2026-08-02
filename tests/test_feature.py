@@ -330,11 +330,16 @@ def main():
         not (prol / "orchestration" / ".current-role").exists()))
 
     # No se despacha un agente sobre una feature que no arranco.
+    #
+    # La condicion es que la feature siga VIVA, no que este en un estado
+    # concreto: exigir FEATURE_IN_PROGRESS estaba escrito para un solo rol, y
+    # el Reviewer trabaja con la feature en FEATURE_REVIEW. El loop proponia
+    # despacharlo y el despacho lo mandaba a arrancar algo ya arrancado.
     code, out = talos(prol, "feature", "dispatch", "F002",
                       "--role", "Developer", "--pane", "w1:p1")
     results.append(check(
-        "RECHAZA despachar sobre una feature que no esta en curso",
-        code == 2 and "FEATURE_IN_PROGRESS" in out, f"exit={code}"))
+        "RECHAZA despachar sobre una feature que no arranco",
+        code == 2 and "no arranco" in out, f"exit={code} {out[-200:]}"))
 
     # El brief lleva instrucciones Y alcance: las instrucciones solas no dicen
     # que rutas puede tocar en esta corrida.

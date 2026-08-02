@@ -287,10 +287,22 @@ if [ "$sub" = work ]; then
     TAREA="orchestration/features/$FEAT/tasks/T01"
     mkdir -p "$TAREA"
     ALCANCE=$(talos_role_scope "$ROLE" | awk -F'\t' '$1 == "allow" {print $2}')
-    if ! "$PY" - "$PLAN" "$FEAT" "$ROLE" "$TAREA/task.json" "$ALCANCE" <<'PYEOF'
+    # El entregable sale del CONTRATO DEL ROL, no de una ruta cableada. Fijar
+    # aca el task-result del Developer hacia que a un Reviewer despachado se le
+    # pidiera el artefacto de otro rol: escribia -o no escribia- en el lugar
+    # equivocado, y el gate seguia sin ver su Review.
+    ESQUEMA=$(talos_role_output_schema "$ROLE" 2>/dev/null || echo "")
+    SALIDA=$(talos_role_output_path "$ROLE" "$FEAT" T01 2>/dev/null || echo "")
+    if [ -z "$ESQUEMA" ] || [ -z "$SALIDA" ]; then
+        echo "  FALL el rol $ROLE no declara entregable en el registro de salida" >&2
+        echo "  Sin contrato de salida no hay como saber si trabajo." >&2
+        exit 2
+    fi
+    if ! "$PY" - "$PLAN" "$FEAT" "$ROLE" "$TAREA/task.json" "$ALCANCE" "$ESQUEMA" "$SALIDA" <<'PYEOF'
 import json, sys, datetime
 plan = json.loads(open(sys.argv[1]).read())
 fid, rol, destino, alcance = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+esquema, salida = sys.argv[6], sys.argv[7]
 f = next((x for x in plan["features"] if x["id"] == fid), None)
 if f is None:
     raise SystemExit(2)
@@ -311,10 +323,7 @@ task = {
     "declared_scope": [g for g in alcance.split("\n") if g.strip()],
     "spec_refs": [f"spec/{r}" for r in (f.get("spec_refs") or [])],
     "acceptance_refs": [f"spec/{r}" for r in (f.get("acceptance_refs") or [])],
-    "output": {
-        "schema": "task-result",
-        "path": f"orchestration/features/{fid}/tasks/T01/task-result.json",
-    },
+    "output": {"schema": esquema, "path": salida},
 }
 open(destino, "w").write(json.dumps(task, indent=2) + "\n")
 PYEOF
@@ -357,6 +366,14 @@ partes = [
     f"  {t['output']['path']}",
     f"que tiene que validar contra el schema {t['output']['schema']}.",
     "Sin ese archivo tu trabajo no existe para el sistema.",
+    "",
+    # El CommitRef es evidencia que Talos OBSERVA de git, no una mutacion que
+    # ordene. Si nadie commitea, no hay nada que observar y la feature se
+    # planta con "el agente todavia no commiteo su trabajo". Pedirlo aca es la
+    # unica forma de que el hecho exista.
+    "Y commitea lo que hiciste. Talos no commitea por vos: lee git para",
+    "sellar el CommitRef, y sin commit no hay nada que leer.",
+    "Un solo commit, conventional commits, sin agregar co-autores.",
 ]
 print("\n".join(x for x in partes if x is not None))
 PYEOF
@@ -410,6 +427,19 @@ PYEOF
     #
     # Un agente bloqueado no es un agente que fracaso: es uno que espera a una
     # persona. La regla 30 llama a eso needs_human, y sale 4.
+    # Un bloqueo puede ser momentaneo: el runtime muestra algo, lo resuelve
+    # solo y el agente sigue. Cortar en la primera lectura abortaba el paso de
+    # un agente que estaba trabajando. Se vuelve a preguntar: bloqueado es
+    # bloqueado cuando SIGUE bloqueado.
+    case "$espera" in
+        *'"state":"blocked"'*)
+            set +e
+            espera=$(talos_capability_run ExecutionAdapter wait_agent \
+                     "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
+            set -e
+            ;;
+    esac
+
     case "$espera" in
         *'"state":"blocked"'*)
             echo "  --   el agente esta BLOQUEADO esperando una decision"
@@ -421,9 +451,10 @@ PYEOF
             ;;
     esac
 
-    tareas="orchestration/features/$FEAT/tasks"
-    if [ -d "$tareas" ] && [ -n "$(find "$tareas" -name task-result.json 2>/dev/null | head -1)" ]; then
-        echo "  ok   el agente dejo su entregable"
+    # Se busca el entregable QUE SE LE PIDIO, no el del Developer: cada rol
+    # tiene el suyo y el de otro rol no prueba nada sobre este.
+    if [ -f "$SALIDA" ]; then
+        printf '  ok   el agente dejo su entregable: %s\n' "$SALIDA"
         exit 0
     fi
     echo "  --   el agente termino sin dejar entregable"
@@ -451,13 +482,27 @@ if [ "$sub" = commit ]; then
     sha=$(git rev-parse "$rama" 2>/dev/null || echo "")
     [ -n "$sha" ] || { echo "talos: no se pudo leer el estado de git" >&2; exit 2; }
 
-    # Un commit que no existe no se inventa: si no hay nada nuevo respecto de
-    # main, no hay trabajo que referenciar.
-    base=$(git merge-base "$rama" main 2>/dev/null || echo "")
+    # Un commit que no existe no se inventa: si no aparecio nada desde que la
+    # feature arranco, no hay trabajo que referenciar.
+    #
+    # La base es donde estaba git al arrancar, no merge-base contra main.
+    # Comparar la rama contra main falla cuando no hay rama de feature: la
+    # rama resuelta ES main, merge-base(main, main) es el propio HEAD, y el
+    # paso quedaba imposible de pasar culpando al agente de no haber
+    # commiteado algo que si habia commiteado.
+    base=$(cat "orchestration/features/$FEAT/.base-sha" 2>/dev/null || echo "")
+    if [ -z "$base" ]; then
+        base=$(git merge-base "$rama" main 2>/dev/null || echo "")
+    fi
     if [ -n "$base" ] && [ "$base" = "$sha" ]; then
-        echo "talos: $rama no tiene commits propios; no hay CommitRef que sellar" >&2
+        echo "talos: no hay commits nuevos desde que $FEAT arranco" >&2
         echo "talos: el agente todavia no commiteo su trabajo" >&2
         exit 3
+    fi
+    if [ -z "$base" ]; then
+        echo "talos: no se sabe desde donde contar los commits de $FEAT" >&2
+        echo "talos: falta orchestration/features/$FEAT/.base-sha, que escribe  talos feature start" >&2
+        exit 2
     fi
 
     msg=$(git log -1 --pretty=%s "$sha" 2>/dev/null || echo "")
@@ -738,13 +783,29 @@ if [ "$sub" = dispatch ]; then
     echo "talos ${TALOS_VERSION:-?}"
     echo ""
 
-    # Un agente no se despacha sobre una feature que no arranco.
+    # Un agente no se despacha sobre una feature que no arranco, ni sobre una
+    # que ya termino.
+    #
+    # Antes se exigia FEATURE_IN_PROGRESS y nada mas. Eso estaba escrito para
+    # un solo rol: el Reviewer trabaja con la feature en FEATURE_REVIEW, asi
+    # que el loop proponia despacharlo y el despacho lo rechazaba mandandolo a
+    # arrancar una feature que ya estaba arrancada.
+    #
+    # La condicion real es que la feature siga viva. Un estado terminal no
+    # tiene transiciones de salida: eso lo dice la tabla, no una lista de
+    # estados escrita a mano que habria que actualizar con cada rol nuevo.
     est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
-    if [ "$est" != FEATURE_IN_PROGRESS ]; then
-        printf '  FALL %s esta en %s, no en FEATURE_IN_PROGRESS\n' "$FEAT" "${est:--}"
+    if [ -z "$est" ]; then
+        printf '  FALL %s no arranco\n' "$FEAT"
         echo ""
-        echo "  Un Developer se despacha sobre trabajo en curso. Arranca con:"
+        echo "  Un rol se despacha sobre una feature en curso. Arranca con:"
         echo "    talos feature start $FEAT"
+        exit 2
+    fi
+    if [ -z "$(talos_transitions_from feature "$est" 2>/dev/null)" ]; then
+        printf '  FALL %s esta en %s, que es terminal\n' "$FEAT" "$est"
+        echo ""
+        echo "  No hay nada que despachar sobre una feature que ya cerro."
         exit 2
     fi
 
@@ -1035,6 +1096,19 @@ done
 
 echo ""
 if [ "$rc" -eq 0 ]; then
+    # Donde estaba git cuando la feature arranco. Es lo que hace atribuible un
+    # commit: "commits propios" es lo que aparecio DESPUES de esto.
+    #
+    # Antes se comparaba la rama contra main con merge-base. Cuando no hay rama
+    # de feature -y no la hay mientras el CoordinationAdapter sea de
+    # simulacion- la rama resuelta ES main, merge-base(main, main) es el propio
+    # HEAD, y la comparacion daba siempre "no tiene commits propios". El paso
+    # era imposible de pasar y el motivo culpaba al agente.
+    _base=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if [ -n "$_base" ]; then
+        mkdir -p "orchestration/features/$FEAT"
+        printf '%s\n' "$_base" > "orchestration/features/$FEAT/.base-sha"
+    fi
     printf '  %s esta en FEATURE_IN_PROGRESS\n' "$FEAT"
     echo "  El lease vence en 300s. Sin heartbeat, el LockManager lo da por muerto."
 else

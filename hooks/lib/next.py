@@ -51,7 +51,8 @@ def leer_transiciones(path):
         c = linea.split("\t")
         if len(c) >= 9 and c[0] == "feature":
             filas.append({"id": c[1], "desde": c[2], "hacia": c[3],
-                          "gate": c[4], "actor": c[6], "evidencia": c[7]})
+                          "gate": c[4], "condicion": c[5], "actor": c[6],
+                          "evidencia": c[7]})
     return filas
 
 
@@ -177,6 +178,33 @@ def agente_despachado(root, fid, adapter):
     return True, None
 
 
+def condicion_ok(root, fid, cond):
+    """Si la condicion declarada de una transicion se cumple hoy.
+
+    Dos transiciones pueden salir del mismo estado con la misma evidencia y
+    significar lo contrario: F6 es "la revision pidio cambios" y F7 es "la
+    revision aprobo", y las dos exigen un Review. Contando evidencia sola son
+    indistinguibles, y el loop tomaba la primera: volvia a trabajar sobre algo
+    ya aprobado, para revisarlo otra vez, para siempre.
+
+    Solo se decide cuando hay con que. Sin revision, la condicion no se puede
+    evaluar y no se bloquea nada: eso lo resuelve el gate, que es quien manda.
+    """
+    if cond in (None, "", "-"):
+        return True
+    review = root / "orchestration" / "reports" / fid / "review.json"
+    if not review.is_file():
+        return True
+    veredicto = (cargar(review, {}) or {}).get("verdict")
+    if not veredicto:
+        return True
+    if cond == "pass":
+        return veredicto == "approve"
+    if cond == "changes":
+        return veredicto == "request_changes"
+    return True
+
+
 def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     """Los pasos que PRODUCEN el trabajo, no los que mueven el estado.
 
@@ -192,19 +220,41 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     entregable = list((root / "orchestration" / "features" / fid / "tasks").glob(
         "*/task-result.json")) if (root / "orchestration" / "features" / fid / "tasks").is_dir() else []
 
+    # QUE rol hace falta ahora. No es siempre el Developer: cuando el trabajo
+    # esta sellado y la feature entro en revision, la evidencia que falta la
+    # produce el Reviewer, y despachar un Developer ahi seria pedirle a alguien
+    # que revise lo que acaba de escribir -que es justo lo que la separacion de
+    # roles existe para impedir-.
+    #
+    # El loop se plantaba en FEATURE_REVIEW diciendo "nada listo para avanzar":
+    # era cierto que faltaba evidencia, y falso que no hubiera nada que hacer.
+    if "TaskResultSet" in presentes and "Review" not in presentes:
+        rol_necesario = "Reviewer"
+        pendiente = not (root / "orchestration" / "reports" / fid / "review.json").is_file()
+    else:
+        rol_necesario = "Developer"
+        pendiente = not entregable
+
+    activo = rol.read_text().strip() if rol.is_file() else ""
+
     # 1. Sin rol activo no hay quien trabaje. Despachar es lo primero.
     #    Ya no hace falta que alguien elija un pane: Talos crea el suyo.
     #
-    #    Tampoco alcanza el rol solo: hace falta un agente al que hablarle, y
-    #    que lo haya producido el adapter que hoy esta ligado.
+    #    Tampoco alcanza el rol solo: hace falta un agente al que hablarle, que
+    #    lo haya producido el adapter ligado hoy, y que sea del rol que el paso
+    #    necesita. Un Developer despachado no sirve para revisar.
     hay_agente, motivo = agente_despachado(root, fid, adapter)
-    if not rol.is_file() or not hay_agente:
-        orden = f"talos feature dispatch {fid} --role Developer"
+    if not rol.is_file() or not hay_agente or activo != rol_necesario:
+        orden = f"talos feature dispatch {fid} --role {rol_necesario}"
         if pane and pane != "<PANE>":
             orden += f" --pane {pane}"
         if not rol.is_file():
             motivo = "no hay agente despachado para esta feature"
+        elif activo != rol_necesario:
+            motivo = (f"el rol activo es {activo} y lo que falta ahora "
+                      f"lo produce {rol_necesario}")
         return {"feature": fid, "orden": orden, "porque": motivo}
+
 
     # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
     #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
@@ -234,6 +284,16 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     if "TaskResultSet" not in presentes:
         return {"feature": fid, "orden": f"talos feature collect {fid}",
                 "porque": "el entregable esta y falta validarlo y sellarlo"}
+
+    # 6. Con el trabajo sellado, lo que falta lo produce el Reviewer. Se llega
+    #    aca solo cuando ya esta despachado: el paso 1 se encarga de que el rol
+    #    activo sea el que el paso necesita.
+    if rol_necesario == "Reviewer":
+        if pendiente:
+            return {"feature": fid, "orden": f"talos feature work {fid}",
+                    "porque": "la feature esta en revision y no hay Review"}
+        return {"feature": fid, "orden": f"talos feature collect {fid}",
+                "porque": "el Reviewer dejo su revision y falta sellarla"}
 
     return None
 
@@ -333,7 +393,8 @@ def main(argv):
                 # dificil marcandola como perdida.
                 #
                 # Los caminos de fracaso los toma una persona, no un bucle.
-                if not faltan and t["hacia"] not in CAMINOS_DE_FRACASO:
+                if (not faltan and t["hacia"] not in CAMINOS_DE_FRACASO
+                        and condicion_ok(root, fid, t.get("condicion"))):
                     out["acciones"].append({
                         "feature": fid,
                         "orden": f"talos feature advance {fid} --to {t['hacia']}",

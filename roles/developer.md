@@ -67,6 +67,13 @@ Un `status: done` sin `test_report_refs` es rechazado por el schema. No es una c
 3. Implementá.
 4. Ejecutá las pruebas con la herramienta provista.
 5. Escribí tu `task-result.json` con `files_changed` real, no aspiracional.
+6. Commiteá tu trabajo. Un commit, conventional commits, sin co-autores.
+
+El commit es tuyo porque el `CommitRef` es evidencia que Talos **observa** de
+git, no una mutación que ordene. Si no commitás no hay nada que observar y la
+feature se planta ahí, esperando un hecho que nadie produjo.
+
+No hacés push, no creás ramas y no abrís PRs: eso no es tuyo.
 
 ---
 
