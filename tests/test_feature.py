@@ -542,6 +542,48 @@ def main():
         "el shim ignora un modelo que no es de su proveedor",
         ajeno.stdout.strip() == "", f"emitio {ajeno.stdout!r}"))
 
+    # ---------- un agente bloqueado no es un agente que fracaso ----------
+    #
+    # wait_agent se llamaba y su resultado se tiraba. Con eso, "esta bloqueado
+    # pidiendo permiso" y "termino" eran indistinguibles: se reportaba que el
+    # agente no dejo entregable cuando en realidad no habia llegado a empezar.
+    pblock = project()
+    talos(pblock, "feature", "start", "F001")
+    esp = pblock / ".talos" / "adapters" / "spy"
+    espia(pblock)
+    (esp / "run.sh").write_text(
+        '#!/bin/sh\n'
+        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"\n'
+        'case "$1" in\n'
+        '  create_session) echo \'{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}\' ;;\n'
+        '  start_agent) echo \'{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}\' ;;\n'
+        '  wait_agent) echo \'{"status":"ok","dry_run":false,"result":{"state":"blocked"}}\' ;;\n'
+        '  *) echo \'{"status":"ok","dry_run":false,"result":{}}\' ;;\n'
+        'esac\n')
+    (esp / "run.sh").chmod(0o755)
+    talos(pblock, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = talos(pblock, "feature", "work", "F001")
+    results.append(check(
+        "un agente bloqueado sale needs_human (4), no exito silencioso",
+        code == 4, f"exit={code} {out[-300:]}"))
+    results.append(check(
+        "y lo dice: bloqueado, no 'termino sin entregable'",
+        "BLOQUEADO" in out and "termino sin dejar entregable" not in out,
+        out[-400:]))
+    results.append(check(
+        "y dice donde mirar",
+        "spy:pane" in out, out[-200:]))
+
+    # El shim tiene que arrancar al agente sin dialogos de permiso: un sistema
+    # que despacha agentes para que trabajen solos y los deja esperando a una
+    # persona por cada paso no despacha nada. Lo que lo contiene es el hook.
+    aa = subprocess.run(
+        [str(ROOT / "hooks" / "agent" / "opencode" / "agent-args.sh"), "m/x", "opencode"],
+        capture_output=True, text=True)
+    results.append(check(
+        "el shim de opencode arranca al agente sin dialogos de permiso",
+        "--auto" in aa.stdout and "--model m/x" in aa.stdout, aa.stdout))
+
     # ---------- lo que un shim instala, lo retira ----------
     #
     # Retirar solo el brief dejaba el bloqueo registrado en el runtime de una

@@ -272,32 +272,95 @@ if [ "$sub" = work ]; then
     echo ""
     printf '  feature  %s\n  rol      %s\n  agente   %s\n\n' "$FEAT" "$ROLE" "$TARGET"
 
-    encargo=$("$PY" - "$PLAN" "$FEAT" <<'PYEOF'
-import json, sys
+    # ---------- la task ----------
+    #
+    # El rol NO PUEDE trabajar sobre una task que no existe. Su contrato de
+    # salida exige declared_scope, su brief le dice "lee la task y su
+    # declared_scope", y nadie escribia ninguna: se le mandaba la descripcion
+    # de la feature y se le pedia un resultado sobre una task inventada. Un
+    # agente serio se niega -y se nego-, y uno complaciente inventa el alcance,
+    # que es peor.
+    #
+    # Cuando hay un coordinador, la descomposicion es suya (seccion 30.2). En
+    # el camino del loop no hay coordinador, asi que el nucleo deriva UNA task
+    # de la feature: es lo unico que puede hacer sin criterio propio.
+    TAREA="orchestration/features/$FEAT/tasks/T01"
+    mkdir -p "$TAREA"
+    ALCANCE=$(talos_role_scope "$ROLE" | awk -F'\t' '$1 == "allow" {print $2}')
+    if ! "$PY" - "$PLAN" "$FEAT" "$ROLE" "$TAREA/task.json" "$ALCANCE" <<'PYEOF'
+import json, sys, datetime
 plan = json.loads(open(sys.argv[1]).read())
-f = next((x for x in plan["features"] if x["id"] == sys.argv[2]), None)
+fid, rol, destino, alcance = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+f = next((x for x in plan["features"] if x["id"] == fid), None)
 if f is None:
     raise SystemExit(2)
+task = {
+    "schema_version": 1,
+    "feature_id": fid,
+    "task_id": "T01",
+    "role": rol,
+    "title": f["title"],
+    "description": f.get("description") or "",
+    "created_at": datetime.datetime.now(datetime.timezone.utc)
+                  .strftime("%Y-%m-%dT%H:%M:%SZ"),
+    # El nucleo la derivo del plan, no un rol con criterio. Decirlo importa:
+    # una task compuesta por un coordinador lleva role:FeatureLead.
+    "created_by": "component:Orchestrator",
+    # El alcance NO se inventa: es el del rol, el mismo que el hook impone.
+    # Declarar uno mas ancho seria prometer permisos que el bloqueo deniega.
+    "declared_scope": [g for g in alcance.split("\n") if g.strip()],
+    "spec_refs": [f"spec/{r}" for r in (f.get("spec_refs") or [])],
+    "acceptance_refs": [f"spec/{r}" for r in (f.get("acceptance_refs") or [])],
+    "output": {
+        "schema": "task-result",
+        "path": f"orchestration/features/{fid}/tasks/T01/task-result.json",
+    },
+}
+open(destino, "w").write(json.dumps(task, indent=2) + "\n")
+PYEOF
+    then
+        echo "talos: $FEAT no esta en el plan" >&2
+        exit 2
+    fi
+
+    # Mecanismo 1: si Talos produce un artefacto invalido, falla aca y no
+    # despues, en el gate, con el agente ya trabajando sobre un encargo roto.
+    if ! "$SYS/hooks/validate-artifact.sh" task "$TAREA/task.json" >/dev/null 2>&1; then
+        echo "  FALL la task que compuso Talos no valida contra su schema"
+        "$SYS/hooks/validate-artifact.sh" task "$TAREA/task.json" 2>&1 | sed 's/^/    /' | head -5
+        exit 2
+    fi
+    printf '  task     %s (alcance: %s)\n' "$TAREA/task.json" \
+        "$(printf '%s' "$ALCANCE" | tr '\n' ' ')"
+
+    encargo=$("$PY" - "$FEAT" "$TAREA" <<'PYEOF'
+import json, sys
+fid, tdir = sys.argv[1], sys.argv[2]
+t = json.loads(open(f"{tdir}/task.json").read())
 partes = [
-    f"Implementa {f['id']}: {f['title']}.",
+    f"Tu task es {t['task_id']} de {fid}: {t['title']}.",
     "",
-    f.get("description") or "",
+    "Esta definida en:",
+    f"  {tdir}/task.json",
+    "Leela primero: ahi esta tu declared_scope y donde va tu entregable.",
+    "",
+    t.get("description") or "",
     "",
     "El spec aprobado manda. Leelo antes de escribir:",
-    *[f"  spec/{r}" for r in (f.get("spec_refs") or [])],
-    *[f"  spec/{r}" for r in (f.get("acceptance_refs") or [])],
+    *[f"  {r}" for r in (t.get("spec_refs") or [])],
+    *[f"  {r}" for r in (t.get("acceptance_refs") or [])],
     "",
     "Escribi el codigo Y sus tests. Un criterio de aceptacion sin test no",
     "esta cumplido. Los casos de rechazo son obligatorios.",
     "",
     "Cuando termines, deja tu entregable en:",
-    f"  orchestration/features/{f['id']}/tasks/T01/task-result.json",
-    "que tiene que validar contra .talos/schemas/task-result.schema.json.",
+    f"  {t['output']['path']}",
+    f"que tiene que validar contra el schema {t['output']['schema']}.",
     "Sin ese archivo tu trabajo no existe para el sistema.",
 ]
 print("\n".join(x for x in partes if x is not None))
 PYEOF
-) || { echo "talos: $FEAT no esta en el plan" >&2; exit 2; }
+)
 
     printf '%s\n' "$encargo" | sed 's/^/    /' | head -6
     echo "    ..."
@@ -336,9 +399,27 @@ PYEOF
     # deja a quien llama sin forma de saber si hubo trabajo.
     printf '  ..   esperando a que el agente termine\n'
     set +e
-    talos_capability_run ExecutionAdapter wait_agent \
-        "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" >/dev/null 2>&1
+    espera=$(talos_capability_run ExecutionAdapter wait_agent \
+             "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
     set -e
+
+    # Esperar y no mirar el resultado trataba "esta bloqueado pidiendo una
+    # decision" igual que "termino": se reportaba que el agente no dejo
+    # entregable cuando en realidad no habia llegado a empezar, y el loop
+    # seguia como si hubiera fallado el trabajo.
+    #
+    # Un agente bloqueado no es un agente que fracaso: es uno que espera a una
+    # persona. La regla 30 llama a eso needs_human, y sale 4.
+    case "$espera" in
+        *'"state":"blocked"'*)
+            echo "  --   el agente esta BLOQUEADO esperando una decision"
+            echo ""
+            echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
+            echo "  para algo y no puede seguir hasta que alguien conteste."
+            printf '  Mira su pane:  %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+            exit 4
+            ;;
+    esac
 
     tareas="orchestration/features/$FEAT/tasks"
     if [ -d "$tareas" ] && [ -n "$(find "$tareas" -name task-result.json 2>/dev/null | head -1)" ]; then

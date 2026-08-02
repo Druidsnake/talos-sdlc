@@ -16,7 +16,20 @@ set -eu
 modelo="${1:-}"
 proveedor="${2:-}"
 
-[ -n "$modelo" ] || exit 0
-[ "$proveedor" = "opencode" ] || exit 0
+# --auto NO relaja el alcance: lo mueve al lugar donde se puede imponer.
+#
+# Sin esto, el runtime le pide permiso a una persona por cada acceso fuera de
+# lo obvio -leer /tmp, correr un comando- y el agente queda BLOQUEADO hasta que
+# alguien conteste. Un sistema que despacha agentes para que trabajen solos y
+# los deja esperando a un humano por cada paso no despacha nada.
+#
+# Lo que contiene al agente es el mecanismo 2: el plugin que Talos instala en
+# su runtime deniega toda escritura fuera del alcance del rol, y eso ocurre
+# despues de --auto y sin consultarlo. El dialogo del runtime pregunta; el hook
+# de Talos decide. Ver system/00-enforcement.md seccion 3.
+_auto="--auto"
 
-printf -- '--model %s' "$modelo"
+[ "$proveedor" = "opencode" ] || exit 0
+[ -n "$modelo" ] || { printf -- '%s' "$_auto"; exit 0; }
+
+printf -- '--model %s %s' "$modelo" "$_auto"
