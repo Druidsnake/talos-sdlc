@@ -279,6 +279,27 @@ def main():
         veces4 == 1 and '"status":"already_exists"' in r2[1],
         f"invocaciones={veces4} {r2[1][:120]}"))
 
+    # ---------- semantic_args se DECODIFICA, no se recorta ----------
+    #
+    # Extraer con sed no alcanza: sed no decodifica. Un texto con saltos de
+    # linea viajaba como la secuencia literal \n y el agente recibia un parrafo
+    # de una sola linea con barras adentro; uno con comillas se cortaba en la
+    # primera, porque [^"]* no sabe que \" esta escapada. Las dos fallas eran
+    # silenciosas: prompt_agent reportaba exito con el texto mutilado.
+    texto = 'primera linea\nsegunda con "comillas" adentro\ny una barra \\ suelta'
+    got = subprocess.run(
+        ["sh", "-c",
+         f'. "{ROOT}/adapters/lib/adapter.sh"; talos_json_get "$1" text',
+         "sh", json.dumps({"text": texto, "target": "x"})],
+        capture_output=True, text=True,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home())})
+    results.append(check(
+        "un texto con saltos de linea llega con saltos, no con la secuencia \\n",
+        "\n" in got.stdout and "\\n" not in got.stdout, repr(got.stdout[:100])))
+    results.append(check(
+        "y con comillas llega entero, no cortado en la primera",
+        got.stdout == texto, f"{got.stdout!r} != {texto!r}"))
+
     # ---------- el ledger no prueba que el recurso siga existiendo ----------
     #
     # El ledger dice "esto se hizo una vez". Un panel puede cerrarse: lo cierra

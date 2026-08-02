@@ -232,6 +232,36 @@ talos_mutate_run() {
         "$([ "$TALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
 }
 
+# ---------- lectura de semantic_args ----------
+#
+# talos_json_get <json> <clave>
+#
+# Extraer con sed no alcanza: sed no DECODIFICA. Un valor con saltos de linea
+# viaja como la secuencia literal \n hasta el agente, que recibe un parrafo de
+# una sola linea con barras adentro; y un valor con comillas se corta en la
+# primera, porque [^"]* no sabe que \" esta escapada. Las dos fallas son
+# silenciosas: la operacion reporta exito con el texto mutilado.
+#
+# Se usa python3, que ya es requisito para canonicalizar la idempotency key.
+# Sin python3 se degrada al sed de antes, que es peor pero no inventa nada.
+talos_json_get() {
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s' "$1" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(0)
+v = d.get(sys.argv[1])
+if v is None:
+    raise SystemExit(0)
+sys.stdout.write(v if isinstance(v, str) else json.dumps(v))
+' "$2"
+    else
+        printf '%s' "$1" | sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
+    fi
+}
+
 # ---------- despacho ----------
 
 # talos_require_op <operacion> <lista de operaciones soportadas>

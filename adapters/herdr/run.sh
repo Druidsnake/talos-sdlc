@@ -101,8 +101,11 @@ first_id() {
     sed -n 's/.*"\('"$1"'\)"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2/p' | head -1
 }
 
+# Decodifica de verdad: un texto con saltos de linea o comillas llegaba
+# mutilado al agente y la operacion reportaba exito igual. Ver talos_json_get
+# en adapters/lib/adapter.sh.
 json_get() {
-    printf '%s' "$args" | sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
+    talos_json_get "$args" "$1"
 }
 
 case "$op" in
@@ -309,10 +312,20 @@ case "$op" in
     wait_agent)
         check_version >/dev/null || exit 2
         _target=$(json_get target); _until=$(json_get until); _timeout=$(json_get timeout_ms)
+        # Se devuelve un ESTADO, no el JSON crudo del backend. Volcar la
+        # respuesta de herdr adentro obligaba al nucleo a conocer su
+        # vocabulario para saber si el agente termino o esta esperando algo, y
+        # el nucleo no puede conocerlo (regla 38.5.5). Sin estado legible,
+        # quien llamaba trataba "bloqueado pidiendo permiso" igual que
+        # "termino": reportaba que el agente no dejo entregable cuando en
+        # realidad no habia llegado a empezar.
         # shellcheck disable=SC2086
-        talos_ok "$(herdr_do agent wait "$_target" \
+        _raw=$(herdr_do agent wait "$_target" \
                     ${_until:+--until} ${_until:+"$_until"} \
-                    ${_timeout:+--timeout} ${_timeout:+"$_timeout"})"
+                    ${_timeout:+--timeout} ${_timeout:+"$_timeout"})
+        _st=$(printf '%s' "$_raw" | first_id agent_status)
+        [ -n "$_st" ] || _st=unknown
+        talos_ok "{\"state\":\"$_st\",\"target\":\"$_target\"}"
         ;;
 
     read_agent)
