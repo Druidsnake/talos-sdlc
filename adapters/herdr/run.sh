@@ -267,6 +267,14 @@ case "$op" in
                 _listo=$((_listo + 1))
                 sleep 1
             done
+            # Asentar en idle significa que pinto su interfaz, no que ya
+            # consuma entrada. El prompt que sale enseguida se pierde: herdr
+            # confirma que lo mando y el agente no se mueve, y el paso muere
+            # con agent_prompt_stalled sobre un agente sano.
+            #
+            # No hay forma de preguntarle al runtime "ya podes recibir": lo
+            # unico honesto es darle un margen y decir que es un margen.
+            [ "$_listo" -lt 90 ] && sleep 10
             if [ "$_listo" -ge 90 ]; then
                 printf '{"status":"error","error_class":"adapter","operation":"start_agent",' >&2
                 printf '"message":"el agente %s arranco pero no quedo listo para recibir en 90s"}\n' >&2 "$_name"
@@ -305,10 +313,57 @@ case "$op" in
         # igual. Con --wait, Herdr confirma que el agente cambio de estado o
         # devuelve agent_prompt_stalled, que es un error visible.
         _tmo=$(json_get timeout_ms)
+
+        # agent_prompt_stalled NO significa que el prompt no llego. Significa
+        # que Herdr no vio un cambio de estado en su ventana, que son 5
+        # segundos: un agente con un encargo largo tarda mas que eso en pasar a
+        # trabajar. Tratar eso como fallo abortaba el paso de un prompt que
+        # habia llegado bien, y el loop se plantaba en el primer encargo.
+        #
+        # No se reintenta: la operacion es at_most_once y reenviar dejaria al
+        # agente con el encargo dos veces. Se OBSERVA, que es lo que este
+        # adapter ya hace en start_agent y en create_session: ante un recurso
+        # cuyo estado no se puede afirmar, la fuente de verdad es el backend.
+        _estado_seq() {
+            "$HERDR" agent list 2>/dev/null | tr '}' '\n' \
+                | grep -F "\"name\":\"$_target\"" \
+                | sed -n 's/.*"state_change_seq":\([0-9]*\).*/\1/p' | head -1
+        }
+        _antes=$(_estado_seq)
+
+        set +e
         # shellcheck disable=SC2086
-        talos_mutate_run "$op" "$run" "$feat" "$args" agent \
-            herdr_do agent prompt "$_target" "$_text" --wait \
-                ${_tmo:+--timeout} ${_tmo:+"$_tmo"}
+        _out=$(talos_mutate_run "$op" "$run" "$feat" "$args" agent \
+                   herdr_do agent prompt "$_target" "$_text" --wait \
+                       ${_tmo:+--timeout} ${_tmo:+"$_tmo"} 2>&1)
+        _prc=$?
+        set -e
+        if [ "$_prc" -eq 0 ]; then
+            printf '%s\n' "$_out"
+            exit 0
+        fi
+
+        case "$_out" in
+            *agent_prompt_stalled*)
+                _espera=0
+                while [ "$_espera" -lt 60 ]; do
+                    _ahora=$(_estado_seq)
+                    if [ -n "$_ahora" ] && [ "$_ahora" != "$_antes" ]; then
+                        # El agente se movio: el prompt habia llegado.
+                        _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+                        talos_ledger_record "$_key" "$op" '{"id":"agent","url":null}'
+                        printf '{"status":"created","resource_ref":{"id":"agent","url":null},'
+                        printf '"idempotency_key":"%s","dry_run":false,' "$_key"
+                        printf '"note":"la confirmacion tardo mas que la ventana de --wait"}\n'
+                        exit 0
+                    fi
+                    _espera=$((_espera + 1))
+                    sleep 1
+                done
+                ;;
+        esac
+        printf '%s\n' "$_out" >&2
+        exit 5
         ;;
 
     close_session)

@@ -436,12 +436,25 @@ def main():
     # de ejecucion es de la maquina, y dos proyectos con una F001 pedian el
     # mismo agente. El segundo se quedaba sin agente propio y le mandaba su
     # trabajo al del primero, que corre en otro repo.
+    # El nombre distingue PROYECTO y ROL. El espacio de nombres del runtime es
+    # de la maquina y el adapter reconcilia por nombre: sin el proyecto, dos
+    # repos con una F001 se robaban el agente; sin el rol, despachar un
+    # Reviewer sobre una feature que ya tuvo Developer reusaba al Developer, y
+    # el Reviewer terminaba revisando su propio trabajo.
+    nombre = ref.get("name") or ""
     results.append(check(
-        "el nombre del agente distingue el proyecto, no solo la feature",
-        (ref.get("name") or "").startswith("talos_")
-        and (ref.get("name") or "").endswith("_f001")
-        and pa.name.lower().replace("-", "_")[:8] in (ref.get("name") or ""),
-        f"{ref.get('name')} para el proyecto {pa.name}"))
+        "el nombre del agente distingue proyecto y rol, no solo la feature",
+        nombre.startswith("talos_") and nombre.endswith("_f001_deve")
+        and pa.name.lower().replace("-", "_")[:8] in nombre,
+        f"{nombre} para el proyecto {pa.name}"))
+    # El runtime acota el nombre y lo rechaza si se pasa: minusculas, digitos,
+    # - o _, hasta 32. Un nombre invalido falla en el arranque diciendo
+    # invalid_agent_name, que suena a problema del despacho y no lo es.
+    import re as _re
+    results.append(check(
+        "y respeta el formato que el runtime acepta (<=32, [a-z0-9_-])",
+        bool(_re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", nombre)),
+        f"{nombre!r} ({len(nombre)} caracteres)"))
     results.append(check(
         "el pane queda como dato de la referencia, no como archivo suelto",
         ref.get("pane") == "spy:pane"

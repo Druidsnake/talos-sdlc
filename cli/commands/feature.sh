@@ -445,6 +445,18 @@ print(int(m) * 60 if m else 900)
 PYWALL
 )
     fi
+    # En simulacion no hay a quien esperar: el adapter no ejecuta nada, asi
+    # que el entregable no va a aparecer nunca y esperar el plazo entero es
+    # tiempo tirado. El adapter lo declara en su respuesta; no se adivina.
+    case "$out" in
+        *'"dry_run":true'*)
+            echo "  --   el ExecutionAdapter esta simulando: no hay entregable que esperar"
+            echo ""
+            echo "  En modo simulacion nadie ejecuta el encargo (regla 37.4.4.2)."
+            exit 3
+            ;;
+    esac
+
     printf '  ..   esperando el entregable del agente (hasta %ss)\n' "$ESPERA_S"
     _limite=$(( $(date +%s) + ESPERA_S ))
     while :; do
@@ -1123,8 +1135,34 @@ if [ "$sub" = dispatch ]; then
     #
     # Nadie lo notaba: el despacho decia ok, el prompt decia ok, y el entregable
     # no aparecia nunca en el proyecto que lo habia pedido.
-    _proy=$(basename "$PROJ" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | sed 's/_*$//')
-    AGENTE="talos_${_proy}_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')"
+    # LLEVA EL ROL ADENTRO por el mismo motivo. Sin el, despachar un Reviewer
+    # sobre una feature que ya tuvo Developer reusaba al Developer: el adapter
+    # reconcilia por nombre, encontraba uno vivo y no arrancaba otro. El
+    # Reviewer terminaba siendo la misma sesion que escribio el codigo, con su
+    # contexto y su brief, revisando su propio trabajo. Eso es exactamente lo
+    # que la separacion de roles existe para impedir, y ningun mensaje lo
+    # decia: el despacho reportaba ok.
+    # El runtime acota el nombre: minusculas, digitos, - o _, hasta 32
+    # caracteres. Cada parte se recorta para que el nombre entre entero; pasarse
+    # hace fallar el arranque con invalid_agent_name, que es un error del
+    # nombre y no del despacho, y cuesta encontrarlo.
+    _proy=$(basename "$PROJ" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-12 | sed 's/_*$//')
+    _rol=$(printf '%s' "$ROLE" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-4)
+    AGENTE="talos_${_proy}_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z' | cut -c1-6)_${_rol}"
+
+    # Cambiar de rol suelta al agente anterior. La referencia se sobreescribe
+    # unas lineas mas abajo, asi que sin esto el agente del rol viejo queda
+    # corriendo con su panel abierto y sin nadie que lo gobierne ni lo pueda
+    # cerrar despues: Talos pierde el hilo de algo que abrio.
+    _previo=$(talos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
+    if [ -n "$_previo" ] && [ "$_previo" != "$AGENTE" ] \
+       && talos_agent_ref_check "$FEAT" 2>/dev/null; then
+        _ppane=$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
+        if [ -n "$_ppane" ] && talos_capability_run ExecutionAdapter close_session \
+               "{\"pane\":\"$_ppane\"}" >/dev/null 2>&1; then
+            printf '  previo   %s soltado y su sesion %s cerrada\n' "$_previo" "$_ppane"
+        fi
+    fi
     set +e
     out=$(talos_capability_run ExecutionAdapter start_agent \
           "{\"name\":\"$AGENTE\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
