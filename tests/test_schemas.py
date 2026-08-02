@@ -369,6 +369,57 @@ CASES = [
         "tests_passed": True,
         "created_at": "2026-07-30T12:00:00Z",
     }, False, "additionalProperties false: no hay campo para afirmar resultados"),
+
+    # --- communication-config: bloque liveness (mensajeria 0.0.1 seccion 9.1)
+    #
+    # El subsistema de vitalidad se configura, no se cablea. El schema es el
+    # que impide que un umbral entre en un valor que viola una regla normativa.
+    ("communication-config", "config completa con bloque liveness", {
+        "version": 1, "max_payload_bytes": 16384,
+        "default_expiry_seconds": 3600, "escalate_expired_critical": True,
+        "channels": {"durable": "repo_files"},
+        "liveness": {
+            "observe_interval_seconds": 5, "ack_timeout_seconds": 45,
+            "blocked_confirm_samples": 3, "escalation_context_lines": 40,
+        },
+    }, True, "mensajeria 9.1: liveness es parte de communication.yaml"),
+
+    ("communication-config", "liveness con blocked_confirm_samples = 1", {
+        "version": 1, "max_payload_bytes": 16384,
+        "channels": {"durable": "repo_files"},
+        "liveness": {
+            "observe_interval_seconds": 5, "ack_timeout_seconds": 45,
+            "blocked_confirm_samples": 1, "escalation_context_lines": 40,
+        },
+    }, False, "mensajeria 5.3.5: WAITING_HUMAN no puede salir de una sola muestra"),
+
+    ("communication-config", "liveness con intervalo de sondeo cero", {
+        "version": 1, "max_payload_bytes": 16384,
+        "channels": {"durable": "repo_files"},
+        "liveness": {
+            "observe_interval_seconds": 0, "ack_timeout_seconds": 45,
+            "blocked_confirm_samples": 3, "escalation_context_lines": 40,
+        },
+    }, False, "un intervalo de cero es un bucle de espera ocupada"),
+
+    ("communication-config", "liveness a medias, sin ack_timeout_seconds", {
+        "version": 1, "max_payload_bytes": 16384,
+        "channels": {"durable": "repo_files"},
+        "liveness": {
+            "observe_interval_seconds": 5,
+            "blocked_confirm_samples": 3, "escalation_context_lines": 40,
+        },
+    }, False, "mensajeria 7.2: sin ack_timeout no hay handshake que vencer"),
+
+    ("communication-config", "liveness con una clave inventada", {
+        "version": 1, "max_payload_bytes": 16384,
+        "channels": {"durable": "repo_files"},
+        "liveness": {
+            "observe_interval_seconds": 5, "ack_timeout_seconds": 45,
+            "blocked_confirm_samples": 3, "escalation_context_lines": 40,
+            "quiet_threshold_seconds": 300,
+        },
+    }, False, "la quietud se descarto por medicion: no debe poder configurarse"),
 ]
 
 

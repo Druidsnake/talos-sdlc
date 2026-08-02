@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://thalos-sdlc/schemas/communication-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/communication-config/0.0.7",
   "title": "CommunicationConfig",
-  "description": "config/communication.yaml. Ver thalos-0.0.7.md seccion 25.",
+  "description": "config/communication.yaml. Ver thalos-0.0.7.md seccion 25 y thalos-mensajeria-0.0.1.md seccion 9.1.",
   "type": "object",
   "required": ["version", "max_payload_bytes", "channels"],
   "properties": {
@@ -17,6 +17,30 @@
         "durable": { "type": "string", "default": "repo_files" },
         "operational": { "type": "string" },
         "coordination": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "liveness": {
+      "type": "object",
+      "description": "Umbrales del subsistema de vitalidad. Ver thalos-mensajeria-0.0.1.md seccion 9.1. No hay umbral de quietud: se descarto por medicion porque state_change_seq no la representa y process_alive la vuelve innecesaria.",
+      "required": ["observe_interval_seconds", "ack_timeout_seconds", "blocked_confirm_samples", "escalation_context_lines"],
+      "properties": {
+        "observe_interval_seconds": {
+          "type": "integer", "minimum": 1, "default": 5,
+          "description": "Cada cuanto se toma una observacion. Cero seria espera ocupada."
+        },
+        "ack_timeout_seconds": {
+          "type": "integer", "minimum": 1, "default": 45,
+          "description": "Cuanto se espera la transicion que confirma que el encargo entro. Vencerlo produce un error TRANSIENT, no un veredicto (regla 7.3)."
+        },
+        "blocked_confirm_samples": {
+          "type": "integer", "minimum": 2, "default": 3,
+          "description": "Muestras consecutivas en blocked antes de escalar. El minimo es 2 porque la regla 5.3.5 prohibe emitir WAITING_HUMAN en la primera muestra: el runtime tiene bloqueos momentaneos que resuelve solo."
+        },
+        "escalation_context_lines": {
+          "type": "integer", "minimum": 1, "maximum": 500, "default": 40,
+          "description": "Lineas de salida que se adjuntan al escalar por WAITING_HUMAN. Unico punto del subsistema donde se lee terminal, y es al escalar, no al decidir (regla 5.6.4). El tope evita pasarse de los 16 KB de payload."
+        }
       },
       "additionalProperties": false
     }

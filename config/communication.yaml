@@ -1,0 +1,65 @@
+version: 1
+
+# La comunicacion entre roles y los umbrales de vitalidad.
+# Ver thalos-0.0.7.md seccion 25 y thalos-mensajeria-0.0.1.md.
+#
+# Este archivo NO existia. Su schema si, desde 0.0.6: habia un contrato sin
+# nada que lo cumpliera, y mientras tanto los plazos vivian cableados en el
+# codigo -900000 repetido en cuatro archivos, una gracia de 90 segundos, un
+# sondeo de 5-. Un schema sin archivo no configura nada.
+
+# Regla 25.5.1: limite duro. Lo que exceda va como artifact_refs o el mensaje
+# se rechaza con VALIDATION. No es una recomendacion.
+max_payload_bytes: 16384
+
+# Regla 25.5.7 y 25.5.8: toda pregunta sin respuesta expira. Una hora es el
+# plazo tras el cual una pregunta de un agente dejo de ser util: quien la hizo
+# ya no esta esperando, y si era critica tiene que escalar (25.5.9).
+default_expiry_seconds: 3600
+escalate_expired_critical: true
+
+channels:
+  durable: repo_files
+  operational: adapter_specific
+  coordination: coordination_adapter
+
+# ---------- vitalidad ----------
+#
+# Los cuatro numeros que deciden cuando Thalos deja de esperar a un agente.
+# Ver thalos-mensajeria-0.0.1.md seccion 9.1.
+#
+# NO HAY UMBRAL DE QUIETUD, y su ausencia es una decision, no un olvido. La
+# primera version de este subsistema media la quietud sobre state_change_seq y
+# sobre un digest de la terminal. Medirlo mostro que state_change_seq se mueve
+# SOLO cuando el estado cambia -tres reportes seguidos de working lo dejan
+# quieto-, asi que un agente sano que trabaja diez minutos lo tiene tan
+# congelado como uno muerto. La quietud no distinguia nada.
+#
+# Lo que si distingue es el proceso: foreground_process_group_id != shell_pid.
+# Un hecho del sistema operativo por encima de un estado reportado (principio
+# 6). Por eso aca no hay ningun umbral de silencio que ajustar.
+liveness:
+  # Cada cuanto se mira. Con el proceso como senal, mirar seguido es barato:
+  # son dos llamadas al socket y ninguna lectura de terminal.
+  observe_interval_seconds: 5
+
+  # Cuanto se espera la transicion que confirma que el encargo entro. Vencerlo
+  # NO es un veredicto sobre el agente: es un error TRANSIENT de la seccion
+  # 35.1, que reintenta con backoff y no consume iteracion de presupuesto
+  # (decision M-002). Un encargo que nunca llego se puede reenviar sin
+  # duplicar trabajo.
+  ack_timeout_seconds: 45
+
+  # El minimo que admite el schema es 2, y el motivo esta en la regla 5.3.5:
+  # el runtime pasa por bloqueos momentaneos que resuelve solo, y cortar en la
+  # primera lectura aborta a un agente que trabaja bien.
+  blocked_confirm_samples: 3
+
+  # Lineas que se adjuntan al escalar por WAITING_HUMAN (decision M-005).
+  #
+  # Es el UNICO lugar del subsistema donde se lee terminal, y es al escalar,
+  # no al decidir: el veredicto tiene que ser identico con o sin este texto
+  # (regla 5.6.4). Existe porque blocked mezcla "pide permiso" con "la sesion
+  # fallo", y una persona distingue eso en dos segundos mirando la pantalla
+  # mientras que una heuristica lo adivina mal justo cuando importa.
+  escalation_context_lines: 40

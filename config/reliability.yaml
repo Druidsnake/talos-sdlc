@@ -1,0 +1,80 @@
+version: 1
+
+# Timeouts, reintentos y backoff. Ver thalos-0.0.7.md seccion 35.
+#
+# Este archivo NO existia. Su schema si, desde 0.0.6. La seccion 35.3 traia una
+# "configuracion por defecto" escrita en la spec que nadie leia en tiempo de
+# ejecucion: los plazos reales estaban cableados en cli/ y en adapters/, y
+# cambiarlos era editar codigo en cuatro lugares y esperar no olvidarse de uno.
+
+reliability:
+  defaults:
+    timeout_seconds: 60
+    max_attempts: 3
+    backoff:
+      strategy: exponential
+      base_ms: 500
+      max_ms: 30000
+      jitter: full
+
+  operations:
+    # ---------- modelo y coordinacion (seccion 35.3) ----------
+    model_invoke:
+      timeout_seconds: 300
+      max_attempts: 2
+    ci_poll:
+      timeout_seconds: 30
+      max_attempts: 60
+      backoff:
+        strategy: fixed
+        base_ms: 10000
+    coordination_write:
+      timeout_seconds: 45
+      max_attempts: 5
+    merge:
+      timeout_seconds: 120
+      max_attempts: 1
+
+    # ---------- agentes ----------
+    #
+    # Entregar un encargo a un agente. 900s es el plazo que hoy esta cableado
+    # como 900000 ms en boot.sh, feature.sh y message.sh.
+    #
+    # max_attempts: 3 con backoff es la decision M-002. Antes valia 1 porque no
+    # habia forma de distinguir "el encargo no llego" de "el agente no
+    # contesto", y reintentar a ciegas arriesgaba dejarle el trabajo dos veces.
+    # Con el ACK observado (mensajeria 7.2) esa distincion existe: si no hubo
+    # transicion, el agente nunca lo recibio y no hay duplicado que evitar.
+    agent_prompt:
+      timeout_seconds: 900
+      max_attempts: 3
+      backoff:
+        strategy: exponential
+        base_ms: 1000
+        max_ms: 15000
+        jitter: full
+
+    # Observar a un agente es una FOTO, no una espera: dos llamadas al socket
+    # sin lectura de terminal. Un timeout largo aca seria un bug -si observar
+    # tarda diez segundos, el backend tiene un problema que hay que ver, no
+    # esperar-. Se reintenta una sola vez por si la primera cayo en una
+    # recarga del servidor.
+    agent_observe:
+      timeout_seconds: 10
+      max_attempts: 2
+
+  # Regla 35.2.2 y 35.2.3: solo estas clases pueden reintentarse. AUTH,
+  # PRECONDITION, VALIDATION e INTERNAL escalan de inmediato porque reintentar
+  # no cambia el resultado, solo demora el aviso.
+  #
+  # NOT_DELIVERED entra por TIMEOUT segun la decision M-002 (mensajeria 7.3).
+  retryable_error_classes:
+    - TRANSIENT
+    - TIMEOUT
+    - RATE_LIMITED
+    - CONFLICT
+
+  lock_wait_timeout_seconds: 900
+  max_plan_attempts: 3
+  max_fix_attempts: 3
+  escalate_after_consecutive_failures: 3
