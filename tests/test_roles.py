@@ -6,6 +6,7 @@ que no existen. Estos checks detectan esa deriva.
 import json
 import pathlib
 import subprocess
+import tempfile
 import sys
 
 import yaml
@@ -169,6 +170,54 @@ def main():
         on_disk <= referenced,
         f"sin referenciar: {sorted(on_disk - referenced)}",
     ))
+
+    # ---------- el proyecto declara donde vive su codigo ----------
+    #
+    # El alcance de escritura depende del LAYOUT del proyecto: un Developer con
+    # src/** y tests/** no puede tocar app/ en un Next.js, y el sistema le pedia
+    # igual que implementara la pagina. Un agente se bloqueo por esto, con
+    # razon. La cadena 43.3 ya definia el override de proyecto y nadie la
+    # implementaba para el alcance.
+    import os
+    proy = pathlib.Path(tempfile.mkdtemp())
+    (proy / "thalos.config").mkdir()
+    (proy / "thalos.config" / "overrides.yaml").write_text(
+        "roles:\n  Developer:\n    write_paths:\n      - \"app/**\"\n")
+    entorno = dict(os.environ, THALOS_PROJECT_ROOT=str(proy))
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "build-rules.py")],
+                       capture_output=True, text=True, env=entorno)
+    reglas = (ROOT / "hooks" / "generated" / "write-scope.rules").read_text()
+    results.append(check(
+        "un proyecto puede declarar donde vive su codigo",
+        r.returncode == 0 and "Developer\tallow\tapp/**" in reglas,
+        f"{r.stdout}{r.stderr}"))
+    results.append(check(
+        "y los deny del sistema sobreviven al override",
+        "Developer\tdeny\tspec/**" in reglas and "Developer\tdeny\t.thalos/**" in reglas))
+
+    # Regla 43.4.5: un override NO PUEDE relajar una restriccion.
+    (proy / "thalos.config" / "overrides.yaml").write_text(
+        "roles:\n  Developer:\n    forbidden_paths: []\n")
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "build-rules.py")],
+                       capture_output=True, text=True, env=entorno)
+    results.append(check(
+        "RECHAZA un override que intenta relajar una restriccion (regla 43.4.5)",
+        r.returncode != 0 and "no puede relajar" in (r.stdout + r.stderr),
+        f"exit={r.returncode} {r.stdout}{r.stderr}"))
+
+    (proy / "thalos.config" / "overrides.yaml").write_text(
+        "roles:\n  Inventado:\n    write_paths: [\"x/**\"]\n")
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "build-rules.py")],
+                       capture_output=True, text=True, env=entorno)
+    results.append(check(
+        "RECHAZA un override sobre un rol que no existe",
+        r.returncode != 0, f"exit={r.returncode}"))
+
+    # Se restauran las reglas del sistema: el test no puede dejar el repo con
+    # el alcance de un proyecto de prueba adentro.
+    subprocess.run([sys.executable, str(ROOT / "tools" / "build-rules.py")],
+                   capture_output=True, text=True,
+                   env={k: v for k, v in os.environ.items() if k != "THALOS_PROJECT_ROOT"})
 
     print()
     ok = sum(1 for r in results if r)
