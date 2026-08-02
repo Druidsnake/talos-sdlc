@@ -69,6 +69,7 @@ TRABAJAR
     thalos merge check|do <F>      MERGE_GATE y merge gobernado
     thalos human approve|decide    registra una decision humana
     thalos message list|answer     lo que los agentes dijeron, y tu respuesta
+    thalos agent observe|verdict   si el agente esta vivo, y que hacer si no
 
 EVENTOS
     thalos event append            registra un evento con secuencia
@@ -111,7 +112,7 @@ case "$cmd" in
     version|--version)
         echo "thalos $THALOS_VERSION"
         ;;
-    init|doctor|status|rules|adapters|gate|next|run|boot|budget|message)
+    init|doctor|status|rules|adapters|gate|next|run|boot|budget|message|agent)
         exec "$CLI_DIR/commands/$cmd.sh" "$@"
         ;;
     spec)

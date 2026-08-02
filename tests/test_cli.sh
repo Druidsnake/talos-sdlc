@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # thalos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate evidence plan feature merge human next run budget init "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence plan feature merge human next run budget init agent "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $THALOS "$@" --help >/dev/null 2>&1; then
@@ -135,6 +135,29 @@ expect_out "merge" "thalos rules filtra por topic" $THALOS rules merge
 expect_exit 0 "thalos status tras init" $THALOS status
 expect_exit 0 "thalos doctor --format json" $THALOS doctor --format json
 expect_out '"install_level"' "doctor emite JSON con install_level" $THALOS doctor --format json
+
+echo ""
+echo "=== vitalidad de agentes ==="
+# El codigo de salida lleva la CLASE DE ACCION, no el veredicto (regla 11.2 de
+# la mensajeria): son siete veredictos y la seccion 40.4 define seis codigos
+# con significado fijo.
+expect_exit 1 "thalos agent sin subcomando sale 1" $THALOS agent
+expect_exit 1 "thalos agent verdict sin feature sale 1" $THALOS agent verdict
+expect_out "GONE" "un agente que no existe da GONE" \
+    $THALOS agent verdict --observation '{"pane_exists":false,"state":"unknown"}'
+expect_exit 5 "GONE sale 5: hay que redespachar" \
+    $THALOS agent verdict --observation '{"pane_exists":false,"state":"unknown"}'
+# EL caso: el estado miente y el proceso lo desmiente.
+expect_out "DEAD" "estado working con proceso muerto da DEAD" \
+    $THALOS agent verdict --observation \
+    '{"pane_exists":true,"state":"working","process_alive":false,"process_observed":true}'
+# Y su contracara: no poder mirar no es estar muerto (regla 4.3.1).
+expect_out "ALIVE_WORKING" "sin observar el proceso no se inventa la muerte" \
+    $THALOS agent verdict --observation \
+    '{"pane_exists":true,"state":"working","process_alive":false,"process_observed":false}'
+expect_exit 0 "un agente vivo sale 0" \
+    $THALOS agent verdict --observation \
+    '{"pane_exists":true,"state":"working","process_alive":true,"process_observed":true}'
 
 echo ""
 echo "=== capacidades y adapters ==="
