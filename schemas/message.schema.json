@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/message/0.0.5",
   "title": "Message",
-  "description": "Comunicacion estructurada entre roles. Ver talos-0.0.6.md seccion 25.",
+  "description": "Comunicacion estructurada entre roles. Ver talos-0.0.7.md seccion 25.",
   "type": "object",
   "required": ["id", "thread_id", "type", "from", "to", "state", "created_at"],
   "properties": {

@@ -1,5 +1,5 @@
 # GENERADO por tools/build-transitions.py - NO EDITAR A MANO
-# fuente: talos-0.0.6.md secciones 22.4 y 22.5
+# fuente: talos-0.0.7.md secciones 22.4 y 22.5
 # formato: <maquina>\t<id>\t<desde>\t<hacia>\t<gate>\t<condicion>\t<actor>\t<evidencia>\t<evento>
 # Regla 22.6.1: una transicion debe existir aca para ser permitida.
 # Regla 22.6.2: toda transicion no listada se rechaza.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/plugin-manifest/0.0.6",
   "title": "PluginManifest",
-  "description": "Manifiesto de un plugin. Ver talos-0.0.6.md seccion 39.",
+  "description": "Manifiesto de un plugin. Ver talos-0.0.7.md seccion 39.",
   "type": "object",
   "required": ["id", "version", "core_compatibility", "permissions"],
   "properties": {

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Resolucion capability_tier -> modelo concreto. Ver talos-0.0.6.md 20.3.
+# Resolucion capability_tier -> modelo concreto. Ver talos-0.0.7.md 20.3.
 #
 # El nucleo NO conoce identificadores de modelo: conoce tiers. La unica fuente
 # de la traduccion es config/models.yaml, igual que config/extensions.yaml es

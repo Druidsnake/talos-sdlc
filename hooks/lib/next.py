@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proyeccion de "que sigue". Ver talos-0.0.6.md secciones 22, 29 y 43.5.
+"""Proyeccion de "que sigue". Ver talos-0.0.7.md secciones 22, 29 y 43.5.
 
 Esto NO es una fuente de intencion. La cadena de autoridad de la seccion 43.5
 pone el spec aprobado por encima de todo lo que no sea policy o aprobacion

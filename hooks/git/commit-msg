@@ -1,6 +1,6 @@
 #!/bin/sh
 # Mecanismo 4: git hook.
-# Rechaza mensajes de commit que rompen la trazabilidad (talos-0.0.6.md 5.5).
+# Rechaza mensajes de commit que rompen la trazabilidad (talos-0.0.7.md 5.5).
 
 set -eu
 msg_file="$1"

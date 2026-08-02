@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/system-config/0.0.6",
   "title": "SystemConfig",
-  "description": "config/system.yaml. Ver talos-0.0.6.md secciones 37.4.4 y 47.",
+  "description": "config/system.yaml. Ver talos-0.0.7.md secciones 37.4.4 y 47.",
   "type": "object",
   "required": [
     "version",

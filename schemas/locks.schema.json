@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/locks/0.0.6",
   "title": "Locks",
-  "description": "Leases con TTL y fencing token. Ver talos-0.0.6.md seccion 32.",
+  "description": "Leases con TTL y fencing token. Ver talos-0.0.7.md seccion 32.",
   "type": "object",
   "required": ["schema_version", "leases"],
   "properties": {

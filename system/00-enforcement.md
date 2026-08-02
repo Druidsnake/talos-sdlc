@@ -137,7 +137,7 @@ La regla 4 es la que preserva la honestidad del sistema: es preferible un Talos 
 
 ## 6. Mapeo de los requisitos del núcleo
 
-Clasificación de los requisitos estructurales de `talos-0.0.6.md`.
+Clasificación de los requisitos estructurales de `talos-0.0.7.md`.
 
 ### 6.1. Enforcement duro disponible
 

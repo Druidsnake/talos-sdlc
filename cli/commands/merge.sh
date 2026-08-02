@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos merge - gobierno del merge. Ver talos-0.0.6.md seccion 31.
+# talos merge - gobierno del merge. Ver talos-0.0.7.md seccion 31.
 #
 # MergeGate es nucleo, no rol. Ningun agente lo implementa y ninguna extension
 # puede autorizar un merge.

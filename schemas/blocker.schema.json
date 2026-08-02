@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/blocker/0.0.6",
+  "$id": "https://talos-sdlc/schemas/blocker/0.0.7",
   "title": "Blocker",
-  "description": "La OTRA salida de un encargo. Un rol tenia una sola forma de terminar -su entregable- y ninguna de decir 'no puedo'. Cuando no podia, contestaba en prosa: Talos esperaba un archivo que no llegaba, agotaba el plazo y reportaba 'termino sin dejar entregable', perdiendo el motivo. Un agente que no puede seguir tiene que poder decirlo en algo que el sistema lea. Ver talos-0.0.6.md seccion 30 y la transicion F5, que exige ErrorRecord.",
+  "description": "La OTRA salida de un encargo. Un rol tenia una sola forma de terminar -su entregable- y ninguna de decir 'no puedo'. Cuando no podia, contestaba en prosa: Talos esperaba un archivo que no llegaba, agotaba el plazo y reportaba 'termino sin dejar entregable', perdiendo el motivo. Un agente que no puede seguir tiene que poder decirlo en algo que el sistema lea. Ver talos-0.0.7.md seccion 30 y la transicion F5, que exige ErrorRecord.",
   "type": "object",
   "required": ["schema_version", "feature_id", "task_id", "role", "reason", "created_at"],
   "properties": {

@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos feature - ejecucion de features. Ver talos-0.0.6.md secciones 30 y 22.5.
+# talos feature - ejecucion de features. Ver talos-0.0.7.md secciones 30 y 22.5.
 #
 # start recorre las transiciones F1 y F2 de la tabla 22.5:
 #   F1  ->  FEATURE_READY          READY_GATE, evidencia ProgramPlanEntry + DependencySet

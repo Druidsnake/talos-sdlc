@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/extension-registry/0.0.6",
   "title": "ExtensionRegistry",
-  "description": "Registro de capacidades e implementaciones en config/extensions.yaml. Ver talos-0.0.6.md secciones 37.4 y 43.6. Este archivo es el unico lugar donde el sistema puede nombrar implementaciones concretas (principio 20.b).",
+  "description": "Registro de capacidades e implementaciones en config/extensions.yaml. Ver talos-0.0.7.md secciones 37.4 y 43.6. Este archivo es el unico lugar donde el sistema puede nombrar implementaciones concretas (principio 20.b).",
   "type": "object",
   "required": ["version", "capabilities"],
   "properties": {

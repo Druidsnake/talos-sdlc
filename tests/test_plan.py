@@ -1,4 +1,4 @@
-"""Auditoria de PLAN_GATE. Ver talos-0.0.6.md seccion 29.
+"""Auditoria de PLAN_GATE. Ver talos-0.0.7.md seccion 29.
 
 Paso 7 de la ruta de implementacion (seccion 51).
 

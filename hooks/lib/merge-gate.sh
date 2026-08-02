@@ -1,5 +1,5 @@
 #!/bin/sh
-# MergeGate. Ver talos-0.0.6.md seccion 31.
+# MergeGate. Ver talos-0.0.7.md seccion 31.
 #
 # Es un componente de NUCLEO, no un rol. Ningun agente lo implementa, ninguna
 # extension puede autorizar un merge (reglas 31.9 y 31.11), y un GateEvaluator

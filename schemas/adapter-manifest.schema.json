@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/adapter-manifest/0.0.6",
   "title": "AdapterManifest",
-  "description": "Manifiesto de un adapter. Ver talos-0.0.6.md secciones 37.4 y 38.",
+  "description": "Manifiesto de un adapter. Ver talos-0.0.7.md secciones 37.4 y 38.",
   "type": "object",
   "required": ["id", "version", "api_version", "implements", "operations", "health_check", "supports_dry_run"],
   "properties": {

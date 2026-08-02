@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/project-manifest/0.0.6",
   "title": "ProjectManifest",
-  "description": "Manifiesto de proyecto en talos.config/project.yaml. Ver talos-0.0.6.md seccion 14.",
+  "description": "Manifiesto de proyecto en talos.config/project.yaml. Ver talos-0.0.7.md seccion 14.",
   "type": "object",
   "required": ["system_name", "system_root", "system_version", "spec_root", "runtime_root", "config_root"],
   "properties": {

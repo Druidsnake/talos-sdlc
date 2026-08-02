@@ -1,4 +1,4 @@
-"""Auditoria de presupuestos. Ver talos-0.0.6.md seccion 33.
+"""Auditoria de presupuestos. Ver talos-0.0.7.md seccion 33.
 
 La regla que gobierna estos checks es la 33.8: si el presupuesto impide usar el
 tier requerido, Talos DEBE escalar en lugar de degradar silenciosamente el

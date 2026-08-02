@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/preconditions-config/0.0.6",
   "title": "PreconditionsConfig",
-  "description": "config/preconditions.yaml. Ver talos-0.0.6.md seccion 27.",
+  "description": "config/preconditions.yaml. Ver talos-0.0.7.md seccion 27.",
   "type": "object",
   "required": ["version", "checks"],
   "properties": {

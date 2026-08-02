@@ -4,7 +4,7 @@
 # No es parte del núcleo: vive bajo adapters/ porque es infraestructura de
 # implementación, no contrato. El núcleo nunca la carga.
 #
-# Provee lo que talos-0.0.6.md seccion 38 exige de todo adapter:
+# Provee lo que talos-0.0.7.md seccion 38 exige de todo adapter:
 #   - resultado estructurado                        (38.1.3)
 #   - idempotency key determinista                  (38.2.4)
 #   - forma de retorno de operacion mutante         (38.2.3)
@@ -30,7 +30,7 @@ talos_ok() {
 }
 
 # talos_error <clase> <mensaje>
-# Clases segun talos-0.0.6.md seccion 35.1.
+# Clases segun talos-0.0.7.md seccion 35.1.
 talos_error() {
     printf '{"status":"error","error_class":"%s","message":"%s"}\n' "$1" "$2" >&2
     return 5
@@ -63,7 +63,7 @@ talos_canonical_json() {
 
 # talos_idempotency_key <run_id> <feature_id> <operation> <semantic_args_json>
 #
-# Formula exacta de talos-0.0.6.md 38.2.4. semantic_args NO DEBE contener
+# Formula exacta de talos-0.0.7.md 38.2.4. semantic_args NO DEBE contener
 # timestamps ni valores no deterministas (38.2.5): eso es responsabilidad de
 # quien llama, porque el adapter no puede saber que campo es semantico.
 talos_idempotency_key() {
@@ -164,7 +164,7 @@ talos_ledger_record() {
 
 # talos_mutate <operation> <run_id> <feature_id> <semantic_args_json> <resource_ref_json>
 #
-# Forma de retorno exacta de talos-0.0.6.md 38.2.3. Reintentar con los mismos
+# Forma de retorno exacta de talos-0.0.7.md 38.2.3. Reintentar con los mismos
 # argumentos devuelve already_exists en vez de crear un duplicado: es la
 # correccion de 0.0.4 que evitaba PRs e issues duplicados al reintentar.
 talos_mutate() {

@@ -1,6 +1,6 @@
 """Auditoria de la proyeccion "que sigue" y del loop del orquestador.
 
-Ver talos-0.0.6.md secciones 22, 29 y 43.5.
+Ver talos-0.0.7.md secciones 22, 29 y 43.5.
 
 Lo que se verifica no es que el loop avance, sino que NO avance de mas: un
 ejecutor automatico es peligroso exactamente en la medida en que puede saltear

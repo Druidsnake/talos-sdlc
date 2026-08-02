@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos message - la comunicacion entre roles. Ver talos-0.0.6.md seccion 25.
+# talos message - la comunicacion entre roles. Ver talos-0.0.7.md seccion 25.
 #
 # La seccion 25 estaba especificada entera y no la implementaba nadie. Se veia
 # corriendo: un agente contestaba "no puedo por X", Talos esperaba un archivo

@@ -26,7 +26,7 @@ REGISTRY = ROOT / "config" / "extensions.yaml"
 ADAPTERS = ROOT / "adapters"
 OUT = ROOT / "hooks" / "generated" / "capabilities.tsv"
 
-# Clasificacion de talos-0.0.6.md 37.4.2. Vive aca y no en el YAML porque es
+# Clasificacion de talos-0.0.7.md 37.4.2. Vive aca y no en el YAML porque es
 # normativa del nucleo, no configuracion: el usuario no puede degradar una
 # capacidad requerida a opcional editando su config.
 REQUIRED = [

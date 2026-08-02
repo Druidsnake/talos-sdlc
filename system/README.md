@@ -11,7 +11,7 @@ Las reglas normativas de Talos, en la forma en que el agente las consume.
 
 ## El registro es el que manda
 
-`talos-0.0.6.md` son 3000 líneas para una persona. `rules.yaml` es el mismo contenido en la forma que importa para gobernar: **cada requisito atado al mecanismo concreto que lo hace cumplir**.
+`talos-0.0.7.md` son 3000 líneas para una persona. `rules.yaml` es el mismo contenido en la forma que importa para gobernar: **cada requisito atado al mecanismo concreto que lo hace cumplir**.
 
 ```yaml
 - id: R-EVID-002
@@ -20,7 +20,7 @@ Las reglas normativas de Talos, en la forma en que el agente las consume.
   mecanismo: 1
   implementacion:
     - schemas/task-result.schema.json
-  spec_ref: talos-0.0.6.md#30-4-verificacion-de-pruebas
+  spec_ref: talos-0.0.7.md#30-4-verificacion-de-pruebas
 ```
 
 Sin el campo `mecanismo`, esa línea sería una aspiración. Con él, se puede verificar que la promesa tiene respaldo.

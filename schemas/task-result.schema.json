@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/task-result/0.0.6",
   "title": "TaskResult",
-  "description": "Salida estructurada obligatoria del rol Developer. Ver talos-0.0.6.md seccion 30.2 y system/00-enforcement.md seccion 7. El Developer NO afirma que las pruebas pasaron: referencia el LocalTestReport que produjo el ExecutionAdapter, que si es verificable.",
+  "description": "Salida estructurada obligatoria del rol Developer. Ver talos-0.0.7.md seccion 30.2 y system/00-enforcement.md seccion 7. El Developer NO afirma que las pruebas pasaron: referencia el LocalTestReport que produjo el ExecutionAdapter, que si es verificable.",
   "type": "object",
   "required": ["schema_version", "feature_id", "task_id", "status", "declared_scope", "files_changed", "created_at"],
   "properties": {

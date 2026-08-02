@@ -10,7 +10,7 @@ El repo se queda en `dry-run-only` a propósito: su propia suite no puede depend
 
 ## Quick path
 
-1. Leé [`talos-0.0.6.md`](talos-0.0.6.md) — la especificación del núcleo.
+1. Leé [`talos-0.0.7.md`](talos-0.0.7.md) — la especificación del núcleo.
 2. Si te interesa la memoria persistente, leé [`talos-memory-0.0.1.md`](talos-memory-0.0.1.md) — extensión **opcional**.
 3. Empezá por las secciones 22 (ciclo de vida), 23 (evidencia) y 24 (gates). Son el corazón del sistema.
 
@@ -20,7 +20,7 @@ El repo se queda en `dry-run-only` a propósito: su propia suite no puede depend
 
 | Archivo | Contenido | Versión |
 |---|---|---|
-| [`talos-0.0.6.md`](talos-0.0.6.md) | Especificación del núcleo | 0.0.6 |
+| [`talos-0.0.7.md`](talos-0.0.7.md) | Especificación del núcleo | 0.0.6 |
 | [`talos-memory-0.0.1.md`](talos-memory-0.0.1.md) | Extensión opcional de memoria persistente | 0.0.1 |
 | [`history/`](history/) | Versiones superadas | 0.0.4, 0.0.5 |
 
@@ -79,6 +79,9 @@ Herdr gestiona workspaces y paneles de terminal, que es estado a nivel de máqui
 | **El núcleo no conoce vendors** | Toda integración externa es un adapter. El sistema debe poder correr solo con el adapter dry-run. |
 | **Las extensiones son consultivas** | Ninguna extensión puede aprobar un gate, producir evidencia ni anular el spec aprobado. |
 | **El humano aprueba lo crítico** | Riesgo `critical` exige `HumanApprover`. El auto-merge está deshabilitado por defecto. |
+| **Toda identidad lleva su procedencia** | Una referencia dice quién la produjo, y no se usa contra otro productor. Que un recurso se haya creado no prueba que siga existiendo: se reconcilia contra el backend, no contra el registro local. |
+| **La comunicación no se corta** | Lo estructurado es el sobre y lo pone Talos; el contenido puede ser ruido. Ninguna respuesta se descarta por no tener el formato esperado: se persiste y se entrega a quien pueda actuar. |
+| **Un paso sin evidencia no avanzó** | Reportar éxito sin el artefacto hace que el loop lo cuente como progreso y repita hasta agotar el presupuesto. La condición de terminación es el artefacto, no un estado del runtime. |
 
 ---
 
@@ -111,29 +114,33 @@ El event log es la fuente de verdad del estado. `state.json` es una proyección 
 |---|---|
 | Especificación del núcleo | completa para piloto serial |
 | Especificación de memoria | completa, opcional |
-| Schemas JSON | 25 definidos y verificados con suite de rechazo |
-| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `next`, `run`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `merge`, `human`, `budget`, `event` |
+| Schemas JSON | 27 definidos y verificados con suite de rechazo |
+| CLI `talos` | `init`, `doctor`, `spec check`, `status`, `next`, `run`, `boot`, `rules`, `adapters`, `gate`, `evidence`, `plan`, `feature`, `merge`, `human`, `budget`, `event`, `message` |
 | Registro de capacidades | implementado (`config/extensions.yaml`) |
 | Adapters | 5 de simulación + 3 productivos (Herdr, GitHub, CI) |
+| Contrato de ejecución | ciclo de vida completo: abrir, arrancar, promptear, esperar, leer, ejecutar y **cerrar** |
 | Resolución de binarios | cascada de 37.4.5 con verificación de versión |
 | Máquina de estados y gates | 52 transiciones derivadas de la spec, `GateEvaluator` puro |
 | Evidencia | digest verificado, `GateResult` persistido e inmutable |
 | `talos plan` | `PLAN_GATE` completo sobre el grafo de features |
-| `talos feature` | `start`, `dispatch` con rol y alcance, `collect`, `test` |
+| `talos feature` | `start`, `dispatch` con rol y alcance, `work`, `commit`, `test`, `collect`, `pr`, `checks`, `advance`, `release` |
+| `talos boot` | enciende al coordinador y le cede la decisión del próximo paso |
+| `talos message` | la comunicación no se pierde: lo que el agente diga se registra y se entrega |
 | `talos merge` | `MERGE_GATE` con siete condiciones, delega en el adapter |
 | `talos next` / `run` | proyección de qué sigue y loop acotado |
 | `talos human` | la vía por la que una persona acuña su decisión |
 | Presupuestos | frenan la ejecución; nunca degradan el tier |
 | Ejecutor de transiciones | gate, evento y proyección de estado |
 | LockManager | leases con TTL y fencing token |
+| Ciclo completo | verificado de punta a punta con agentes reales hasta `FEATURE_CHECKS_RUNNING` |
 | Modo actual | `dry-run-only`, serial, un feature a la vez |
-| Suite | 546 checks + shellcheck |
+| Suite | 630 checks + shellcheck |
 
 ---
 
 ## Decisiones abiertas
 
-Estas bloquean versiones futuras y están documentadas en la [sección 50](talos-0.0.6.md#50-decisiones-abiertas):
+Estas bloquean versiones futuras y están documentadas en la [sección 50](talos-0.0.7.md#50-decisiones-abiertas):
 
 | ID | Decisión | Bloquea |
 |---|---|---|
@@ -146,17 +153,23 @@ Estas bloquean versiones futuras y están documentadas en la [sección 50](talos
 
 ## Cómo evolucionó
 
-La versión 0.0.5 es una corrección estructural de 0.0.4, no un incremento de features. Se arreglaron una contradicción normativa que invertía la autoridad de la memoria sobre el spec aprobado, la ausencia total de tabla de transiciones, la falta de definición del término "evidencia", locks sin expiración que permitían deadlock permanente y adapters sin idempotencia que duplicaban PRs al reintentar. El detalle completo está en el [changelog](talos-0.0.6.md#49-changelog).
+La versión 0.0.5 es una corrección estructural de 0.0.4, no un incremento de features. Se arreglaron una contradicción normativa que invertía la autoridad de la memoria sobre el spec aprobado, la ausencia total de tabla de transiciones, la falta de definición del término "evidencia", locks sin expiración que permitían deadlock permanente y adapters sin idempotencia que duplicaban PRs al reintentar. El detalle completo está en el [changelog](talos-0.0.7.md#49-changelog).
 
 La memoria persistente ocupaba el 38% del documento del núcleo siendo una feature opcional. Se extrajo a su propio documento versionado de forma independiente.
 
 La versión 0.0.6 separa la **capacidad** de la **implementación**. Antes, marcar `talos-adapter-herdr` como "opcional" era arquitectónicamente cierto y operacionalmente engañoso: el adapter es reemplazable, pero la capacidad que implementa no es prescindible. Ahora cada extension point se clasifica como requerido u opcional, independientemente de qué adapter lo satisface, y aparecen los modos de operación que hacen explícito qué hace falta instalar para cada nivel de uso.
 
+La versión 0.0.7 no salió de leer el documento: salió de **correr el ciclo completo contra agentes reales** hasta verlo cerrar. Cada corrección es un defecto que solo aparecía ejecutando, y la mayoría estaba tapada por probar los pasos por separado en vez del ciclo entero.
+
+Cuatro de esos defectos resultaron ser el mismo: una referencia que no llevaba consigo quién la había producido. El ledger devolvía ids fabricados por el simulador a un adapter productivo; devolvía recursos que ya no existían; dos proyectos con una `F001` se robaban el agente; y un `Reviewer` despachado sobre una feature que ya tuvo `Developer` terminaba siendo el mismo agente, revisando su propio trabajo. Los cuatro reportaban éxito.
+
+El otro hallazgo grande fue de comunicación. La sección 25 estaba especificada entera —tipos, estados, hilos, expiración— y no la implementaba nadie. Un agente contestó *"no puedo seguir, confirmame si reiniciaron el workspace"* y Talos lo descartó porque esperaba un archivo con otro formato. La regla pedía comunicación "estructurada", y exigirle esa estructura al emisor es justamente lo que la rompe.
+
 ---
 
 ## Próximo paso
 
-Los pasos 1 a 6 de la [sección 51](talos-0.0.6.md#51-ruta-de-implementación-recomendada) están hechos. Falta cerrar el modo `dry-run-only`:
+Los pasos 1 a 6 de la [sección 51](talos-0.0.7.md#51-ruta-de-implementación-recomendada) están hechos. Falta cerrar el modo `dry-run-only`:
 
 El modo `dry-run-only` está cerrado. Un ciclo completo corre hoy:
 

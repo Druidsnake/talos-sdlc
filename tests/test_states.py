@@ -18,7 +18,7 @@ from jsonschema import Draft202012Validator
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEMAS = ROOT / "schemas"
 TABLE = ROOT / "hooks" / "generated" / "transitions.tsv"
-SPEC = ROOT / "talos-0.0.6.md"
+SPEC = ROOT / "talos-0.0.7.md"
 TALOS = ROOT / "cli" / "talos"
 
 TERMINAL = {

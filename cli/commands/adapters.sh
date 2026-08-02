@@ -33,7 +33,7 @@ CAPACIDAD vs IMPLEMENTACION
     Cero implementaciones de una capacidad REQUERIDA falla.
     Cero implementaciones de una capacidad OPCIONAL es un estado valido.
 
-    Ver talos-0.0.6.md seccion 37.4.
+    Ver talos-0.0.7.md seccion 37.4.
 
 SALIDA
     0  toda capacidad requerida ligada y sana
@@ -93,7 +93,7 @@ done
 echo ""
 if [ "$fails" -gt 0 ]; then
     echo "  $fails capacidad(es) REQUERIDA(s) sin satisfacer"
-    echo "  Ver talos-0.0.6.md 37.4.3: cero implementaciones falla en PRECONDITION_GATE."
+    echo "  Ver talos-0.0.7.md 37.4.3: cero implementaciones falla en PRECONDITION_GATE."
     exit 2
 fi
 echo "  capacidades requeridas: OK"

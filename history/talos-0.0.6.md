@@ -211,7 +211,10 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 ### 5.2. Trazabilidad
 
 5. Todo cambio DEBE ser trazable a spec, feature, task y PR.
-6. Toda comunicación entre roles DEBE ser explícita y estructurada.
+6. Toda comunicación entre roles DEBE ser explícita y estructurada. **La estructura es del sobre y la pone Talos; el contenido puede ser cualquier cosa.**
+6.a. Ninguna respuesta de un rol DEBE descartarse por no tener el formato esperado.
+6.b. Toda respuesta que no pueda interpretarse DEBE persistirse igual y entregarse a alguien que pueda actuar sobre ella.
+6.c. La comunicación NO DEBE cortarse de forma inesperada: un paso que termina sin lo que esperaba DEBE dejar registrado lo que sí recibió.
 7. Toda decisión relevante DEBE persistirse como artefacto o evento.
 8. Toda transición de estado DEBE producir evidencia según la sección 23.
 9. Todo evento DEBE tener secuencia monotónica dentro de su run.
@@ -242,6 +245,10 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 22. Todo lock DEBE tener expiración.
 23. Todo error DEBE clasificarse antes de decidir reintento.
 24. El estado runtime DEBE poder migrarse entre versiones de Talos.
+25. Toda referencia a un recurso externo DEBE llevar la procedencia de quien la produjo.
+26. Una referencia NO DEBE usarse contra un productor distinto del que la creó.
+27. Que un recurso se haya creado NO prueba que siga existiendo. Antes de reusar una referencia sobre un recurso que puede desaparecer, el estado DEBE reconciliarse contra el backend.
+28. Toda identidad DEBE ser única en el espacio de nombres donde se usa, no en el que la produjo.
 
 ### 5.6. Extensiones
 
@@ -1199,9 +1206,15 @@ needs_human
 
 ## 25. Comunicación
 
+**Corrección respecto de 0.0.6: esta sección estaba especificada entera y no la implementaba nadie.** Tipos, estados, hilos, canales, expiración y límite de payload, más su schema, y lo único que la mencionaba en el código era el `init` creando `orchestration/messages/` vacío. La consecuencia se vio corriendo: un agente contestó *"no puedo seguir, confirmame si reiniciaron el workspace"* y Talos lo descartó porque esperaba un archivo con otro formato. El motivo existía, era bueno, y no llegaba a nadie.
+
 ### 25.1. Principios
 
-1. Toda comunicación entre roles DEBE ser estructurada.
+1. Toda comunicación entre roles DEBE ser estructurada. **Lo estructurado es el sobre —quién, a quién, sobre qué, en qué hilo— y lo pone Talos. El cuerpo puede ser cualquier cosa, incluido ruido.**
+1.a. Un rol NO DEBE quedar obligado a conocer un formato para ser escuchado. Exigirle la estructura al emisor es lo que rompe la comunicación: si contesta distinto, se pierde.
+1.b. Una respuesta que no se puede interpretar DEBE persistirse igual y entregarse a quien pueda actuar sobre ella. Un mensaje ilegible entregado vale más que uno perfecto que nunca se escribió.
+1.c. Un paso que termina sin lo que esperaba DEBE registrar lo que sí recibió, y DEBE decir dónde leerlo y cómo responder.
+1.d. Toda respuesta DEBE entregarse al destinatario, no solo escribirse. Una respuesta persistida que nadie lee corta la comunicación en el último tramo, que es el que importa.
 2. Toda comunicación DEBE persistirse.
 3. Toda solicitud DEBE poder recibir respuesta.
 4. Toda respuesta DEBE referenciar la solicitud original.
@@ -1995,6 +2008,10 @@ El plugin NO DEBE lanzar agentes por su cuenta; DEBE delegar en `talos` que a su
 
 ### 40.2. Comandos mínimos
 
+**Corrección respecto de 0.0.6: la lista mezclaba comandos existentes con comandos que nadie había construido, sin distinguirlos.** Un comando listado como mínimo y ausente del código no es una omisión menor: el ciclo se queda sin camino en el punto donde ese comando produciría la evidencia que la transición siguiente exige. Pasó con `feature pr` y con `message`.
+
+Los pasos que PRODUCEN evidencia se listan aparte porque son los que hacen avanzar el ciclo: sin ellos la máquina de estados sabe qué falta y nadie lo produce.
+
 ```txt
 talos init
 talos init --dry-run-only
@@ -2003,13 +2020,28 @@ talos migrate
 talos spec check
 talos spec assist
 talos plan
+talos status
+talos next
+talos run [--max N]
+talos boot <feature_id>
 talos feature start <id>
-talos feature status <id>
+talos feature dispatch <id> --role <rol>
+talos feature work <id>
+talos feature commit <id>
+talos feature test <id>
+talos feature collect <id>
 talos feature pr <id>
+talos feature checks <id>
+talos feature advance <id> --to <estado>
+talos feature release <id>
+talos feature status <id>
 talos review run <feature_id>
 talos merge guard <pr_number>
+talos message list
+talos message show <id>
+talos message answer <id> --text "..."
 talos message send
-talos status
+talos budget [feature_id]
 talos events tail
 talos evidence show <evidence_id>
 talos gate explain <gate> <feature_id>
@@ -2671,6 +2703,48 @@ permisos
 
 ---
 
+### 44.10. task.schema.json
+
+**Añadido en 0.0.7.** `task-result.schema.json` exigía `declared_scope` y ningún artefacto declaraba ese alcance: el rol tenía que producir un resultado sobre una task que no existía como artefacto. Un entregable cuyo contrato de ENTRADA no existe no es verificable, es adivinado.
+
+El `declared_scope` de la task DEBE salir del alcance del rol —el mismo que impone el hook del mecanismo 2— y NO DEBE declarar rutas que el bloqueo vaya a denegar.
+
+```json
+{
+  "$id": "https://talos-sdlc/schemas/task/0.0.6",
+  "required": ["schema_version", "feature_id", "task_id", "title", "declared_scope", "created_at"],
+  "properties": {
+    "role": "quién la ejecuta",
+    "created_by": "component:Orchestrator cuando la deriva el núcleo del plan; role:FeatureLead cuando la descompone un coordinador",
+    "declared_scope": "rutas autorizadas; contra esto se difea files_changed",
+    "output": { "schema": "...", "path": "..." },
+    "blocked": { "schema": "blocker", "path": "..." }
+  }
+}
+```
+
+### 44.11. blocker.schema.json
+
+**Añadido en 0.0.7.** La OTRA salida de un encargo. Un rol tenía una sola forma de terminar —su entregable— y ninguna de decir "no puedo": cuando no podía, contestaba en prosa, Talos esperaba un archivo que no llegaba y reportaba "terminó sin dejar entregable", perdiendo el motivo.
+
+Esto NO reemplaza al canal de mensajes de la sección 25, lo complementa: el rol que puede contestar estructurado tiene por dónde, y el que no, igual es escuchado. Exigir este formato como única vía sería repetir el error que la regla 25.1.a corrige.
+
+```json
+{
+  "$id": "https://talos-sdlc/schemas/blocker/0.0.6",
+  "required": ["schema_version", "feature_id", "task_id", "role", "reason", "created_at"],
+  "properties": {
+    "reason": "por qué no se puede seguir, concreto",
+    "kind": "needs_decision | scope_insufficient | spec_contradiction | environment | dependency_missing | other",
+    "needs": "qué haría falta para desbloquear",
+    "tried": "qué se intentó antes de bloquear",
+    "evidence_refs": "rutas o ids que sostienen el motivo"
+  }
+}
+```
+
+---
+
 ## 45. Extensiones opcionales
 
 ### 45.1. Contrato general
@@ -2809,7 +2883,23 @@ No DEBE avanzarse de modo hasta que el modo anterior cumpla sus criterios de ace
 
 ## 48. Migración
 
-### 48.0. Desde 0.0.5
+### 48.0. Desde 0.0.6
+
+| Cambio | Acción requerida |
+|---|---|
+| `close_session` añadida a `ExecutionAdapter` | implementarla en todo adapter propio de esa capacidad |
+| `api_version` de los manifiestos | subir a `0.0.7`; `core_compatibility` pasa a `>=0.0.7` |
+| Comando de pruebas del proyecto | declarar `test_command` en `config/system.yaml` |
+| Alcance del `Developer` | regenerar `write-scope.rules`; el deny total sobre `orchestration/` se reemplaza por denies dirigidos |
+| Canal de mensajes | ninguna: `orchestration/messages/` ya lo creaba `talos init` |
+
+**Este es el único cambio que rompe compatibilidad de adapters.** Un `ExecutionAdapter` de 0.0.6 no implementa `close_session`: `talos adapters` lo reporta como operación faltante y el ciclo no puede cerrar sesiones, aunque el resto siga funcionando.
+
+No hay cambios de schema de estado runtime. `runtime_schema_version` permanece en `1`. La migración desde 0.0.6 NO requiere `talos migrate`.
+
+---
+
+### 48.1. Desde 0.0.5
 
 | Cambio | Acción requerida |
 |---|---|
@@ -2823,7 +2913,7 @@ No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanec
 
 ---
 
-### 48.1. Desde 0.0.4 — cambios que rompen compatibilidad
+### 48.2. Desde 0.0.4 — cambios que rompen compatibilidad
 
 | Cambio | Acción requerida |
 |---|---|
@@ -2840,7 +2930,7 @@ No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanec
 | Cadena de precedencia de config corregida | revisar overrides que dependían del orden anterior |
 | Memoria movida a documento aparte | migrar config a `talos-memory-0.0.1.md` |
 
-### 48.2. Procedimiento
+### 48.3. Procedimiento
 
 ```txt
 1. talos migrate --dry-run
@@ -2854,6 +2944,65 @@ No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanec
 ---
 
 ## 49. Changelog
+
+### 0.0.7
+
+Esta versión no salió de leer el spec: salió de **correr el ciclo completo contra agentes reales** hasta verlo cerrar. Cada corrección de acá es un defecto que solo apareció ejecutando, y la mayoría estaba tapada por probar los pasos por separado en vez del ciclo entero.
+
+**Procedencia: la identidad no alcanza (reglas 25 a 28)**
+
+Cuatro defectos distintos resultaron ser el mismo: una referencia que no llevaba consigo quién la produjo.
+
+- El ledger de idempotencia devolvía `already_exists` sobre recursos creados por **otro adapter**: la clave es `sha256(run_id:feature:op:args)` y el `run_id` es estable entre sesiones, así que un adapter productivo recibía el id fabricado por el simulador y lo daba por bueno.
+- El mismo ledger devolvía referencias a recursos **que ya no existían**, porque "esto se hizo una vez" no es "esto sigue estando".
+- Los nombres de agente no distinguían **proyecto**: dos repos con una `F001` pedían el mismo agente, el adapter reconciliaba por nombre, y el trabajo de un proyecto se le mandaba al agente de otro.
+- Los nombres de agente tampoco distinguían **rol**: despachar un `Reviewer` sobre una feature que ya tuvo `Developer` reusaba al `Developer`, que terminaba revisando su propio trabajo.
+
+En los cuatro casos la operación reportaba éxito. Ninguno era detectable sin ejecutar.
+
+**Comunicación: la estructura es del sobre (reglas 6.a a 6.c)**
+
+La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al agente es justamente lo que la rompe: si contesta distinto, se pierde. Un agente contestó *"no puedo seguir: el repo ya tiene memorias de F001 y el árbol está vacío, confirmame si reiniciaron el workspace"* —un bloqueo legítimo y bien argumentado— y Talos lo descartó porque esperaba un archivo con un formato.
+
+- La sección 25 estaba especificada entera y **no la implementaba nadie**: lo único que la mencionaba era el `init` creando `orchestration/messages/` vacío.
+- Un paso que termina sin su entregable ahora lee lo que el agente dijo y lo persiste como mensaje dirigido a quien pueda actuar.
+- `talos message answer` cierra el circuito: persiste la respuesta en el mismo hilo, referencia la pregunta **y se la entrega al agente**. Sin ese último tramo la respuesta queda escrita y nadie la lee.
+
+**El encargo tiene contrato, y tiene dos salidas**
+
+- Añadido `schemas/task.schema.json`. El `task-result` exigía `declared_scope` y ningún artefacto declaraba ese alcance: el rol producía un resultado sobre una task que no existía. Un agente serio se negó a trabajar así, con razón.
+- Añadido `schemas/blocker.schema.json`: la otra forma válida de terminar un encargo. El rol que puede contestar estructurado tiene por dónde; el que no, igual es escuchado por el canal de mensajes.
+- El `declared_scope` de la task sale del alcance del rol —el mismo que el hook impone— para no prometer permisos que el bloqueo deniega.
+
+**Ciclo de vida completo**
+
+- Añadida `close_session` al contrato de `ExecutionAdapter` (38.5). La lista de responsabilidades iba de "crear sesiones" a "reportar metadata" sin pasar por cerrar: Talos abría paneles y no cerraba ninguno. Un ciclo de vida con nacimiento y sin fin no es un ciclo. **Cambio de contrato: ver 48.0.**
+- `talos feature pr` y `talos feature checks`: después de aprobar la revisión el ciclo se quedaba sin camino, porque las transiciones siguientes exigen `PullRequestRef` y `CheckRunSet` y ningún comando los producía.
+- `talos boot` enciende al coordinador y le cede la decisión del próximo paso, conservando gates, alcance y evidencia en el núcleo.
+
+**Los gates evalúan sus condiciones**
+
+- `CONDITION_DECLARED` se emitía como informativo y la transición pasaba igual. `F6` (la revisión pidió cambios) y `F7` (la revisión aprobó) exigen ambas un `Review`: con la condición ignorada las dos quedaban autorizadas, el loop tomaba la primera y volvía a trabajar sobre algo ya aprobado, para revisarlo otra vez, indefinidamente.
+- Una condición que no puede evaluarse se sigue declarando. Una conclusión que no dice ni una cosa ni la otra —la de una simulación— no autoriza ninguna: elegir sería inventar el resultado de una prueba que nadie corrió.
+
+**Alcance de rol**
+
+- El `Developer` tenía prohibido escribir el único artefacto que el sistema le exige: su `output_artifact` vive bajo `orchestration/` y su alcance denegaba `orchestration/**`. `deny` gana sobre `allow`, así que el sistema le pedía algo que él mismo le prohibía.
+- El resolvedor de instrucciones no llegaba a los roles de más de una palabra: `FeatureLead` resolvía a `featurelead.md` y el archivo es `feature-lead.md`. Despacharlo fallaba siempre; sobrevivió porque los roles que se ejercitan a diario son de una sola palabra.
+
+**Routing**
+
+- El tier ahora sale de `max(tier de la feature, mínimo del rol)`, que es el algoritmo que 20.5 ya definía. Mirar solo la feature dejaba el mínimo del rol declarado y sin efecto.
+- `FeatureLead` pasa a exigir piso `deep` (20.4): coordinar mal no cuesta una tarea, cuesta la feature.
+
+**Lo que ejecutar enseñó sobre el propio contrato**
+
+- Un texto con saltos de línea o comillas llegaba mutilado al agente: los `semantic_args` se leían con `sed`, que no decodifica. La operación reportaba éxito con el texto recortado.
+- Un paso que no produce su evidencia ya no sale `0`. Reportar éxito sin el artefacto hacía que el loop lo contara como avance y reencargara lo mismo hasta agotar el presupuesto.
+- Esperar un estado del runtime no es esperar el trabajo: un agente se asienta apenas recibe el prompt, antes de empezar. La condición de terminación de un encargo es el **artefacto**.
+- Las órdenes que el loop propone no pueden llevar argumentos con espacios: se expanden sin comillas. El comando de pruebas se declara ahora en `config/system.yaml`.
+
+---
 
 ### 0.0.6
 

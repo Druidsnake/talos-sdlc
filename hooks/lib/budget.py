@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Presupuestos. Ver talos-0.0.6.md seccion 33.
+"""Presupuestos. Ver talos-0.0.7.md seccion 33.
 
 LA REGLA QUE GOBIERNA ESTE ARCHIVO ES LA 33.8
 

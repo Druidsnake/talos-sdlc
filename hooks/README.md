@@ -31,7 +31,7 @@ Crea symlinks en `.git/hooks/`. Si ya tenés un hook propio ahí, no lo pisa: te
 
 ## El validador se resuelve, no se instala
 
-Talos necesita un validador de JSON Schema y **no lo instala por vos**. Aplica la misma cascada que [`talos-0.0.6.md` §37.4.5](../talos-0.0.6.md) define para binarios externos:
+Talos necesita un validador de JSON Schema y **no lo instala por vos**. Aplica la misma cascada que [`talos-0.0.7.md` §37.4.5](../talos-0.0.7.md) define para binarios externos:
 
 ```txt
 $TALOS_VALIDATOR      ->  comando propio, si querés otro

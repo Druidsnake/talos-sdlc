@@ -1,7 +1,7 @@
 #!/bin/sh
 # talos event append - registra un evento con secuencia monotonica.
 #
-# EventLog es el UNICO escritor de seq (talos-0.0.6.md 41.2.2). La exclusion
+# EventLog es el UNICO escritor de seq (talos-0.0.7.md 41.2.2). La exclusion
 # se hace con mkdir, que es atomico en POSIX: si el directorio ya existe,
 # mkdir falla y sabemos que otro escritor tiene el turno.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lee, verifica y produce evidencia. Ver talos-0.0.6.md seccion 23.
+"""Lee, verifica y produce evidencia. Ver talos-0.0.7.md seccion 23.
 
 Existe porque la evidencia NO se puede leer con sed ni grep. Un payload que
 contenga la clave "kind" hace que una expresion de linea agarre el valor

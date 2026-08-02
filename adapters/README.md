@@ -8,7 +8,7 @@ Talos separa dos ejes que se confunden fácil:
 
 | | Qué es | Quién decide |
 |---|---|---|
-| **Capacidad** | un extension point que el sistema necesita | la spec (`talos-0.0.6.md` 37.4.2) |
+| **Capacidad** | un extension point que el sistema necesita | la spec (`talos-0.0.7.md` 37.4.2) |
 | **Implementación** | un adapter concreto que la satisface | vos, en `config/extensions.yaml` |
 
 Una capacidad puede ser **requerida** y su implementación seguir siendo **reemplazable**. Marcar un adapter como "opcional" porque es intercambiable era arquitectónicamente cierto y operacionalmente engañoso: por eso 0.0.6 separó los dos ejes.

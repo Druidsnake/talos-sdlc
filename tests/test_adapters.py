@@ -1,6 +1,6 @@
 """Auditoria del registro de capacidades y de los adapters de referencia.
 
-Cubre los pasos 4 y 5 de la ruta de implementacion (talos-0.0.6.md seccion 51):
+Cubre los pasos 4 y 5 de la ruta de implementacion (talos-0.0.7.md seccion 51):
 el registry y el DryRunAdapter.
 
 Verifica RECHAZO, no solo aceptacion: un registry que acepta cero

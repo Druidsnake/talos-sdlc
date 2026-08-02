@@ -8,7 +8,7 @@ Un schema no describe un artefacto: lo **rechaza** cuando no cumple. Esa diferen
 
 ## Qué se enforza acá
 
-Cada schema traduce requisitos normativos de [`talos-0.0.6.md`](../talos-0.0.6.md) en validación ejecutable, sin modelo de por medio.
+Cada schema traduce requisitos normativos de [`talos-0.0.7.md`](../talos-0.0.7.md) en validación ejecutable, sin modelo de por medio.
 
 | Schema | Requisito que vuelve verificable |
 |---|---|

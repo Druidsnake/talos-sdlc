@@ -1,8 +1,8 @@
 id: talos.adapter.model_dryrun
 package: talos-adapter-model
-version: 0.0.6
-api_version: "0.0.6"
-core_compatibility: ">=0.0.6"
+version: 0.0.7
+api_version: "0.0.7"
+core_compatibility: ">=0.0.7"
 
 implements: ModelProviderAdapter
 

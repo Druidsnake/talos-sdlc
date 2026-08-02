@@ -1,8 +1,8 @@
 id: talos.adapter.coord_dryrun
 package: talos-adapter-dryrun
-version: 0.0.6
-api_version: "0.0.6"
-core_compatibility: ">=0.0.6"
+version: 0.0.7
+api_version: "0.0.7"
+core_compatibility: ">=0.0.7"
 
 implements: CoordinationAdapter
 

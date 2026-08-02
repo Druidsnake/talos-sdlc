@@ -4,13 +4,13 @@
 # POSIX shell: mismo runtime que los hooks, sin dependencias propias.
 # Lo que necesita validar schemas delega en hooks/lib/resolve-validator.sh.
 #
-# Codigos de salida (talos-0.0.6.md 40.4):
+# Codigos de salida (talos-0.0.7.md 40.4):
 #   0 exito  1 error de uso  2 precondition fallida  3 gate rechazado
 #   4 escalacion requerida   5 error de adapter      6 migracion requerida
 
 set -eu
 
-# Dos raices distintas, como exige talos-0.0.6.md seccion 8:
+# Dos raices distintas, como exige talos-0.0.7.md seccion 8:
 #   SYSTEM  -> donde vive Talos      (.talos/ vendoreado, o el repo si se auto-hospeda)
 #   PROJECT -> donde vive el trabajo (spec/, orchestration/, src/)
 # Confundirlas hace que Talos busque el spec del producto dentro de si mismo.

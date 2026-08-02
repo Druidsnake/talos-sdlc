@@ -3,7 +3,7 @@
 #
 # Este archivo es NUCLEO. No nombra ninguna implementacion concreta: lee la
 # ligadura que declara config/extensions.yaml, compilada a plano por
-# tools/build-registry.py. Esa es la regla 37.4.3.5 de talos-0.0.6.md.
+# tools/build-registry.py. Esa es la regla 37.4.3.5 de talos-0.0.7.md.
 #
 # Aplica las reglas 37.4.3.1 a 37.4.3.3:
 #   - toda capacidad REQUERIDA debe tener exactamente una implementacion

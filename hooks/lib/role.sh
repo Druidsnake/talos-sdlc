@@ -1,5 +1,5 @@
 #!/bin/sh
-# Resolucion y activacion de roles. Ver talos-0.0.6.md secciones 18 a 21.
+# Resolucion y activacion de roles. Ver talos-0.0.7.md secciones 18 a 21.
 #
 # Esto es NUCLEO, no adapter. Que rol se despacha y con que instrucciones es
 # politica; lanzar el proceso es ciclo de vida (seccion 38.5). Mezclarlos haria

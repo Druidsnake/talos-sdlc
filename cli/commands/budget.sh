@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos budget - presupuesto por feature. Ver talos-0.0.6.md seccion 33.
+# talos budget - presupuesto por feature. Ver talos-0.0.7.md seccion 33.
 #
 # El presupuesto solo puede dejar seguir o frenar. NUNCA elegir un modelo
 # distinto: la regla 33.7 dice que no influye en el routing por capacidad, y

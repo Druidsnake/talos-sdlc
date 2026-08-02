@@ -7,7 +7,7 @@
 #
 # El filesystem es local: estas operaciones son reales, no simuladas. Lo que
 # se mantiene es el contrato: resultado estructurado y forma de retorno
-# mutante segun talos-0.0.6.md 38.1.3 y 38.2.3.
+# mutante segun talos-0.0.7.md 38.1.3 y 38.2.3.
 
 set -eu
 

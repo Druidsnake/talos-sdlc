@@ -1,7 +1,7 @@
 #!/bin/sh
 # Resuelve qué ejecuta la validación de JSON Schema.
 #
-# Aplica la misma cascada que talos-0.0.6.md seccion 37.4.5 define para
+# Aplica la misma cascada que talos-0.0.7.md seccion 37.4.5 define para
 # binarios externos: variable de entorno, luego local al proyecto, luego PATH.
 # Talos NO instala nada: detecta y guia.
 #

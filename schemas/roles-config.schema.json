@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/roles-config/0.0.6",
   "title": "RolesConfig",
-  "description": "config/roles.yaml. Ver talos-0.0.6.md secciones 18, 19 y 20.4. write_paths y forbidden_tools son la base del mecanismo 2 (hook bloqueante) y del mecanismo 8 (aislamiento de permisos).",
+  "description": "config/roles.yaml. Ver talos-0.0.7.md secciones 18, 19 y 20.4. write_paths y forbidden_tools son la base del mecanismo 2 (hook bloqueante) y del mecanismo 8 (aislamiento de permisos).",
   "type": "object",
   "required": ["version", "roles"],
   "properties": {

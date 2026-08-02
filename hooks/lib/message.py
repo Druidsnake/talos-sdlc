@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comunicacion entre roles. Ver talos-0.0.6.md seccion 25.
+"""Comunicacion entre roles. Ver talos-0.0.7.md seccion 25.
 
 La seccion 25 estaba especificada entera -tipos, estados, canales, expiracion,
 escalacion- y no la implementaba nadie: lo unico que la mencionaba era el

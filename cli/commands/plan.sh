@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos plan - planificacion de programa. Ver talos-0.0.6.md seccion 29.
+# talos plan - planificacion de programa. Ver talos-0.0.7.md seccion 29.
 #
 # Generar el plan es trabajo del Planner, que es un rol agente.
 # Verificarlo es trabajo de PLAN_GATE, que es codigo y no invoca modelos.
@@ -46,7 +46,7 @@ QUE VERIFICA PLAN_GATE
 QUIEN GENERA EL PLAN
     El Planner. En modo dry-run-only no hay ModelProviderAdapter productivo,
     asi que talos plan init deja un esqueleto para completar a mano y el gate
-    lo verifica igual. Ver talos-0.0.6.md 29.1 y 37.4.4.
+    lo verifica igual. Ver talos-0.0.7.md 29.1 y 37.4.4.
 
 SALIDA
     0  el plan pasa PLAN_GATE

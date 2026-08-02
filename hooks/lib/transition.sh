@@ -1,5 +1,5 @@
 #!/bin/sh
-# Ejecutor de transiciones. Ver talos-0.0.6.md seccion 22.6.
+# Ejecutor de transiciones. Ver talos-0.0.7.md seccion 22.6.
 #
 # Hasta ahora Talos sabia EVALUAR una transicion pero nada la EJECUTABA: el
 # gate decidia y la decision se perdia. Este es el unico lugar que hace avanzar

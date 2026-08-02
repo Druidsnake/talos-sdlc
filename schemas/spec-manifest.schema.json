@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talos-sdlc/schemas/spec-manifest/0.0.6",
   "title": "SpecManifest",
-  "description": "Manifiesto del spec de producto en spec/manifest.yaml. Ver talos-0.0.6.md secciones 15.2 y 15.3. Formaliza el spec minimo aceptable para que sea verificable sin modelo (mecanismo 1).",
+  "description": "Manifiesto del spec de producto en spec/manifest.yaml. Ver talos-0.0.7.md secciones 15.2 y 15.3. Formaliza el spec minimo aceptable para que sea verificable sin modelo (mecanismo 1).",
   "type": "object",
   "required": ["version", "title", "status", "entry", "sections"],
   "properties": {

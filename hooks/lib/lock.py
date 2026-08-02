@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LockManager: leases con TTL y fencing token. Ver talos-0.0.6.md seccion 32.
+"""LockManager: leases con TTL y fencing token. Ver talos-0.0.7.md seccion 32.
 
 Un lock es un lease: una concesion con expiracion. La correccion respecto de
 0.0.4 es justamente esta: sin expiracion, un proceso que muere deja el recurso

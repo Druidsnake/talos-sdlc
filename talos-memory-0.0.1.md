@@ -20,7 +20,7 @@ Las palabras clave DEBE, NO DEBE, REQUERIDO, PUEDE, RECOMENDADO y OPCIONAL deben
 
 ### 0.2. Naturaleza de esta extensión
 
-`MemoryAdapter` ES una capacidad **OPCIONAL** según `talos-0.0.6.md` sección 37.4.2. El núcleo DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
+`MemoryAdapter` ES una capacidad **OPCIONAL** según `talos-0.0.7.md` sección 37.4.2. El núcleo DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
 
 Esto la distingue de las capacidades REQUERIDAS como `ExecutionAdapter`, donde el adapter concreto es reemplazable pero la capacidad no es prescindible. Acá tanto la implementación como la capacidad son prescindibles: cero implementaciones de `MemoryAdapter` ES un estado válido del sistema.
 

@@ -1,4 +1,4 @@
-"""Auditoria de MergeGate y del CIAdapter. Ver talos-0.0.6.md secciones 30.4 y 31.
+"""Auditoria de MergeGate y del CIAdapter. Ver talos-0.0.7.md secciones 30.4 y 31.
 
 Pasos 12 y 13 de la ruta de implementacion (seccion 51).
 
