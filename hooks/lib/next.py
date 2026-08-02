@@ -93,8 +93,14 @@ def render(d):
             if f.get("trabajo"):
                 print(f"           .. {f['trabajo']}")
             for s in f.get("salidas", []):
-                marca = "->" if not s["falta"] else "  "
-                falta = "" if not s["falta"] else "  falta: " + ", ".join(s["falta"])
+                libre = not s["falta"] and s.get("condicion_ok", True)
+                marca = "->" if libre else "  "
+                if s["falta"]:
+                    falta = "  falta: " + ", ".join(s["falta"])
+                elif not s.get("condicion_ok", True):
+                    falta = f"  condicion: {s.get('condicion')}"
+                else:
+                    falta = ""
                 print(f"           {marca} {s['transicion']:<4} {s['hacia']:<22}{falta}")
         print()
 
@@ -178,7 +184,7 @@ def agente_despachado(root, fid, adapter):
     return True, None
 
 
-def condicion_ok(root, fid, cond):
+def condicion_ok(root, fid, cond, evidencia=""):
     """Si la condicion declarada de una transicion se cumple hoy.
 
     Dos transiciones pueden salir del mismo estado con la misma evidencia y
@@ -192,6 +198,18 @@ def condicion_ok(root, fid, cond):
     """
     if cond in (None, "", "-"):
         return True
+    # Los checks tienen sus propias condiciones pass/fail, y son otro
+    # artefacto: F9 -pasaron- y F10 -fallaron- exigen las dos un CheckRunSet.
+    if "CheckRunSet" in (evidencia or ""):
+        concl = conclusion_checks(root, fid)
+        if concl in ("success", "passed"):
+            return cond == "pass"
+        if concl in ("failure", "failed"):
+            return cond == "fail"
+        # Una conclusion que no dice ni una cosa ni la otra -por ejemplo la de
+        # una simulacion- no autoriza ninguna de las dos. Elegir una seria
+        # inventar el resultado de una prueba que nadie corrio.
+        return False
     review = root / "orchestration" / "reports" / fid / "review.json"
     if not review.is_file():
         return True
@@ -205,6 +223,40 @@ def condicion_ok(root, fid, cond):
     return True
 
 
+def conclusion_checks(root, fid):
+    """La conclusion del ultimo CheckRunSet sellado, o None."""
+    d = root / "orchestration" / "evidence"
+    ultima = None
+    for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+        ev = cargar(f, None)
+        if isinstance(ev, dict) and ev.get("kind") == "CheckRunSet":
+            ultima = (ev.get("payload") or {}).get("conclusion")
+    return ultima
+
+
+def paso_con_agente(root, fid, pane, adapter, rol_necesario):
+    """El despacho que hace falta para que un rol pueda trabajar, o None.
+
+    Solo los pasos que ENCARGAN trabajo necesitan un agente. Pedir uno para
+    sellar un commit o abrir un PR abria un panel y gastaba un modelo para
+    ejecutar tres comandos deterministas.
+    """
+    rol = root / "orchestration" / ".current-role"
+    activo = rol.read_text().strip() if rol.is_file() else ""
+    hay_agente, motivo = agente_despachado(root, fid, adapter)
+    if rol.is_file() and hay_agente and activo == rol_necesario:
+        return None
+    orden = f"talos feature dispatch {fid} --role {rol_necesario}"
+    if pane and pane != "<PANE>":
+        orden += f" --pane {pane}"
+    if not rol.is_file():
+        motivo = "no hay agente despachado para esta feature"
+    elif activo != rol_necesario:
+        motivo = (f"el rol activo es {activo} y lo que falta ahora "
+                  f"lo produce {rol_necesario}")
+    return {"feature": fid, "orden": orden, "porque": motivo}
+
+
 def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     """Los pasos que PRODUCEN el trabajo, no los que mueven el estado.
 
@@ -214,86 +266,71 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     solo un agente puede producir.
 
     Cada paso de aca produce una evidencia concreta, y se propone uno por vez
-    en el orden en que la evidencia se puede obtener.
+    en el orden en que la evidencia se puede obtener. Los que encargan trabajo
+    piden un agente del rol que corresponda; los mecanicos no piden ninguno.
     """
-    rol = root / "orchestration" / ".current-role"
-    entregable = list((root / "orchestration" / "features" / fid / "tasks").glob(
-        "*/task-result.json")) if (root / "orchestration" / "features" / fid / "tasks").is_dir() else []
+    tasks = root / "orchestration" / "features" / fid / "tasks"
+    entregable = list(tasks.glob("*/task-result.json")) if tasks.is_dir() else []
 
-    # QUE rol hace falta ahora. No es siempre el Developer: cuando el trabajo
-    # esta sellado y la feature entro en revision, la evidencia que falta la
-    # produce el Reviewer, y despachar un Developer ahi seria pedirle a alguien
-    # que revise lo que acaba de escribir -que es justo lo que la separacion de
-    # roles existe para impedir-.
-    #
-    # El loop se plantaba en FEATURE_REVIEW diciendo "nada listo para avanzar":
-    # era cierto que faltaba evidencia, y falso que no hubiera nada que hacer.
-    if "TaskResultSet" in presentes and "Review" not in presentes:
-        rol_necesario = "Reviewer"
-        pendiente = not (root / "orchestration" / "reports" / fid / "review.json").is_file()
-    else:
-        rol_necesario = "Developer"
-        pendiente = not entregable
-
-    activo = rol.read_text().strip() if rol.is_file() else ""
-
-    # 1. Sin rol activo no hay quien trabaje. Despachar es lo primero.
-    #    Ya no hace falta que alguien elija un pane: Talos crea el suyo.
-    #
-    #    Tampoco alcanza el rol solo: hace falta un agente al que hablarle, que
-    #    lo haya producido el adapter ligado hoy, y que sea del rol que el paso
-    #    necesita. Un Developer despachado no sirve para revisar.
-    hay_agente, motivo = agente_despachado(root, fid, adapter)
-    if not rol.is_file() or not hay_agente or activo != rol_necesario:
-        orden = f"talos feature dispatch {fid} --role {rol_necesario}"
-        if pane and pane != "<PANE>":
-            orden += f" --pane {pane}"
-        if not rol.is_file():
-            motivo = "no hay agente despachado para esta feature"
-        elif activo != rol_necesario:
-            motivo = (f"el rol activo es {activo} y lo que falta ahora "
-                      f"lo produce {rol_necesario}")
-        return {"feature": fid, "orden": orden, "porque": motivo}
-
-
-    # 2. Con rol y sin entregable, el agente todavia no recibio el encargo.
-    #    Salvo que ya se hayan gastado las iteraciones: ahi reencargar no es
+    # 1. Sin entregable, el Developer todavia no hizo -o no entrego- su trabajo.
+    #    Salvo que se hayan gastado las iteraciones: ahi reencargar no es
     #    insistir, es no converger.
-    if not entregable and iteraciones_agotadas(root, fid):
-        # Se devuelve el motivo, no None. Un loop que se planta sin decir por
-        # que obliga a adivinar entre "termino" y "no puede".
-        return {"feature": fid, "orden": None,
-                "porque": "las iteraciones del presupuesto se agotaron "
-                          "y el agente no dejo entregable (regla 33.3)"}
     if not entregable:
+        if iteraciones_agotadas(root, fid):
+            # Se devuelve el motivo, no None. Un loop que se planta sin decir
+            # por que obliga a adivinar entre "termino" y "no puede".
+            return {"feature": fid, "orden": None,
+                    "porque": "las iteraciones del presupuesto se agotaron "
+                              "y el agente no dejo entregable (regla 33.3)"}
+        despacho = paso_con_agente(root, fid, pane, adapter, "Developer")
+        if despacho:
+            return despacho
         return {"feature": fid, "orden": f"talos feature work {fid}",
                 "porque": "el agente esta despachado y no dejo su entregable"}
 
-    # 3. Con entregable pero sin CommitRef, falta observar git.
+    # 2. Con entregable pero sin CommitRef, falta observar git.
     if "CommitRef" not in presentes:
         return {"feature": fid, "orden": f"talos feature commit {fid}",
                 "porque": "hay entregable y falta sellar el commit"}
 
-    # 4. Sin medicion propia no hay evidencia verificable de avance.
+    # 3. Sin medicion propia no hay evidencia verificable de avance.
     if "LocalTestReport" not in presentes:
         return {"feature": fid,
                 "orden": f"talos feature test {fid} --command \"python3 -m pytest tests/ -q\"",
                 "porque": "falta la unica evidencia verificable que se puede producir"}
 
-    # 5. El entregable existe en disco pero nadie lo valido ni lo sello.
+    # 4. El entregable existe en disco pero nadie lo valido ni lo sello.
     if "TaskResultSet" not in presentes:
         return {"feature": fid, "orden": f"talos feature collect {fid}",
                 "porque": "el entregable esta y falta validarlo y sellarlo"}
 
-    # 6. Con el trabajo sellado, lo que falta lo produce el Reviewer. Se llega
-    #    aca solo cuando ya esta despachado: el paso 1 se encarga de que el rol
-    #    activo sea el que el paso necesita.
-    if rol_necesario == "Reviewer":
-        if pendiente:
+    # 5. Con el trabajo sellado, lo que falta lo produce el Reviewer. Despachar
+    #    un Developer aca seria pedirle que revise lo que acaba de escribir, que
+    #    es justo lo que la separacion de roles existe para impedir.
+    if "Review" not in presentes:
+        if not (root / "orchestration" / "reports" / fid / "review.json").is_file():
+            despacho = paso_con_agente(root, fid, pane, adapter, "Reviewer")
+            if despacho:
+                return despacho
             return {"feature": fid, "orden": f"talos feature work {fid}",
                     "porque": "la feature esta en revision y no hay Review"}
         return {"feature": fid, "orden": f"talos feature collect {fid}",
                 "porque": "el Reviewer dejo su revision y falta sellarla"}
+
+    # 6. Revision sellada: falta publicar el trabajo. Sin este paso el ciclo se
+    #    quedaba sin camino justo despues de aprobar, porque la transicion a
+    #    FEATURE_PR_OPEN pide un PullRequestRef que nadie producia.
+    if "PullRequestRef" not in presentes:
+        review = cargar(root / "orchestration" / "reports" / fid / "review.json", {}) or {}
+        if review.get("verdict") == "approve":
+            return {"feature": fid, "orden": f"talos feature pr {fid}",
+                    "porque": "la revision aprobo y falta abrir el PR"}
+
+    # 7. Con el PR abierto falta que corran los checks. Talos no decide si
+    #    pasan: le pide al CIAdapter que corra y observa lo que contesta.
+    if "PullRequestRef" in presentes and "CheckRunSet" not in presentes:
+        return {"feature": fid, "orden": f"talos feature checks {fid}",
+                "porque": "el PR esta abierto y falta el resultado de los checks"}
 
     return None
 
@@ -381,10 +418,18 @@ def main(argv):
                     continue
                 req = [] if t["evidencia"] == "-" else t["evidencia"].split(",")
                 faltan = [k for k in req if k not in presentes]
+                # La condicion es parte de estar disponible, no un adorno. Una
+                # transicion con toda su evidencia pero con la condicion en
+                # contra NO se puede tomar: el gate la rechaza. Contarla como
+                # disponible dejaba a la feature en "puede avanzar" sin nada
+                # que avanzar, y el loop se plantaba sin decir por que.
+                cond_ok = condicion_ok(root, fid, t.get("condicion"), t.get("evidencia"))
                 info["salidas"].append({
                     "transicion": t["id"], "hacia": t["hacia"],
                     "gate": t["gate"], "actor": t["actor"],
                     "falta": faltan,
+                    "condicion": t.get("condicion"),
+                    "condicion_ok": cond_ok,
                 })
                 # Un loop autonomo siempre encuentra la salida mas barata, y
                 # declarar el fracaso siempre esta disponible: BLOCKED, FAILED,
@@ -393,14 +438,14 @@ def main(argv):
                 # dificil marcandola como perdida.
                 #
                 # Los caminos de fracaso los toma una persona, no un bucle.
-                if (not faltan and t["hacia"] not in CAMINOS_DE_FRACASO
-                        and condicion_ok(root, fid, t.get("condicion"))):
+                if not faltan and cond_ok and t["hacia"] not in CAMINOS_DE_FRACASO:
                     out["acciones"].append({
                         "feature": fid,
                         "orden": f"talos feature advance {fid} --to {t['hacia']}",
                         "porque": f"{t['id']}: toda la evidencia esta presente",
                     })
-            sin_falta = [s for s in info["salidas"] if not s["falta"]]
+            sin_falta = [s for s in info["salidas"]
+                         if not s["falta"] and s.get("condicion_ok", True)]
             if sin_falta:
                 info["motivo"] = "puede avanzar"
             else:

@@ -37,6 +37,8 @@ USO
                                   feature. Sin --agent usa el que registro
                                   dispatch, si lo produjo el adapter ligado
     talos feature commit <ID>     observa git y sella CommitRef
+    talos feature pr <ID>         abre el PR y sella PullRequestRef
+    talos feature checks <ID>     pide los checks al CI y sella CheckRunSet
     talos feature collect <ID>    recoge el entregable del rol como evidencia
     talos feature test <ID> --pane <PANE> --command "<CMD>"
                                   corre una verificacion y sella LocalTestReport
@@ -521,6 +523,142 @@ EOF2
     echo ""
     printf '  rama     %s\n  sha      %s\n  mensaje  %s\n' "$rama" "$sha" "$msg"
     printf '  sellada  CommitRef (verifiable: true, revalidable contra el repo)\n'
+    exit 0
+fi
+
+# ---------- pr ----------
+#
+# Con la revision aprobada, la transicion a FEATURE_PR_OPEN pide un
+# PullRequestRef y ningun comando lo producia: el ciclo se quedaba sin camino
+# justo despues de aprobar. Abrir el PR no es una decision -la decision la tomo
+# el Reviewer y la sello el gate-, es una mutacion en el proveedor, y el
+# catalogo de la seccion 23.4 la asigna al CoordinationAdapter.
+
+if [ "$sub" = pr ]; then
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    need_plan
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  feature  %s\n\n' "$FEAT"
+
+    # No se abre un PR sobre trabajo que nadie reviso. El gate decide si se
+    # avanza; esto solo evita producir un PR que ninguna transicion podria
+    # usar, y con un veredicto que pide cambios seria peor: lo publicaria.
+    _rev="orchestration/reports/$FEAT/review.json"
+    _verd=$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_rev" 2>/dev/null | head -1)
+    if [ "$_verd" != approve ]; then
+        printf '  FALL la revision de %s dice %s\n' "$FEAT" "${_verd:-que todavia no existe}"
+        echo ""
+        echo "  Un PR abierto sobre una revision que pide cambios publica el problema."
+        exit 2
+    fi
+
+    _titulo=$("$PY" - "$PLAN" "$FEAT" <<'PYEOF'
+import json, sys
+plan = json.loads(open(sys.argv[1]).read())
+f = next((x for x in plan["features"] if x["id"] == sys.argv[2]), None)
+print(f"{sys.argv[2]}: {f['title']}" if f else sys.argv[2])
+PYEOF
+)
+    set +e
+    out=$(talos_capability_run CoordinationAdapter open_pr \
+          "{\"title\":\"$_titulo\",\"head\":\"feature/$FEAT\",\"base\":\"main\",\"feature\":\"$FEAT\"}" 2>&1)
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        echo "  FALL el CoordinationAdapter no pudo abrir el PR"
+        printf '%s\n' "$out" | sed 's/^/    /' | head -3
+        exit 5
+    fi
+    PR=$(printf '%s' "$out" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+    URL=$(printf '%s' "$out" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p' | head -1)
+    [ -n "$PR" ] || { echo "  FALL el adapter no devolvio un id de PR"; exit 5; }
+
+    mkdir -p "$EVDIR"
+    evid="ev-$FEAT-pr-$(date -u +%Y%m%d%H%M%S)"
+    # verifiable:false. Lo que prueba que un PR existe es consultarlo en el
+    # proveedor, no que nosotros hayamos pedido abrirlo (regla 23.3.6).
+    cat > "$EVDIR/$evid.json" <<EOF3
+{"id":"$evid","kind":"PullRequestRef","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "produced_by":"adapter:CoordinationAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "artifact_refs":[],"digest":"pendiente","verifiable":false,
+ "payload":{"id":"$PR","url":"${URL:-null}","head":"feature/$FEAT","base":"main"}}
+EOF3
+    "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
+
+    printf '  ok   PR %s abierto por el CoordinationAdapter\n' "$PR"
+    printf '  sellada  PullRequestRef (verifiable: false: lo prueba el proveedor)\n'
+    exit 0
+fi
+
+# ---------- checks ----------
+#
+# Con el PR abierto, la transicion a FEATURE_CHECKS_RUNNING pide un CheckRunSet
+# y ningun comando lo producia. Talos NO decide si las pruebas pasan: pide que
+# corran y observa lo que el CIAdapter contesta. Por eso verifiable sale de la
+# respuesta del adapter y no de aca: en dry-run no es verificable, y decir lo
+# contrario haria que MERGE_GATE aprobara sobre una simulacion (regla 31).
+
+if [ "$sub" = checks ]; then
+    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+
+    echo "talos ${TALOS_VERSION:-?}"
+    echo ""
+    printf '  feature  %s\n\n' "$FEAT"
+
+    _pr=$("$PY" - "$EVDIR" <<'PYEOF'
+import json, pathlib, sys
+d = pathlib.Path(sys.argv[1])
+pr = ""
+for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+    try:
+        ev = json.loads(f.read_text())
+    except (json.JSONDecodeError, OSError):
+        continue
+    if ev.get("kind") == "PullRequestRef":
+        pr = (ev.get("payload") or {}).get("id") or pr
+print(pr)
+PYEOF
+)
+    if [ -z "$_pr" ]; then
+        echo "  FALL no hay PullRequestRef sellado: no hay PR sobre el que correr checks"
+        printf '  Abrilo con  talos feature pr %s\n' "$FEAT"
+        exit 2
+    fi
+
+    set +e
+    talos_capability_run CIAdapter run_checks "{\"pr\":\"$_pr\",\"feature\":\"$FEAT\"}" >/dev/null 2>&1
+    out=$(talos_capability_run CIAdapter get_check_status "{\"pr\":\"$_pr\"}" 2>&1)
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        echo "  FALL el CIAdapter no pudo reportar el estado de los checks"
+        printf '%s\n' "$out" | sed 's/^/    /' | head -3
+        exit 5
+    fi
+
+    # verifiable lo dice el adapter, no Talos. Un CheckRunSet simulado marcado
+    # verificable dejaria pasar MERGE_GATE sobre nada.
+    _verif=$(printf '%s' "$out" | sed -n 's/.*"verifiable"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' | head -1)
+    [ -n "$_verif" ] || _verif=false
+    _concl=$(printf '%s' "$out" | sed -n 's/.*"conclusion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+
+    mkdir -p "$EVDIR"
+    evid="ev-$FEAT-checks-$(date -u +%Y%m%d%H%M%S)"
+    cat > "$EVDIR/$evid.json" <<EOF4
+{"id":"$evid","kind":"CheckRunSet","schema_version":1,
+ "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "produced_by":"adapter:CIAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+ "artifact_refs":[],"digest":"pendiente","verifiable":$_verif,
+ "payload":{"pr":"$_pr","conclusion":"${_concl:-unknown}"}}
+EOF4
+    "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
+
+    printf '  ok   checks pedidos al CIAdapter sobre el PR %s\n' "$_pr"
+    printf '  sellada  CheckRunSet (conclusion: %s, verifiable: %s)\n' "${_concl:-unknown}" "$_verif"
+    [ "$_verif" = true ] || echo "  En este modo el resultado NO es verificable: MERGE_GATE no lo va a aceptar."
     exit 0
 fi
 
