@@ -4,15 +4,42 @@
   "title": "Task",
   "description": "El encargo concreto que recibe un rol ejecutor. Ver talos-0.0.6.md seccion 30.2. Existe porque task-result.schema.json exige declared_scope y nada declaraba ese alcance: el rol tenia que producir un resultado sobre una task que ningun artefacto definia. Un entregable cuyo contrato de entrada no existe no es verificable, es adivinado.",
   "type": "object",
-  "required": ["schema_version", "feature_id", "task_id", "title", "declared_scope", "created_at"],
+  "required": [
+    "schema_version",
+    "feature_id",
+    "task_id",
+    "title",
+    "declared_scope",
+    "created_at"
+  ],
   "properties": {
-    "schema_version": { "type": "integer", "const": 1 },
-    "feature_id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
-    "task_id": { "type": "string", "minLength": 1 },
-    "role": { "type": "string", "minLength": 1 },
-    "title": { "type": "string", "minLength": 1 },
-    "description": { "type": "string" },
-    "created_at": { "type": "string", "format": "date-time" },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "feature_id": {
+      "type": "string",
+      "pattern": "^F[0-9]{3,}$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "created_by": {
       "type": "string",
       "description": "Quien compuso la task. component:Orchestrator cuando la deriva el nucleo del plan; role:FeatureLead cuando la descompone un coordinador."
@@ -20,26 +47,60 @@
     "declared_scope": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Rutas que la task esta autorizada a tocar. Es lo que el task-result copia y contra lo que se difea files_changed. No es una sugerencia: sale del alcance del rol, que un hook impone."
     },
     "spec_refs": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Secciones del spec aprobado que gobiernan esta task."
     },
     "acceptance_refs": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Criterios de aceptacion que la task tiene que satisfacer."
     },
     "output": {
       "type": "object",
-      "required": ["schema", "path"],
+      "required": [
+        "schema",
+        "path"
+      ],
       "description": "Donde va el entregable y contra que schema valida. Decirlo en la task evita que el rol lo deduzca.",
       "properties": {
-        "schema": { "type": "string", "minLength": 1 },
-        "path": { "type": "string", "minLength": 1 }
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "blocked": {
+      "type": "object",
+      "required": [
+        "schema",
+        "path"
+      ],
+      "description": "Donde deja el rol su bloqueo si no puede terminar, y contra que schema valida. Declararlo en la task es lo que convierte 'no puedo' en una respuesta legible en vez de en un mensaje perdido.",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     }

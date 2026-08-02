@@ -616,6 +616,106 @@ def main():
         "el shim de opencode arranca al agente sin dialogos de permiso",
         "--auto" in aa.stdout and "--model m/x" in aa.stdout, aa.stdout))
 
+    # ---------- la comunicacion no se pierde ----------
+    #
+    # Un agente que no puede seguir contesta como sabe: en prosa, con una
+    # pregunta, a veces con ruido de su interfaz. Talos esperaba un archivo con
+    # un formato y descartaba todo lo demas: el motivo existia y no llegaba a
+    # nadie. La seccion 25 ya definia el canal entero -tipos, estados, hilos- y
+    # no lo implementaba nadie.
+    pmsg = project()
+    talos(pmsg, "feature", "start", "F001")
+    esp2 = pmsg / ".talos" / "adapters" / "spy"
+    espia(pmsg)
+    (esp2 / "run.sh").write_text(
+        '#!/bin/sh\n'
+        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"\n'
+        'case "$1" in\n'
+        '  create_session) echo \'{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}\' ;;\n'
+        '  start_agent) echo \'{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}\' ;;\n'
+        '  read_agent) echo \'{"status":"ok","dry_run":false,"result":{"output":"No puedo seguir: el repo ya tiene memorias de F001 y el arbol esta vacio. Confirmame si reiniciaron el workspace."}}\' ;;\n'
+        '  *) echo \'{"status":"ok","dry_run":false,"result":{}}\' ;;\n'
+        'esac\n')
+    (esp2 / "run.sh").chmod(0o755)
+    talos(pmsg, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = talos(pmsg, "feature", "work", "F001", "--timeout", "3")
+
+    msgs = list((pmsg / "orchestration" / "messages").glob("msg-*.json"))
+    results.append(check(
+        "lo que el agente dijo queda registrado, aunque sea prosa suelta",
+        len(msgs) == 1, f"{[m.name for m in msgs]}"))
+    m = json.loads(msgs[0].read_text()) if msgs else {}
+    results.append(check(
+        "el mensaje conserva el texto tal cual, sin exigirle formato",
+        "No puedo seguir" in (m.get("payload") or {}).get("text", ""),
+        f"{(m.get('payload') or {}).get('text','')[:80]}"))
+    results.append(check(
+        "y el sobre dice quien lo dijo, a quien y sobre que",
+        m.get("from") == "role:Developer" and m.get("to") == "human:operator"
+        and m.get("feature_id") == "F001" and m.get("state") == "OPEN"
+        and m.get("type") == "QUESTION",
+        f"{m.get('from')} -> {m.get('to')} {m.get('type')} {m.get('state')}"))
+    results.append(check(
+        "el paso le dice a quien mira como leerlo y como contestar",
+        "talos message show" in out and "talos message answer" in out,
+        out[-300:]))
+
+    # Contestar cierra el circuito: se registra Y se entrega.
+    logm2 = pmsg / "spy.log"
+    prev = len(spy_lines(logm2, "prompt_agent"))
+    code, out = talos(pmsg, "message", "answer", m.get("id", "x"),
+                      "--text", "Si, el workspace se reinicio a proposito. Segui.")
+    results.append(check(
+        "responder entrega la respuesta al agente, no solo la escribe",
+        code == 0 and len(spy_lines(logm2, "prompt_agent")) == prev + 1,
+        f"exit={code} {out[-200:]}"))
+    resp = [json.loads(f.read_text())
+            for f in sorted((pmsg / "orchestration" / "messages").glob("msg-*.json"))]
+    results.append(check(
+        "la respuesta queda en el mismo hilo y referencia la pregunta",
+        len(resp) == 2 and resp[1]["type"] == "ANSWER"
+        and resp[1]["thread_id"] == resp[0]["thread_id"]
+        and resp[1]["in_reply_to"] == resp[0]["id"],
+        f"{[(x['id'], x['type'], x['in_reply_to']) for x in resp]}"))
+    results.append(check(
+        "y la pregunta queda ANSWERED, no abierta para siempre",
+        resp[0]["state"] == "ANSWERED" if resp else False,
+        f"{resp[0]['state'] if resp else '-'}"))
+
+    # ---------- dos roles sobre la misma feature no comparten sesion ----------
+    #
+    # La identidad de la sesion tiene que incluir el ROL. Sin eso la
+    # idempotency key de dos despachos sobre la misma feature es la misma, el
+    # ledger le devuelve al segundo el panel del primero, y dos agentes no
+    # entran en un panel. Ademas soltar al anterior DESPUES de pedir la sesion
+    # cerraba el panel recien resuelto -son el mismo- y el arranque fallaba con
+    # "pane not found" sobre algo que Talos habia cerrado un segundo antes.
+    pdos = project()
+    talos(pdos, "feature", "start", "F001")
+    logd = espia(pdos)
+    talos(pdos, "feature", "dispatch", "F001", "--role", "Developer")
+    ref_dev = json.loads((pdos / "orchestration" / "features" / "F001" / ".agent").read_text())
+    code, out = talos(pdos, "feature", "dispatch", "F001", "--role", "Reviewer")
+    ref_rev = json.loads((pdos / "orchestration" / "features" / "F001" / ".agent").read_text())
+    results.append(check(
+        "despachar otro rol sobre la misma feature funciona",
+        code == 0, f"exit={code} {out[-300:]}"))
+    results.append(check(
+        "y le da un agente propio, no el del rol anterior",
+        ref_rev.get("name") != ref_dev.get("name")
+        and ref_rev.get("name", "").endswith("_revi"),
+        f"{ref_dev.get('name')} -> {ref_rev.get('name')}"))
+    sesiones = spy_lines(logd, "create_session")
+    results.append(check(
+        "la sesion que se pide lleva el rol: dos roles, dos sesiones distintas",
+        len(sesiones) == 2 and '"role":"Developer"' in sesiones[0]
+        and '"role":"Reviewer"' in sesiones[1],
+        f"{sesiones}"))
+    cierres = spy_lines(logd, "close_session")
+    results.append(check(
+        "y el agente del rol anterior se suelta al cambiar",
+        cierres and '"pane"' in cierres[0], f"{cierres}"))
+
     # ---------- lo que un shim instala, lo retira ----------
     #
     # Retirar solo el brief dejaba el bloqueo registrado en el runtime de una

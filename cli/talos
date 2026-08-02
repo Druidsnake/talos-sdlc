@@ -68,6 +68,7 @@ TRABAJAR
     talos feature start|list      ejecuta una feature del plan
     talos merge check|do <F>      MERGE_GATE y merge gobernado
     talos human approve|decide    registra una decision humana
+    talos message list|answer     lo que los agentes dijeron, y tu respuesta
 
 EVENTOS
     talos event append            registra un evento con secuencia
@@ -110,7 +111,7 @@ case "$cmd" in
     version|--version)
         echo "talos $TALOS_VERSION"
         ;;
-    init|doctor|status|rules|adapters|gate|next|run|boot|budget)
+    init|doctor|status|rules|adapters|gate|next|run|boot|budget|message)
         exec "$CLI_DIR/commands/$cmd.sh" "$@"
         ;;
     spec)

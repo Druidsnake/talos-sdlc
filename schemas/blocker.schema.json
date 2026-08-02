@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos-sdlc/schemas/blocker/0.0.6",
+  "title": "Blocker",
+  "description": "La OTRA salida de un encargo. Un rol tenia una sola forma de terminar -su entregable- y ninguna de decir 'no puedo'. Cuando no podia, contestaba en prosa: Talos esperaba un archivo que no llegaba, agotaba el plazo y reportaba 'termino sin dejar entregable', perdiendo el motivo. Un agente que no puede seguir tiene que poder decirlo en algo que el sistema lea. Ver talos-0.0.6.md seccion 30 y la transicion F5, que exige ErrorRecord.",
+  "type": "object",
+  "required": ["schema_version", "feature_id", "task_id", "role", "reason", "created_at"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "feature_id": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Por que no se puede seguir. En una frase, concreta: no 'hay un problema' sino que falta o que se contradice."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["needs_decision", "scope_insufficient", "spec_contradiction",
+               "environment", "dependency_missing", "other"],
+      "description": "Que clase de bloqueo es. needs_decision es el unico que espera a una persona; los demas describen algo que falta o no cierra."
+    },
+    "needs": {
+      "type": "string",
+      "description": "Que haria falta para desbloquear. Es lo que convierte el bloqueo en accionable en vez de en una queja."
+    },
+    "tried": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Que se intento antes de bloquear. Sin esto, quien lo lea no puede distinguir un obstaculo real de un intento unico."
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Rutas o ids que sostienen el motivo. Un bloqueo afirmado y no mostrado no es verificable."
+    }
+  },
+  "additionalProperties": false
+}

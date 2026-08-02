@@ -298,6 +298,7 @@ if [ "$sub" = work ]; then
     # aca el task-result del Developer hacia que a un Reviewer despachado se le
     # pidiera el artefacto de otro rol: escribia -o no escribia- en el lugar
     # equivocado, y el gate seguia sin ver su Review.
+    BLOQUEO="orchestration/features/$FEAT/tasks/T01/blocker.json"
     ESQUEMA=$(talos_role_output_schema "$ROLE" 2>/dev/null || echo "")
     SALIDA=$(talos_role_output_path "$ROLE" "$FEAT" T01 2>/dev/null || echo "")
     if [ -z "$ESQUEMA" ] || [ -z "$SALIDA" ]; then
@@ -331,6 +332,13 @@ task = {
     "spec_refs": [f"spec/{r}" for r in (f.get("spec_refs") or [])],
     "acceptance_refs": [f"spec/{r}" for r in (f.get("acceptance_refs") or [])],
     "output": {"schema": esquema, "path": salida},
+    # La otra salida. Un encargo con una sola forma de terminar obliga al rol
+    # a contestar en prosa cuando no puede, y la prosa Talos no la lee: espera
+    # un archivo que no llega y pierde el motivo.
+    "blocked": {
+        "schema": "blocker",
+        "path": f"orchestration/features/{fid}/tasks/T01/blocker.json",
+    },
 }
 open(destino, "w").write(json.dumps(task, indent=2) + "\n")
 PYEOF
@@ -373,6 +381,12 @@ partes = [
     f"  {t['output']['path']}",
     f"que tiene que validar contra el schema {t['output']['schema']}.",
     "Sin ese archivo tu trabajo no existe para el sistema.",
+    "",
+    "SI NO PODES TERMINAR, no contestes en prosa: Talos no la lee.",
+    "Escribi este archivo y detenete:",
+    f"  {t['blocked']['path']}",
+    "con reason (por que), needs (que haria falta) y tried (que intentaste).",
+    "Un bloqueo dicho asi lo lee el sistema; dicho en un mensaje se pierde.",
     "",
     # El CommitRef es evidencia que Talos OBSERVA de git, no una mutacion que
     # ordene. Si nadie commitea, no hay nada que observar y la feature se
@@ -465,6 +479,9 @@ PYWALL
                  "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
         set -e
         [ -f "$SALIDA" ] && break
+        # El bloqueo termina la espera igual que el entregable: son las dos
+        # formas validas de terminar un encargo.
+        [ -f "$BLOQUEO" ] && break
         [ "$(date +%s)" -ge "$_limite" ] && break
         sleep 5
     done
@@ -485,6 +502,29 @@ PYWALL
                 exit 4
                 ;;
         esac
+    fi
+
+    if [ -f "$BLOQUEO" ]; then
+        echo "  --   el agente se BLOQUEO y lo dejo dicho"
+        echo ""
+        "$SYS/hooks/validate-artifact.sh" blocker "$BLOQUEO" >/dev/null 2>&1 \
+            && printf '  el bloqueo valida contra su schema\n' \
+            || printf '  ojo: el bloqueo NO valida contra blocker.schema.json\n'
+        "$PY" - "$BLOQUEO" <<'PYBLOQ' | sed 's/^/    /'
+import json, sys
+b = json.loads(open(sys.argv[1]).read())
+print(f"motivo:  {b.get('reason','-')}")
+if b.get("kind"):
+    print(f"clase:   {b['kind']}")
+if b.get("needs"):
+    print(f"necesita: {b['needs']}")
+for x in (b.get("tried") or [])[:4]:
+    print(f"intento: {x}")
+PYBLOQ
+        echo ""
+        printf '  %s\n' "$BLOQUEO"
+        echo "  No es un fracaso del paso: es una respuesta que el sistema puede leer."
+        exit 4
     fi
 
     # El encargo pide DOS cosas al Developer: el entregable y el commit. Un
@@ -521,9 +561,47 @@ PYWALL
     fi
     echo "  --   el agente termino sin dejar entregable"
     echo ""
+
+    # LO QUE HAYA DICHO NO SE PIERDE.
+    #
+    # Un agente que no puede seguir contesta como sabe: en prosa, con una
+    # pregunta, a veces con ruido de su interfaz. Talos esperaba un archivo
+    # con un formato y descartaba todo lo demas, asi que el motivo -que
+    # existia- no llegaba a nadie. La seccion 25 ya definia el canal; lo que
+    # faltaba era usarlo.
+    #
+    # La estructura la pone Talos: el sobre dice quien, a quien y sobre que.
+    # El cuerpo es lo que se leyo, tal cual, sin exigirle forma.
+    set +e
+    _dicho=$(talos_capability_run ExecutionAdapter read_agent \
+             "{\"target\":\"$TARGET\",\"lines\":\"120\"}" 2>&1)
+    set -e
+    _cuerpo=$(printf '%s' "$_dicho" | "$PY" -c '
+import json, sys
+crudo = sys.stdin.read()
+try:
+    d = json.loads(crudo)
+    print((d.get("result") or {}).get("output") or crudo)
+except Exception:
+    print(crudo)
+' 2>/dev/null || printf '%s' "$_dicho")
+
+    _tmpm=$(mktemp)
+    printf '%s' "$_cuerpo" > "$_tmpm"
+    _msg=$("$PY" "$SYS/hooks/lib/message.py" send orchestration/messages \
+           QUESTION "role:$ROLE" "human:operator" "${TALOS_RUN_ID:-r-unknown}" \
+           "$FEAT" T01 "$_tmpm" 2>/dev/null || echo "")
+    rm -f "$_tmpm"
+
     echo "  Sin ese archivo su trabajo no existe para el sistema."
     printf '  Se esperaba:  %s\n' "$SALIDA"
-    printf '  Mira su pane: %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+    if [ -n "$_msg" ]; then
+        echo ""
+        printf '  Lo que dijo quedo registrado como %s\n' "$_msg"
+        printf '  Leelo:      talos message show %s\n' "$_msg"
+        printf '  Contestale: talos message answer %s --text "..."\n' "$_msg"
+    fi
+    printf '  Su pane:      %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
     # Sale 3, no 0. Reportar exito sin haber producido el entregable hacia que
     # el loop lo contara como avance: reencargaba lo mismo hasta agotar las
     # iteraciones, y recien ahi decia que nada habia pasado. Un paso que no
@@ -1040,6 +1118,26 @@ if [ "$sub" = dispatch ]; then
     if ! talos_role_activate "$ROLE" "$FEAT"; then
         exit 2
     fi
+
+    # Cambiar de rol suelta al agente anterior, y se hace ANTES de pedir la
+    # sesion nueva. Haciendolo despues se cerraba el panel que la sesion recien
+    # resuelta acababa de devolver -son el mismo- y start_agent fallaba con
+    # "pane not found" sobre un panel que Talos habia cerrado un segundo antes.
+    _rolp=$(printf '%s' "$ROLE" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-4)
+    _previo=$(talos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
+    case "$_previo" in
+        ""|*_"$_rolp") ;;
+        *)
+            if talos_agent_ref_check "$FEAT" 2>/dev/null; then
+                _ppane=$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
+                if [ -n "$_ppane" ] && talos_capability_run ExecutionAdapter close_session \
+                       "{\"pane\":\"$_ppane\"}" >/dev/null 2>&1; then
+                    printf '  previo   %s soltado y su sesion %s cerrada\n' "$_previo" "$_ppane"
+                fi
+                talos_agent_ref_clear "$FEAT"
+            fi
+            ;;
+    esac
     # Sin pane, Talos crea el suyo. Pedirle a una persona que elija uno la
     # obliga a saber cual esta libre, y el candidato obvio -donde esta
     # tipeando- es justo el que no sirve: ahi vive su shell.
@@ -1049,8 +1147,12 @@ if [ "$sub" = dispatch ]; then
     # candidato obvio -donde esta tipeando- es justo el que no sirve.
     if [ -z "$PANE" ]; then
         set +e
+        # El ROL es parte de la identidad de la sesion. Sin el, la
+        # idempotency key de dos despachos sobre la misma feature es la misma:
+        # el ledger le devolvia al Reviewer el panel del Developer, y dos
+        # agentes no entran en un panel.
         _ses=$(talos_capability_run ExecutionAdapter create_session \
-               "{\"cwd\":\"$PROJ\",\"direction\":\"right\"}" 2>&1)
+               "{\"cwd\":\"$PROJ\",\"direction\":\"right\",\"role\":\"$ROLE\"}" 2>&1)
         _src=$?
         set -e
         if [ "$_src" -ne 0 ]; then
