@@ -92,9 +92,12 @@ def main():
         f"{man['id']} / {man['implements']}"))
 
     ext = man.get("external_binary") or {}
+    # 0.7.5 y no 0.7.0: observe_agent necesita pane.process_info, y es la
+    # version donde se midio que existe y devuelve foreground_process_group_id.
+    # Declarar un piso que no se verifico es prometer lo que no se probo.
     results.append(check(
-        "declara herdr >= 0.7.0 con su env_override (seccion 38.5)",
-        ext.get("name") == "herdr" and ext.get("version_range") == ">=0.7.0"
+        "declara herdr >= 0.7.5 con su env_override (seccion 38.5)",
+        ext.get("name") == "herdr" and ext.get("version_range") == ">=0.7.5"
         and ext.get("env_override") == "THALOS_HERDR_BIN",
         f"{ext}"))
 
@@ -486,8 +489,86 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
 
     results.append(check(
         "la tabla lleva el binario y su rango para que doctor los reporte (37.4.5.6)",
-        "herdr\t>=0.7.0\tTHALOS_HERDR_BIN" in tabla.read_text(),
+        "herdr\t>=0.7.5\tTHALOS_HERDR_BIN" in tabla.read_text(),
         [l for l in tabla.read_text().splitlines() if "herdr" in l][:1]))
+
+    # ---------- observe_agent (mensajeria 0.0.1 seccion 4.2) ----------
+    #
+    # La operacion que hace observable la vitalidad. Lo que se verifica aca no
+    # es que hable con Herdr -eso lo prueba el socket real- sino que DERIVE
+    # bien, que es donde estaba el defecto: el estado sobrevive a la muerte del
+    # proceso que lo reporto, asi que creerle al estado es el bug.
+
+    def observe(agent_status, seq, shell_pid, fg_pgid, pane="w1:p1", existe=True):
+        """Un herdr de mentira que contesta agent get y pane process-info.
+
+        Se usa `agent get` y no `agent list` porque get RESUELVE el target
+        -nombre o panel- y devuelve el pane_id con el que despues se pregunta
+        por el proceso. El listado no trae el nombre con el que Thalos
+        direcciona a sus agentes, asi que correlacionar desde ahi es adivinar.
+        """
+        d = pathlib.Path(tempfile.mkdtemp())
+        p = d / "herdr"
+        if existe:
+            cuerpo = (f'{{"result":{{"agent":{{"pane_id":"{pane}",'
+                      f'"agent_status":"{agent_status}",'
+                      f'"state_change_seq":{seq}}}}}}}')
+        else:
+            cuerpo = ('{"error":{"code":"agent_not_found",'
+                      '"message":"agent target a1 not found"}}')
+        p.write_text(
+            '#!/bin/sh\n'
+            'case "$1 $2" in\n'
+            f'  "agent get") echo \'{cuerpo}\' ;;\n'
+            f'  "pane process-info") echo \'{{"result":{{"process_info":'
+            f'{{"pane_id":"{pane}","shell_pid":{shell_pid},'
+            f'"foreground_process_group_id":{fg_pgid},"foreground_processes":[]}}}}}}\' ;;\n'
+            '  *) echo "herdr 0.7.5" ;;\n'
+            'esac\n')
+        p.chmod(0o755)
+        rc, out, err = run_adapter("observe_agent", {"target": "a1"},
+                                   {"THALOS_HERDR_BIN": str(p)})
+        try:
+            return rc, json.loads(out)
+        except (ValueError, json.JSONDecodeError):
+            return rc, {"_raw": out, "_err": err}
+
+    rc, o = observe("working", 207, 6105, 6597)
+    results.append(check(
+        "observe_agent devuelve los cuatro hechos de la seccion 4.2",
+        rc == 0 and {"pane_exists", "state", "state_change_seq", "process_alive"}
+        <= set(o), f"rc={rc} {str(o)[:160]}"))
+
+    results.append(check(
+        "con un proceso en primer plano distinto del shell, process_alive es verdadero",
+        o.get("process_alive") is True and o.get("state") == "working",
+        str(o)[:160]))
+
+    # EL caso. Medido en el anexo A.5: el agente muere, el shell queda vivo y
+    # Herdr sigue publicando working para siempre.
+    rc, o = observe("working", 207, 6105, 6105)
+    results.append(check(
+        "agente muerto con shell vivo: process_alive falso aunque el estado diga working",
+        rc == 0 and o.get("state") == "working" and o.get("process_alive") is False,
+        str(o)[:160]))
+
+    # Anexo A.6: muerto el shell, el panel desaparece y el target no resuelve.
+    # agent_not_found viene en el CUERPO con codigo de salida 0: mirar el rc
+    # aca daria "todo bien" sobre un agente que ya no existe.
+    rc, o = observe("working", 207, 0, 0, existe=False)
+    results.append(check(
+        "con agent_not_found, pane_exists es falso y la operacion no falla",
+        rc == 0 and o.get("pane_exists") is False, str(o)[:160]))
+
+    results.append(check(
+        "un agente ausente no inventa process_alive verdadero",
+        o.get("process_alive") is False, str(o)[:160]))
+
+    results.append(check(
+        "observe_agent no lee terminal (regla 4.2.4)",
+        "agent read" not in (ADAPTER / "run.sh").read_text().split(
+            "observe_agent)")[-1].split(";;")[0],
+        "la operacion no debe traer texto de terminal al nucleo"))
 
     print()
     ok = sum(1 for x in results if x)

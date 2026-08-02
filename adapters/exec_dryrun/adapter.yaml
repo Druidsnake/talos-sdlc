@@ -59,6 +59,13 @@ operations:
     mutating: false
     timeout_seconds: 30
 
+  # Misma capacidad, mismas operaciones: el contrato no depende de quien lo
+  # cumple. En simulacion no hay proceso que observar, asi que la respuesta
+  # declara dry_run y el nucleo decide que hacer con eso (regla 37.4.4.2).
+  - name: observe_agent
+    mutating: false
+    timeout_seconds: 10
+
   # Un comando arbitrario puede tener cualquier efecto de lado. El adapter no
   # puede prometer que reintentarlo sea seguro.
   - name: run_command

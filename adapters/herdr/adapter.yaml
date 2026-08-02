@@ -17,7 +17,7 @@ supports_dry_run: true
 # pasaria vendoreando tmux.
 external_binary:
   name: herdr
-  version_range: ">=0.7.0"
+  version_range: ">=0.7.5"
   env_override: THALOS_HERDR_BIN
   install_hint: "curl -fsSL https://herdr.dev/install.sh | sh"
   machine_level: true
@@ -72,6 +72,16 @@ operations:
   - name: read_agent
     mutating: false
     timeout_seconds: 30
+
+  # observe_agent es una FOTO, no una espera: por eso 10 segundos y no 900.
+  # wait_agent BLOQUEA hasta que el agente se asienta y devuelve un estado, y
+  # un estado sobrevive a la muerte de quien lo reporto. observe_agent trae
+  # ademas el hecho que ningun estado puede dar -si el proceso sigue vivo- y
+  # es lo unico que distingue a un agente que trabaja de uno que murio
+  # trabajando. Ver thalos-mensajeria-0.0.1.md seccion 4.2.
+  - name: observe_agent
+    mutating: false
+    timeout_seconds: 10
 
   # Un comando arbitrario tiene efectos de lado arbitrarios.
   - name: run_command

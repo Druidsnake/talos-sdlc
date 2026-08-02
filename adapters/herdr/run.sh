@@ -101,6 +101,12 @@ first_id() {
     sed -n 's/.*"\('"$1"'\)"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2/p' | head -1
 }
 
+# La version numerica de first_id. Los pids y state_change_seq no vienen
+# entrecomillados, asi que first_id no los ve y devolvia vacio en silencio.
+first_num() {
+    sed -n 's/.*"\('"$1"'\)"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\2/p' | head -1
+}
+
 # Decodifica de verdad: un texto con saltos de linea o comillas llegaba
 # mutilado al agente y la operacion reportaba exito igual. Ver thalos_json_get
 # en adapters/lib/adapter.sh.
@@ -405,6 +411,73 @@ case "$op" in
         _st=$(printf '%s' "$_raw" | first_id agent_status)
         [ -n "$_st" ] || _st=unknown
         thalos_ok "{\"state\":\"$_st\",\"target\":\"$_target\"}"
+        ;;
+
+    observe_agent)
+        check_version >/dev/null || exit 2
+        _target=$(json_get target)
+        [ -n "$_target" ] || {
+            thalos_error precondition "observe_agent requiere target"
+            exit 5
+        }
+        # UNA FOTO, no una espera. wait_agent bloquea y devuelve un estado;
+        # esto devuelve los cuatro hechos de la seccion 4.2 de la mensajeria y
+        # no bloquea nunca.
+        #
+        # Se usa `agent get` y no `agent list`: get RESUELVE el target -nombre
+        # o panel- y devuelve el pane_id con el que se pregunta por el proceso.
+        # El listado no trae el nombre con el que Thalos direcciona a sus
+        # agentes, asi que correlacionar desde ahi es adivinar.
+        #
+        # agent_not_found viene en el CUERPO con codigo de salida 0. Mirar el
+        # rc daria "todo bien" sobre un agente que ya no existe.
+        _ahora=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        _ag=$("$HERDR" agent get "$_target" 2>/dev/null || echo '')
+        _pane=$(printf '%s' "$_ag" | first_id pane_id)
+        if [ -z "$_pane" ]; then
+            # No resuelve: el panel se fue con su proceso. Es mas fuerte que
+            # "no esta vivo" y el nucleo los distingue (veredicto GONE).
+            printf '{"pane_exists":false,"state":"unknown","state_change_seq":0,'
+            printf '"process_alive":false,"process_observed":true,'
+            printf '"target":"%s","observed_at":"%s"}\n' "$_target" "$_ahora"
+            exit 0
+        fi
+        _st=$(printf '%s' "$_ag" | first_id agent_status)
+        [ -n "$_st" ] || _st=unknown
+        _seq=$(printf '%s' "$_ag" | first_num state_change_seq)
+        [ -n "$_seq" ] || _seq=0
+
+        # LA senal que no miente. Un estado es la memoria de lo que alguien
+        # reporto y sobrevive a que ese alguien se muera: medido, un agente
+        # muerto publica `working` para siempre. Cuando el unico proceso en
+        # primer plano ES el shell, no hay agente corriendo ahi.
+        _pi=$("$HERDR" pane process-info --pane "$_pane" 2>/dev/null || echo '')
+        _shell=$(printf '%s' "$_pi" | first_num shell_pid)
+        _fg=$(printf '%s' "$_pi" | first_num foreground_process_group_id)
+
+        # NO PODER MIRAR NO ES ESTAR MUERTO. Si process-info no contesta -o
+        # devuelve null, que el schema permite-, afirmar process_alive:false
+        # mataria agentes sanos por un fallo de lectura, que es peor que el
+        # problema que este subsistema vino a resolver. Se dice que no se
+        # observo y el nucleo cae al estado reportado, o sea al comportamiento
+        # anterior: no mejor, pero tampoco una regresion.
+        if [ -z "$_shell" ] || [ -z "$_fg" ]; then
+            _vivo=true
+            _visto=false
+        elif [ "$_fg" != "$_shell" ]; then
+            _vivo=true
+            _visto=true
+        else
+            _vivo=false
+            _visto=true
+        fi
+
+        # NO se lee terminal (regla 4.2.4): el texto es caro, fragil y no hace
+        # falta para decidir vitalidad. La unica lectura del subsistema ocurre
+        # al ESCALAR, y la hace quien escala.
+        printf '{"pane_exists":true,"state":"%s","state_change_seq":%s,' "$_st" "$_seq"
+        printf '"process_alive":%s,"process_observed":%s,"pane":"%s",' "$_vivo" "$_visto" "$_pane"
+        printf '"target":"%s","observed_at":"%s"}\n' "$_target" "$_ahora"
         ;;
 
     read_agent)

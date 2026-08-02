@@ -39,9 +39,14 @@ EXPECTED_OPS = {
     "ModelProviderAdapter": {"list_models", "resolve_profile", "invoke_model", "estimate_cost", "report_usage"},
     # close_session es parte del ciclo de vida (seccion 38.5): un adapter que
     # abre sesiones y no las cierra deja paneles muertos para siempre.
+    # observe_agent no esta en la lista original de la 38.4: la agrega
+    # thalos-mensajeria-0.0.1.md seccion 4.2. wait_agent BLOQUEA hasta que el
+    # agente se asienta y devuelve solo un estado; observe_agent es una FOTO
+    # que ademas trae el hecho que el estado no puede dar: si el proceso sigue
+    # vivo. Sin ella, un agente muerto se reporta trabajando para siempre.
     "ExecutionAdapter": {"create_workspace", "create_session", "start_agent", "prompt_agent",
-                         "wait_agent", "read_agent", "run_command", "close_session",
-                         "report_metadata"},
+                         "wait_agent", "read_agent", "observe_agent", "run_command",
+                         "close_session", "report_metadata"},
     "CoordinationAdapter": {"create_issue", "create_branch", "open_pr", "get_pr_checks",
                             "request_review", "merge_pr"},
     "CIAdapter": {"run_checks", "get_check_status", "publish_report"},
@@ -123,6 +128,59 @@ def main():
         not validate("extension-registry", reg),
         "; ".join(e.message[:90] for e in validate("extension-registry", reg)[:3]),
     ))
+
+    # Los schemas de communication y reliability existian desde 0.0.6 SIN
+    # archivo que los usara, asi que los timeouts vivian cableados en el codigo
+    # (mensajeria 0.0.1 seccion 9.3). Un schema sin config no configura nada.
+    com_path = ROOT / "config" / "communication.yaml"
+    results.append(check(
+        "config/communication.yaml existe",
+        com_path.is_file(),
+        "el schema existe desde 0.0.6 y nunca tuvo archivo",
+    ))
+    if com_path.is_file():
+        com = yaml.safe_load(com_path.read_text())
+        results.append(check(
+            "config/communication.yaml valida contra communication-config.schema.json",
+            not validate("communication-config", com),
+            "; ".join(e.message[:90] for e in validate("communication-config", com)[:3]),
+        ))
+        # Regla 5.3.5: un bloqueo momentaneo no es un bloqueo.
+        results.append(check(
+            "liveness declara los cuatro umbrales del subsistema de vitalidad",
+            set(com.get("liveness", {})) == {
+                "observe_interval_seconds", "ack_timeout_seconds",
+                "blocked_confirm_samples", "escalation_context_lines"},
+            str(sorted(com.get("liveness", {}))),
+        ))
+
+    rel_path = ROOT / "config" / "reliability.yaml"
+    results.append(check(
+        "config/reliability.yaml existe",
+        rel_path.is_file(),
+        "el schema existe desde 0.0.6 y nunca tuvo archivo",
+    ))
+    if rel_path.is_file():
+        rel = yaml.safe_load(rel_path.read_text())
+        results.append(check(
+            "config/reliability.yaml valida contra reliability-config.schema.json",
+            not validate("reliability-config", rel),
+            "; ".join(e.message[:90] for e in validate("reliability-config", rel)[:3]),
+        ))
+        # Decision M-002: NOT_DELIVERED es TRANSIENT, y un encargo que nunca
+        # llego se puede reenviar sin duplicar trabajo (mensajeria 7.3).
+        ops = (rel.get("reliability", {}) or {}).get("operations", {}) or {}
+        results.append(check(
+            "agent_prompt reintenta con backoff (mensajeria 7.3, decision M-002)",
+            ops.get("agent_prompt", {}).get("max_attempts", 0) > 1
+            and "backoff" in ops.get("agent_prompt", {}),
+            str(ops.get("agent_prompt")),
+        ))
+        results.append(check(
+            "agent_observe declara timeout propio: una foto no puede colgarse",
+            "agent_observe" in ops,
+            str(sorted(ops)),
+        ))
 
     # Regla 31.7: auto_merge deshabilitado por defecto en 0.0.6.
     results.append(check(

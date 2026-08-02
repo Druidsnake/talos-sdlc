@@ -51,6 +51,14 @@ case "$op" in
     read_agent)
         thalos_ok '{"output":"","truncated":false,"simulated":true}'
         ;;
+    observe_agent)
+        # En simulacion no hay proceso que observar. Se responde con la forma
+        # completa -los cuatro hechos de la seccion 4.2 de la mensajeria- y se
+        # declara process_observed:false, que es lo honesto: aca nadie miro
+        # ningun proceso. El nucleo ya sabe no matar a un agente por una
+        # observacion que no ocurrio.
+        thalos_ok '{"pane_exists":true,"state":"idle","state_change_seq":0,"process_alive":true,"process_observed":false,"simulated":true}'
+        ;;
     report_metadata)
         thalos_ok '{"adapter":"dry-run","supports_parallel":false}'
         ;;
