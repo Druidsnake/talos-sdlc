@@ -32,7 +32,7 @@ USO
     talos feature advance <ID> --to <ESTADO>
                                   ejecuta la transicion si el gate autoriza
     talos feature next <ID>       que transiciones salen del estado actual
-    talos feature work <ID> [--agent <NOMBRE>]
+    talos feature work <ID> [--agent <NOMBRE>] [--timeout <SEG>]
                                   le da al agente despachado el trabajo de la
                                   feature. Sin --agent usa el que registro
                                   dispatch, si lo produjo el adapter ligado
@@ -238,9 +238,14 @@ fi
 
 if [ "$sub" = work ]; then
     TARGET=""
+    # Cuanto se espera al entregable. El plan declara max_wall_minutes por
+    # feature y ese es el numero que manda; --timeout existe para poder
+    # ejercitar el camino de "no entrego" sin esperar el limite real.
+    ESPERA_S=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --agent) TARGET="${2:?falta el agente}"; shift 2 ;;
+            --agent)   TARGET="${2:?falta el agente}"; shift 2 ;;
+            --timeout) ESPERA_S="${2:?falta el timeout en segundos}"; shift 2 ;;
             *) shift ;;
         esac
     done
@@ -395,14 +400,18 @@ PYEOF
     set -e
     if [ "$rc" -ne 0 ]; then
         echo "  FALL el ExecutionAdapter no pudo entregar el trabajo"
-        printf '%s\n' "$out" | sed 's/^/    /' | head -3
-        echo ""
         # Un agente puede MORIRSE: que se haya despachado no prueba que siga
         # vivo. Si el backend no lo encuentra, la referencia esta obsoleta y
         # el paso que corresponde es despachar de nuevo, no reintentar este.
         echo "  Si el agente $TARGET ya no existe, la referencia quedo vieja:"
         printf '    talos feature release %s\n    talos feature dispatch %s --role %s\n' \
             "$FEAT" "$FEAT" "$ROLE"
+        echo ""
+        # El motivo del backend va ULTIMO, no primero: quien mira esto en la
+        # consola del loop ve las ultimas lineas, y con la ayuda abajo el error
+        # real quedaba tapado justo cuando hacia falta.
+        echo "  lo que dijo el adapter:"
+        printf '%s\n' "$out" | sed 's/^/    /' | tail -3
         exit 5
     fi
     echo "  ok   trabajo entregado al agente"
@@ -416,42 +425,81 @@ PYEOF
 
     # Esperar a que el agente se asiente. Devolver apenas se entrega el prompt
     # deja a quien llama sin forma de saber si hubo trabajo.
-    printf '  ..   esperando a que el agente termine\n'
-    set +e
-    espera=$(talos_capability_run ExecutionAdapter wait_agent \
-             "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
-    set -e
-
-    # Esperar y no mirar el resultado trataba "esta bloqueado pidiendo una
-    # decision" igual que "termino": se reportaba que el agente no dejo
-    # entregable cuando en realidad no habia llegado a empezar, y el loop
-    # seguia como si hubiera fallado el trabajo.
+    # Se espera al ENTREGABLE, no a un estado.
     #
-    # Un agente bloqueado no es un agente que fracaso: es uno que espera a una
-    # persona. La regla 30 llama a eso needs_human, y sale 4.
-    # Un bloqueo puede ser momentaneo: el runtime muestra algo, lo resuelve
-    # solo y el agente sigue. Cortar en la primera lectura abortaba el paso de
-    # un agente que estaba trabajando. Se vuelve a preguntar: bloqueado es
-    # bloqueado cuando SIGUE bloqueado.
-    case "$espera" in
-        *'"state":"blocked"'*)
-            set +e
-            espera=$(talos_capability_run ExecutionAdapter wait_agent \
-                     "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
-            set -e
-            ;;
-    esac
+    # wait_agent devuelve al primer estado asentado, y un agente se asienta
+    # apenas recibe el prompt -antes de empezar a trabajar-. Con eso el paso
+    # miraba el disco, no encontraba nada y reportaba ok igual: el loop lo
+    # tomaba por avance, volvia a encargar lo mismo y quemaba las iteraciones
+    # del presupuesto sin que nadie hubiera hecho nada.
+    #
+    # La condicion de terminacion de este paso es el artefacto. Un estado del
+    # runtime no lo sustituye.
+    if [ -z "$ESPERA_S" ]; then
+        ESPERA_S=$("$PY" - "$PLAN" "$FEAT" <<'PYWALL'
+import json, sys
+plan = json.loads(open(sys.argv[1]).read())
+f = next((x for x in plan.get("features", []) if x.get("id") == sys.argv[2]), None)
+m = ((f or {}).get("budget") or {}).get("max_wall_minutes")
+print(int(m) * 60 if m else 900)
+PYWALL
+)
+    fi
+    printf '  ..   esperando el entregable del agente (hasta %ss)\n' "$ESPERA_S"
+    _limite=$(( $(date +%s) + ESPERA_S ))
+    while :; do
+        set +e
+        espera=$(talos_capability_run ExecutionAdapter wait_agent \
+                 "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
+        set -e
+        [ -f "$SALIDA" ] && break
+        [ "$(date +%s)" -ge "$_limite" ] && break
+        sleep 5
+    done
 
-    case "$espera" in
-        *'"state":"blocked"'*)
-            echo "  --   el agente esta BLOQUEADO esperando una decision"
-            echo ""
-            echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
-            echo "  para algo y no puede seguir hasta que alguien conteste."
-            printf '  Mira su pane:  %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
-            exit 4
-            ;;
-    esac
+    # Bloqueado es bloqueado cuando SIGUE bloqueado al vencer el plazo.
+    #
+    # El runtime muestra cosas y las resuelve solo: un agente que trabaja pasa
+    # por estados momentaneos de bloqueo. Cortar en la primera lectura -o en la
+    # segunda- abortaba el paso de un agente que estaba trabajando bien.
+    if [ ! -f "$SALIDA" ]; then
+        case "$espera" in
+            *'"state":"blocked"'*)
+                echo "  --   el agente sigue BLOQUEADO esperando una decision"
+                echo ""
+                echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
+                echo "  para algo y no puede seguir hasta que alguien conteste."
+                printf '  Mira su pane:  %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+                exit 4
+                ;;
+        esac
+    fi
+
+    # El encargo pide DOS cosas al Developer: el entregable y el commit. Un
+    # agente que deja el archivo y se detiene cumplio la mitad, y el paso
+    # siguiente falla diciendo que no commiteo -que es cierto y llega tarde-.
+    #
+    # Se le recuerda una vez, dentro del mismo encargo. No consume otra
+    # iteracion del presupuesto porque no es un encargo nuevo: es el mismo, sin
+    # terminar.
+    _base=$(cat "orchestration/features/$FEAT/.base-sha" 2>/dev/null || echo "")
+    if [ -f "$SALIDA" ] && [ -n "$_base" ] && [ "$ROLE" = Developer ] \
+       && [ "$(git rev-parse HEAD 2>/dev/null || echo "$_base")" = "$_base" ]; then
+        printf '  ..   dejo el entregable y no commiteo: se lo recuerdo\n'
+        _rec="Dejaste tu entregable pero no commiteaste. Talos lee git para sellar el CommitRef y sin commit no hay nada que leer. Commitea ahora lo que hiciste: un solo commit, conventional commits, sin co-autores."
+        _rec_esc=$(printf '%s' "$_rec" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+        set +e
+        talos_capability_run ExecutionAdapter prompt_agent \
+            "{\"target\":\"$TARGET\",\"text\":\"$_rec_esc\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
+        _lim2=$(( $(date +%s) + 300 ))
+        while [ "$(git rev-parse HEAD 2>/dev/null || echo "$_base")" = "$_base" ]; do
+            talos_capability_run ExecutionAdapter wait_agent \
+                "{\"target\":\"$TARGET\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
+            [ "$(date +%s)" -ge "$_lim2" ] && break
+            sleep 5
+        done
+        set -e
+    fi
 
     # Se busca el entregable QUE SE LE PIDIO, no el del Developer: cada rol
     # tiene el suyo y el de otro rol no prueba nada sobre este.
@@ -462,8 +510,13 @@ PYEOF
     echo "  --   el agente termino sin dejar entregable"
     echo ""
     echo "  Sin ese archivo su trabajo no existe para el sistema."
-    echo "  Mira su pane: puede haber quedado esperando algo."
-    exit 0
+    printf '  Se esperaba:  %s\n' "$SALIDA"
+    printf '  Mira su pane: %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+    # Sale 3, no 0. Reportar exito sin haber producido el entregable hacia que
+    # el loop lo contara como avance: reencargaba lo mismo hasta agotar las
+    # iteraciones, y recien ahi decia que nada habia pasado. Un paso que no
+    # produjo su evidencia no avanzo.
+    exit 3
 fi
 
 # ---------- commit ----------
@@ -748,22 +801,40 @@ if [ "$sub" = test ]; then
         esac
     done
     [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    # run_command es la unica operacion que necesita el PANE y no el nombre del
-    # agente: corre un comando en una terminal, no le habla a un agente.
+    # El comando necesita una terminal PROPIA.
+    #
+    # Antes se reusaba el pane del agente, que es justo el unico que no sirve:
+    # ahi corre su interfaz interactiva, no una shell. El comando se escribia
+    # sobre el TUI, no se ejecutaba nunca, y el paso moria a los 120s diciendo
+    # que el comando no termino -sin decir que jamas habia arrancado-.
+    PROPIO=0
     if [ -z "$PANE" ]; then
         set +e
-        talos_agent_ref_check "$FEAT"; _arc=$?
+        _ses=$(talos_capability_run ExecutionAdapter create_session \
+               "{\"cwd\":\"$PROJ\",\"direction\":\"down\",\"label\":\"talos-test-$FEAT\"}" 2>&1)
+        _src=$?
         set -e
-        if [ "$_arc" -ne 0 ]; then
+        if [ "$_src" -ne 0 ]; then
             echo "talos ${TALOS_VERSION:-?}"
             echo ""
-            talos_agent_ref_explain "$FEAT" "$_arc"
-            exit 2
+            echo "  FALL no se pudo abrir una terminal para correr la verificacion"
+            printf '%s\n' "$_ses" | sed 's/^/    /' | tail -3
+            exit 5
         fi
-        PANE=$(talos_agent_ref_field "$FEAT" pane)
+        PANE=$(printf '%s' "$_ses" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+        PROPIO=1
     fi
     [ -n "$PANE" ] || { echo "talos: falta --pane y no hay uno registrado" >&2; exit 1; }
-    [ -n "$CMD" ]  || { echo "talos: falta --command" >&2; exit 1; }
+    if [ -z "$CMD" ]; then
+        # Talos no adivina como se prueba un proyecto: el stack lo decide.
+        CMD=$(sed -n 's/^test_command:[[:space:]]*//p' "$SYS/config/system.yaml" 2>/dev/null | head -1)
+        CMD=$(printf '%s' "$CMD" | sed 's/^"//;s/"$//')
+    fi
+    if [ -z "$CMD" ]; then
+        echo "talos: falta --command y el proyecto no declara test_command" >&2
+        echo "talos: agregalo a config/system.yaml; sin comando no hay medicion" >&2
+        exit 2
+    fi
 
     echo "talos ${TALOS_VERSION:-?}"
     echo ""
@@ -803,6 +874,11 @@ if [ "$sub" = test ]; then
     fi
 
     rc=$(cat "$rcfile")
+    # La terminal que abrio este paso la cierra este paso.
+    if [ "$PROPIO" = 1 ]; then
+        talos_capability_run ExecutionAdapter close_session \
+            "{\"pane\":\"$PANE\"}" >/dev/null 2>&1 || true
+    fi
     printf '  exit     %s\n' "$rc"
     printf '  salida   %s\n\n' "$log"
     tail -6 "$log" 2>/dev/null | sed 's/^/    /'
@@ -1038,7 +1114,17 @@ if [ "$sub" = dispatch ]; then
     fi
     # El nombre es la identidad del agente para todo lo que venga despues. Lo
     # elige Talos, no el runtime: por eso se calcula una vez y se guarda.
-    AGENTE="talos_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')"
+    #
+    # LLEVA EL PROYECTO ADENTRO. El espacio de nombres del runtime de ejecucion
+    # es de la MAQUINA, no del proyecto: dos proyectos con una F001 pedian el
+    # mismo talos_f001. El adapter reconcilia por nombre -encuentra uno vivo y
+    # no arranca otro-, asi que el segundo proyecto se quedaba sin agente y le
+    # mandaba su trabajo al agente del primero, que corre en otro repo.
+    #
+    # Nadie lo notaba: el despacho decia ok, el prompt decia ok, y el entregable
+    # no aparecia nunca en el proyecto que lo habia pedido.
+    _proy=$(basename "$PROJ" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | sed 's/_*$//')
+    AGENTE="talos_${_proy}_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z')"
     set +e
     out=$(talos_capability_run ExecutionAdapter start_agent \
           "{\"name\":\"$AGENTE\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)

@@ -4,32 +4,99 @@
   "title": "SystemConfig",
   "description": "config/system.yaml. Ver talos-0.0.6.md secciones 37.4.4 y 47.",
   "type": "object",
-  "required": ["version", "execution_mode", "install_level", "concurrency"],
+  "required": [
+    "version",
+    "execution_mode",
+    "install_level",
+    "concurrency"
+  ],
   "properties": {
-    "version": { "type": "integer", "const": 1 },
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
     "execution_mode": {
       "type": "string",
-      "enum": ["dry-run-only", "partial", "production"],
+      "enum": [
+        "dry-run-only",
+        "partial",
+        "production"
+      ],
       "description": "dry-run-only no puede producir evidencia verificable ni alcanzar FEATURE_MERGED."
     },
-    "install_level": { "type": "string", "enum": ["L0", "L1", "L2"] },
+    "install_level": {
+      "type": "string",
+      "enum": [
+        "L0",
+        "L1",
+        "L2"
+      ]
+    },
     "concurrency": {
       "type": "object",
-      "required": ["mode", "max_parallel_features"],
+      "required": [
+        "mode",
+        "max_parallel_features"
+      ],
       "properties": {
-        "mode": { "type": "string", "enum": ["serial", "parallel"] },
-        "max_parallel_features": { "type": "integer", "minimum": 1 }
+        "mode": {
+          "type": "string",
+          "enum": [
+            "serial",
+            "parallel"
+          ]
+        },
+        "max_parallel_features": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "additionalProperties": false
     },
-    "auto_merge": { "type": "boolean", "default": false },
-    "human_approval": { "type": "string", "enum": ["never", "required_for_critical", "always"], "default": "required_for_critical" }
+    "auto_merge": {
+      "type": "boolean",
+      "default": false
+    },
+    "human_approval": {
+      "type": "string",
+      "enum": [
+        "never",
+        "required_for_critical",
+        "always"
+      ],
+      "default": "required_for_critical"
+    },
+    "test_command": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Como se corren las pruebas de ESTE proyecto. Talos no lo adivina: producir un LocalTestReport exige un comando concreto, y cual es depende del stack, no del sistema. Se declara aca para que el loop pueda pedirlo sin que nadie escriba un comando con espacios dentro de una orden."
+    }
   },
   "additionalProperties": false,
   "allOf": [
     {
-      "if": { "properties": { "concurrency": { "properties": { "mode": { "const": "serial" } } } } },
-      "then": { "properties": { "concurrency": { "properties": { "max_parallel_features": { "const": 1 } } } } }
+      "if": {
+        "properties": {
+          "concurrency": {
+            "properties": {
+              "mode": {
+                "const": "serial"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "concurrency": {
+            "properties": {
+              "max_parallel_features": {
+                "const": 1
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -248,6 +248,30 @@ case "$op" in
                 printf '"message":"herdr no reporto el agente %s vivo despues de arrancarlo"}\n' >&2 "$_name"
                 exit 5
             fi
+            # Estar VIVO no es estar LISTO. Un agente recien arrancado tarda
+            # segundos en llegar a su interfaz, y el prompt que sale enseguida
+            # -que es lo que hace el paso siguiente- falla contra un agente que
+            # todavia no puede recibir. Arrancar termina cuando se le puede
+            # hablar, no cuando aparece en la lista.
+            # interactive_ready se pone en true antes de que el agente acepte
+            # entrada: el prompt que sale enseguida se pierde igual. La senal
+            # que sirve es que el agente haya ASENTADO en idle, que es lo que
+            # dice que llego a su interfaz y espera.
+            _listo=0
+            while [ "$_listo" -lt 90 ]; do
+                if "$HERDR" agent list 2>/dev/null | tr '}' '\n' \
+                   | grep -F "\"name\":\"$_name\"" \
+                   | grep -q '"agent_status":"idle"'; then
+                    break
+                fi
+                _listo=$((_listo + 1))
+                sleep 1
+            done
+            if [ "$_listo" -ge 90 ]; then
+                printf '{"status":"error","error_class":"adapter","operation":"start_agent",' >&2
+                printf '"message":"el agente %s arranco pero no quedo listo para recibir en 90s"}\n' >&2 "$_name"
+                exit 5
+            fi
             _tid=$(printf '%s' "$_out" | first_id terminal_id)
             talos_ledger_record "$_key" "$op" "{\"id\":\"$_tid\",\"url\":null}"
             printf '{"status":"created","resource_ref":{"id":"%s","url":null},' "$_tid"

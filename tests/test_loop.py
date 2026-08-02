@@ -269,9 +269,15 @@ def main():
         "y run lo muestra en la consola",
         "el loop se detiene porque el avance esta frenado" in
         (ROOT / "cli" / "commands" / "run.sh").read_text()))
+    # Esperar un ESTADO no alcanza: un agente se asienta apenas recibe el
+    # prompt, antes de trabajar. Con eso el paso miraba el disco, no encontraba
+    # nada y reportaba exito igual; el loop lo contaba como avance y reencargaba
+    # lo mismo hasta agotar el presupuesto. La condicion de terminacion es el
+    # ARTEFACTO.
     results.append(check(
-        "work espera a que el agente termine antes de devolver",
-        "wait_agent" in src_feat and "esperando a que el agente" in src_feat,
+        "work espera el entregable, no un estado del runtime",
+        "wait_agent" in src_feat and "esperando el entregable" in src_feat
+        and "_limite" in src_feat,
         "devolver apenas se entrega el prompt deja a quien llama sin saber si hubo trabajo"))
 
     # El adapter no puede creerle al ledger sobre un recurso que puede morirse.

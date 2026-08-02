@@ -295,8 +295,12 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
 
     # 3. Sin medicion propia no hay evidencia verificable de avance.
     if "LocalTestReport" not in presentes:
-        return {"feature": fid,
-                "orden": f"talos feature test {fid} --command \"python3 -m pytest tests/ -q\"",
+        # La orden NO lleva argumentos con espacios. El loop la ejecuta
+        # partiendola por espacios, asi que un --command "a b c" llegaba
+        # despedazado y el adapter recibia basura. El comando de pruebas lo
+        # declara el proyecto en config/system.yaml, que es donde vive lo que
+        # depende del stack.
+        return {"feature": fid, "orden": f"talos feature test {fid}",
                 "porque": "falta la unica evidencia verificable que se puede producir"}
 
     # 4. El entregable existe en disco pero nadie lo valido ni lo sello.

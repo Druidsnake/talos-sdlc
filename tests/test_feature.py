@@ -432,9 +432,16 @@ def main():
     results.append(check(
         "la referencia dice QUE adapter la produjo (regla 37.4.3.5 del lado del dato)",
         ref.get("adapter") == "talos.adapter.spy", f"{ref}"))
+    # El nombre lleva el PROYECTO adentro: el espacio de nombres del runtime
+    # de ejecucion es de la maquina, y dos proyectos con una F001 pedian el
+    # mismo agente. El segundo se quedaba sin agente propio y le mandaba su
+    # trabajo al del primero, que corre en otro repo.
     results.append(check(
-        "y guarda el nombre que Talos le puso al agente",
-        ref.get("name") == "talos_f001", f"{ref}"))
+        "el nombre del agente distingue el proyecto, no solo la feature",
+        (ref.get("name") or "").startswith("talos_")
+        and (ref.get("name") or "").endswith("_f001")
+        and pa.name.lower().replace("-", "_")[:8] in (ref.get("name") or ""),
+        f"{ref.get('name')} para el proyecto {pa.name}"))
     results.append(check(
         "el pane queda como dato de la referencia, no como archivo suelto",
         ref.get("pane") == "spy:pane"
@@ -444,21 +451,28 @@ def main():
     # El target de una operacion de agente es el NOMBRE, no el pane. Un pane
     # puede quedar vacio, reciclado o con el shell de una persona; el nombre lo
     # controla Talos.
-    code, out = talos(pa, "feature", "work", "F001")
+    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
+    agente = ref.get("name")
     prompts = spy_lines(log, "prompt_agent")
     results.append(check(
         "work le habla al agente por su nombre, no por el pane",
-        code == 0 and prompts and '"target":"talos_f001"' in prompts[0]
+        prompts and f'"target":"{agente}"' in prompts[0]
         and '"target":"spy:pane"' not in prompts[0],
-        f"exit={code} {prompts[:1]}"))
+        f"{prompts[:1]}"))
     esperas = spy_lines(log, "wait_agent")
     results.append(check(
         "y espera por el mismo target con el que encargo",
-        esperas and '"target":"talos_f001"' in esperas[0], f"{esperas[:1]}"))
+        esperas and f'"target":"{agente}"' in esperas[0], f"{esperas[:1]}"))
+    # El adapter espia nunca deja entregable: ese es el caso que importa.
+    # Reportar exito sin el artefacto hacia que el loop lo contara como avance
+    # y reencargara lo mismo hasta agotar el presupuesto.
+    results.append(check(
+        "un paso que no produjo su entregable NO reporta exito",
+        code == 3 and "sin dejar entregable" in out, f"exit={code} {out[-200:]}"))
 
     # LA REGRESION: cambiar la ligadura invalida la referencia vieja.
     espia(pa, impl="talos.adapter.otro")
-    code, out = talos(pa, "feature", "work", "F001")
+    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "RECHAZA usar una referencia que produjo otro ExecutionAdapter",
         code == 2 and "otro adapter" in out, f"exit={code} {out[-300:]}"))
@@ -503,7 +517,7 @@ def main():
     results.append(check(
         "el cierre se reporta a quien libera",
         "spy:pane" in out and "cerrada" in out, out[-300:]))
-    code, out = talos(pa, "feature", "work", "F001")
+    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "sin referencia, work manda a despachar en vez de adivinar un target",
         code == 2 and "dispatch" in out, f"exit={code} {out[-300:]}"))
@@ -567,7 +581,7 @@ def main():
         'esac\n')
     (esp / "run.sh").chmod(0o755)
     talos(pblock, "feature", "dispatch", "F001", "--role", "Developer")
-    code, out = talos(pblock, "feature", "work", "F001")
+    code, out = talos(pblock, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "un agente bloqueado sale needs_human (4), no exito silencioso",
         code == 4, f"exit={code} {out[-300:]}"))
