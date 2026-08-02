@@ -606,7 +606,7 @@ Cada etapa DEBE dejar el sistema funcionando.
 4. thalos agent observe / verdict                                                [HECHA]
    -> primer consumidor, sin tocar el bucle de espera
 
-5. ACK observado en feature work y boot
+5. ACK observado en feature work y boot                                          [HECHA]
    -> aparece NOT_DELIVERED
 
 6. reescritura del bucle de espera sobre veredictos
