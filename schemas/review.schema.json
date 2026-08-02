@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/review/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/review/0.0.5",
   "title": "Review",
-  "description": "Salida estructurada obligatoria del rol Reviewer. Ver talos-0.0.7.md seccion 30.3 y system/00-enforcement.md seccion 7.",
+  "description": "Salida estructurada obligatoria del rol Reviewer. Ver thalos-0.0.7.md seccion 30.3 y system/00-enforcement.md seccion 7.",
   "type": "object",
   "required": ["schema_version", "feature_id", "reviewer", "created_at", "verdict", "findings", "spec_refs_checked", "blocker_count"],
   "properties": {

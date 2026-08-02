@@ -1,8 +1,8 @@
 #!/bin/sh
-# talos.adapter.github_ci - implementacion productiva de CIAdapter.
+# thalos.adapter.github_ci - implementacion productiva de CIAdapter.
 #
 # Uso:   run.sh <operacion> [semantic_args_json]
-# Env:   TALOS_RUN_ID, TALOS_FEATURE_ID, TALOS_GH_BIN, TALOS_DRY_RUN
+# Env:   THALOS_RUN_ID, THALOS_FEATURE_ID, THALOS_GH_BIN, THALOS_DRY_RUN
 # Sale:  0 ok / 2 precondition fallida / 5 error de adapter
 #
 # Este adapter es la AUTORIDAD sobre el pase de pruebas (regla 30.4.1). Ningun
@@ -23,18 +23,18 @@ REQUIRED_RANGE=">=2.0.0"
 
 op="${1:-}"
 args="${2:-{\}}"
-run="${TALOS_RUN_ID:-r-unknown}"
-feat="${TALOS_FEATURE_ID:-none}"
+run="${THALOS_RUN_ID:-r-unknown}"
+feat="${THALOS_FEATURE_ID:-none}"
 
-DRY="${TALOS_DRY_RUN:-0}"
+DRY="${THALOS_DRY_RUN:-0}"
 # shellcheck disable=SC2034
-TALOS_ADAPTER_SIMULATED="$DRY"
+THALOS_ADAPTER_SIMULATED="$DRY"
 
 resolve_gh() {
-    if [ -n "${TALOS_GH_BIN:-}" ] && [ -x "${TALOS_GH_BIN}" ]; then
-        printf '%s' "$TALOS_GH_BIN"; return 0
+    if [ -n "${THALOS_GH_BIN:-}" ] && [ -x "${THALOS_GH_BIN}" ]; then
+        printf '%s' "$THALOS_GH_BIN"; return 0
     fi
-    _vendored="${TALOS_PROJECT_ROOT:-.}/.talos/bin/gh"
+    _vendored="${THALOS_PROJECT_ROOT:-.}/.thalos/bin/gh"
     [ -x "$_vendored" ] && { printf '%s' "$_vendored"; return 0; }
     command -v gh 2>/dev/null && return 0
     return 1
@@ -43,15 +43,15 @@ resolve_gh() {
 GH=$(resolve_gh) || {
     printf '{"status":"error","error_class":"precondition",' >&2
     printf '"message":"gh no esta instalado","required":"%s",' >&2 "$REQUIRED_RANGE"
-    printf '"resolution_order":["$TALOS_GH_BIN",".talos/bin/gh","PATH"],' >&2
+    printf '"resolution_order":["$THALOS_GH_BIN",".thalos/bin/gh","PATH"],' >&2
     printf '"install_hint":"brew install gh && gh auth login"}\n' >&2
     exit 2
 }
 
 check_version() {
     _v=$("$GH" --version 2>/dev/null | head -1 | sed 's/[^0-9]*\([0-9][0-9.]*\).*/\1/')
-    [ -n "$_v" ] || { talos_error precondition "no se pudo leer la version de $GH"; return 2; }
-    if ! talos_semver_satisfies "$_v" "$REQUIRED_RANGE"; then
+    [ -n "$_v" ] || { thalos_error precondition "no se pudo leer la version de $GH"; return 2; }
+    if ! thalos_semver_satisfies "$_v" "$REQUIRED_RANGE"; then
         printf '{"status":"error","error_class":"precondition",' >&2
         printf '"message":"gh %s no satisface %s","path":"%s"}\n' >&2 "$_v" "$REQUIRED_RANGE" "$GH"
         return 2
@@ -61,7 +61,7 @@ check_version() {
 
 gh_do() {
     if [ "$DRY" = 1 ]; then
-        talos_ledger_record "dryrun-$(date -u +%s)-$$" "ci:$1" "{\"intended\":\"$*\"}"
+        thalos_ledger_record "dryrun-$(date -u +%s)-$$" "ci:$1" "{\"intended\":\"$*\"}"
         printf '{"dry_run":true,"intended":"%s"}' "$*"
         return 0
     fi
@@ -76,12 +76,12 @@ case "$op" in
     health)
         _v=$(check_version) || exit 2
         if [ "$DRY" = 1 ]; then
-            talos_ok "{\"healthy\":true,\"capability\":\"CIAdapter\",\"version\":\"$_v\",\"path\":\"$GH\",\"dry_run\":true}"
+            thalos_ok "{\"healthy\":true,\"capability\":\"CIAdapter\",\"version\":\"$_v\",\"path\":\"$GH\",\"dry_run\":true}"
         elif ! "$GH" auth status >/dev/null 2>&1; then
             printf '{"status":"error","error_class":"auth","message":"gh sin autenticar","hint":"gh auth login"}\n' >&2
             exit 2
         elif _repo=$("$GH" repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null); then
-            talos_ok "{\"healthy\":true,\"capability\":\"CIAdapter\",\"version\":\"$_v\",\"path\":\"$GH\",\"repo\":\"$_repo\"}"
+            thalos_ok "{\"healthy\":true,\"capability\":\"CIAdapter\",\"version\":\"$_v\",\"path\":\"$GH\",\"repo\":\"$_repo\"}"
         else
             printf '{"status":"error","error_class":"precondition","message":"el directorio no es un repo de GitHub"}\n' >&2
             exit 2
@@ -91,21 +91,21 @@ case "$op" in
     run_checks)
         check_version >/dev/null || exit 2
         _wf=$(json_get workflow); _ref=$(json_get ref)
-        [ -n "$_wf" ] || { talos_error precondition "run_checks requiere workflow"; exit 5; }
+        [ -n "$_wf" ] || { thalos_error precondition "run_checks requiere workflow"; exit 5; }
         # shellcheck disable=SC2086
-        talos_mutate_run "$op" "$run" "$feat" "$args" workflow \
+        thalos_mutate_run "$op" "$run" "$feat" "$args" workflow \
             gh_do workflow run "$_wf" ${_ref:+--ref} ${_ref:+"$_ref"}
         ;;
 
     get_check_status)
         check_version >/dev/null || exit 2
         _pr=$(json_get pr)
-        [ -n "$_pr" ] || { talos_error precondition "get_check_status requiere pr"; exit 5; }
+        [ -n "$_pr" ] || { thalos_error precondition "get_check_status requiere pr"; exit 5; }
 
         if [ "$DRY" = 1 ]; then
             # Regla 37.4.4.2: en dry-run nada de esto es evidencia verificable,
             # y un CheckRunSet no verificable no puede satisfacer CHECKS_GATE.
-            talos_ok "{\"pr\":\"$_pr\",\"check_runs\":[],\"conclusion\":\"simulated\",\"verifiable\":false}"
+            thalos_ok "{\"pr\":\"$_pr\",\"check_runs\":[],\"conclusion\":\"simulated\",\"verifiable\":false}"
             exit 0
         fi
 
@@ -132,21 +132,21 @@ case "$op" in
         fi
 
         _sha=$("$GH" pr view "$_pr" --json headRefOid --jq .headRefOid 2>/dev/null || printf '')
-        talos_ok "{\"pr\":\"$_pr\",\"head_sha\":\"$_sha\",\"total\":$_total,\"passed\":$_ok,\"pending\":$_pend,\"conclusion\":\"$_concl\",\"verifiable\":true,\"check_runs\":$_raw}"
+        thalos_ok "{\"pr\":\"$_pr\",\"head_sha\":\"$_sha\",\"total\":$_total,\"passed\":$_ok,\"pending\":$_pend,\"conclusion\":\"$_concl\",\"verifiable\":true,\"check_runs\":$_raw}"
         ;;
 
     publish_report)
         check_version >/dev/null || exit 2
         _pr=$(json_get pr); _body=$(json_get body)
-        [ -n "$_pr" ] || { talos_error precondition "publish_report requiere pr"; exit 5; }
-        talos_mutate_run "$op" "$run" "$feat" "$args" pr \
-            gh_do pr comment "$_pr" --body "${_body:-Reporte de Talos para $feat}"
+        [ -n "$_pr" ] || { thalos_error precondition "publish_report requiere pr"; exit 5; }
+        thalos_mutate_run "$op" "$run" "$feat" "$args" pr \
+            gh_do pr comment "$_pr" --body "${_body:-Reporte de Thalos para $feat}"
         ;;
 
     "")
-        talos_error precondition "falta la operacion"
+        thalos_error precondition "falta la operacion"
         ;;
     *)
-        talos_unknown_op "$op"
+        thalos_unknown_op "$op"
         ;;
 esac

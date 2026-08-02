@@ -28,7 +28,7 @@ orchestration/reports/**
 src/**             <- no reescribís código, señalás el problema
 tests/**
 spec/**
-.talos/**
+.thalos/**
 ```
 
 ## No podés hacer

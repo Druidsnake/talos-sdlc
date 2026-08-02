@@ -9,11 +9,11 @@
 # Sale:  0 permitido / 1 denegado / 2 error de uso
 #
 # El rol activo se resuelve de:
-#   1. $TALOS_ROLE
+#   1. $THALOS_ROLE
 #   2. orchestration/.current-role
 #
-# Sin rol activo, Talos NO esta gobernando la sesion y la llamada pasa.
-# Eso es deliberado: el rol lo fija Talos al despachar, no el agente.
+# Sin rol activo, Thalos NO esta gobernando la sesion y la llamada pasa.
+# Eso es deliberado: el rol lo fija Thalos al despachar, no el agente.
 
 set -eu
 
@@ -22,19 +22,19 @@ HOOKS_DIR=$(dirname "$AGENT_DIR")
 SYS=$(dirname "$HOOKS_DIR")
 
 # Dos raices distintas, como exige la seccion 8:
-#   SYS   -> donde vive Talos      (.talos/ vendoreado, o el repo si se autohospeda)
+#   SYS   -> donde vive Thalos      (.thalos/ vendoreado, o el repo si se autohospeda)
 #   ROOT  -> donde vive el trabajo (spec/, orchestration/, src/)
 #
-# Confundirlas rompe el bloqueo entero y en silencio: con Talos vendoreado,
-# dirname(hooks/) da .talos/, ahi no hay orchestration/.current-role, el rol
+# Confundirlas rompe el bloqueo entero y en silencio: con Thalos vendoreado,
+# dirname(hooks/) da .thalos/, ahi no hay orchestration/.current-role, el rol
 # queda vacio y la regla "sin rol la llamada pasa" deja pasar TODO.
 #
 # Es decir: el mecanismo 2 quedaba inerte justo en la instalacion normal.
-if [ -n "${TALOS_PROJECT_ROOT:-}" ]; then
-    ROOT="$TALOS_PROJECT_ROOT"
+if [ -n "${THALOS_PROJECT_ROOT:-}" ]; then
+    ROOT="$THALOS_PROJECT_ROOT"
 else
     case "$SYS" in
-        */.talos) ROOT=$(dirname "$SYS") ;;
+        */.thalos) ROOT=$(dirname "$SYS") ;;
         *)        ROOT="$SYS" ;;
     esac
 fi
@@ -60,7 +60,7 @@ case "$tool" in
 esac
 
 # Rol activo
-role="${TALOS_ROLE:-}"
+role="${THALOS_ROLE:-}"
 if [ -z "$role" ] && [ -f "$ROOT/orchestration/.current-role" ]; then
     role=$(cat "$ROOT/orchestration/.current-role")
 fi
@@ -81,8 +81,8 @@ case "$path" in
     "$ROOT"/*)      path="${path#"$ROOT"/}" ;;
     "$ROOT_REAL"/*) path="${path#"$ROOT_REAL"/}" ;;
     /*)
-        echo "talos: DENEGADO ruta fuera del proyecto: $path" >&2
-        echo "talos: rol $role solo puede escribir dentro de $ROOT" >&2
+        echo "thalos: DENEGADO ruta fuera del proyecto: $path" >&2
+        echo "thalos: rol $role solo puede escribir dentro de $ROOT" >&2
         exit 1
         ;;
     ./*) path="${path#./}" ;;
@@ -93,7 +93,7 @@ esac
 # y ".." en cualquier posicion intermedia.
 case "$path" in
     ..|*/..|*../*)
-        echo "talos: DENEGADO ruta con traversal: $path" >&2
+        echo "thalos: DENEGADO ruta con traversal: $path" >&2
         exit 1
         ;;
 esac

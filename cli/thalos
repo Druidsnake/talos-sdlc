@@ -1,0 +1,159 @@
+#!/bin/sh
+# CLI oficial de Thalos.
+#
+# POSIX shell: mismo runtime que los hooks, sin dependencias propias.
+# Lo que necesita validar schemas delega en hooks/lib/resolve-validator.sh.
+#
+# Codigos de salida (thalos-0.0.7.md 40.4):
+#   0 exito  1 error de uso  2 precondition fallida  3 gate rechazado
+#   4 escalacion requerida   5 error de adapter      6 migracion requerida
+
+set -eu
+
+# Dos raices distintas, como exige thalos-0.0.7.md seccion 8:
+#   SYSTEM  -> donde vive Thalos      (.thalos/ vendoreado, o el repo si se auto-hospeda)
+#   PROJECT -> donde vive el trabajo (spec/, orchestration/, src/)
+# Confundirlas hace que Thalos busque el spec del producto dentro de si mismo.
+CLI_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+THALOS_SYSTEM_ROOT=$(dirname "$CLI_DIR")
+
+if [ -n "${THALOS_PROJECT_ROOT:-}" ]; then
+    :
+elif git rev-parse --show-toplevel >/dev/null 2>&1; then
+    THALOS_PROJECT_ROOT=$(git rev-parse --show-toplevel)
+else
+    THALOS_PROJECT_ROOT=$(pwd)
+fi
+
+export THALOS_SYSTEM_ROOT THALOS_PROJECT_ROOT
+export THALOS_CLI_DIR="$CLI_DIR"
+
+THALOS_VERSION=$(cat "$THALOS_SYSTEM_ROOT/VERSION" 2>/dev/null || echo "desconocida")
+export THALOS_VERSION
+
+# El run_id sale del runtime, no de una variable que alguien recuerde exportar.
+# Sin esto la evidencia queda sellada con "r-unknown" y la regla 22.6.7 -toda
+# transicion reconstruible desde el event log- deja de cumplirse: no se puede
+# reconstruir una corrida cuyos artefactos no dicen a que corrida pertenecen.
+if [ -z "${THALOS_RUN_ID:-}" ] && [ -f "$THALOS_PROJECT_ROOT/orchestration/.meta.json" ]; then
+    THALOS_RUN_ID=$(sed -n 's/.*"run_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+                   "$THALOS_PROJECT_ROOT/orchestration/.meta.json" | head -1)
+fi
+export THALOS_RUN_ID
+
+usage() {
+    cat <<'USAGE'
+thalos - Guardian del ciclo de desarrollo con IA
+
+USO
+    thalos <comando> [opciones]
+    thalos help <comando>          ayuda detallada de un comando
+
+EMPEZAR
+    thalos init [--with-spec]      prepara orchestration/ en este proyecto
+    thalos doctor                  que falta y que nivel de enforcement hay
+
+TRABAJAR
+    thalos spec check [ruta]       valida el spec del producto
+    thalos status                  estado del proyecto
+    thalos next                    que sigue, derivado del spec y el plan
+    thalos run [--max N]           avanza mientras los gates autoricen
+    thalos boot <FEATURE>          enciende al coordinador y le cede la decision
+    thalos budget [FEATURE]        presupuesto consumido contra el declarado
+    thalos rules [topic]           reglas activas y su mecanismo
+    thalos adapters                capacidades y que implementacion las satisface
+    thalos gate <maq> <de> <a>     evalua si una transicion esta autorizada
+    thalos evidence seal|check     sella y verifica evidencia
+    thalos plan check|init|show    planificacion de programa y PLAN_GATE
+    thalos feature start|list      ejecuta una feature del plan
+    thalos merge check|do <F>      MERGE_GATE y merge gobernado
+    thalos human approve|decide    registra una decision humana
+    thalos message list|answer     lo que los agentes dijeron, y tu respuesta
+
+EVENTOS
+    thalos event append            registra un evento con secuencia
+    thalos event tail [n]          ultimos eventos
+
+OTROS
+    thalos version                 version del sistema
+    thalos help                    esta ayuda
+
+OPCIONES GLOBALES
+    --format json                 salida estructurada
+    -h, --help                    ayuda del comando
+
+SALIDA
+    0 exito              1 error de uso        2 precondition fallida
+    3 gate rechazado     4 escalacion          5 error de adapter
+    6 migracion requerida
+
+Thalos nunca instala herramientas de terceros: detecta y te dice como.
+Documentacion: system/00-enforcement.md explica como se fuerza una regla.
+USAGE
+}
+
+[ $# -eq 0 ] && { usage; exit 1; }
+
+cmd="$1"
+shift
+
+# thalos help <comando>  ->  <comando> --help
+if [ "$cmd" = "help" ] && [ $# -gt 0 ]; then
+    sub="$1"
+    shift
+    exec "$0" "$sub" "$@" --help
+fi
+
+case "$cmd" in
+    -h|--help|help)
+        usage
+        ;;
+    version|--version)
+        echo "thalos $THALOS_VERSION"
+        ;;
+    init|doctor|status|rules|adapters|gate|next|run|boot|budget|message)
+        exec "$CLI_DIR/commands/$cmd.sh" "$@"
+        ;;
+    spec)
+        sub="${1:-}"
+        [ $# -gt 0 ] && shift
+        case "$sub" in
+            check) exec "$CLI_DIR/commands/spec-check.sh" "$@" ;;
+            *) echo "thalos: subcomando de spec desconocido: ${sub:-<vacio>}" >&2
+               echo "thalos: disponibles: check" >&2
+               exit 1 ;;
+        esac
+        ;;
+    evidence)
+        exec "$CLI_DIR/commands/evidence.sh" "$@"
+        ;;
+    plan)
+        exec "$CLI_DIR/commands/plan.sh" "$@"
+        ;;
+    feature)
+        exec "$CLI_DIR/commands/feature.sh" "$@"
+        ;;
+    merge)
+        exec "$CLI_DIR/commands/merge.sh" "$@"
+        ;;
+    human)
+        exec "$CLI_DIR/commands/human.sh" "$@"
+        ;;
+    event)
+        sub="${1:-}"
+        [ $# -gt 0 ] && shift
+        case "$sub" in
+            append) exec "$CLI_DIR/commands/event-append.sh" "$@" ;;
+            tail)   exec "$CLI_DIR/commands/event-tail.sh" "$@" ;;
+            *) echo "thalos: subcomando de event desconocido: ${sub:-<vacio>}" >&2
+               echo "thalos: disponibles: append, tail" >&2
+               exit 1 ;;
+        esac
+        ;;
+    *)
+        echo "thalos: comando desconocido: $cmd" >&2
+        echo "" >&2
+        usage >&2
+        exit 1
+        ;;
+esac

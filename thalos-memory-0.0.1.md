@@ -1,14 +1,14 @@
-# Talos Memory Extension Specification
+# Thalos Memory Extension Specification
 
-**Extension Name:** Talos Memory
-**Canonical Package:** talos-ext-memory
+**Extension Name:** Thalos Memory
+**Canonical Package:** thalos-ext-memory
 **Extension Version:** 0.0.1
-**Requires Core:** talos-sdlc >= 0.0.6
+**Requires Core:** thalos-sdlc >= 0.0.6
 **Status:** Experimental — OPCIONAL
 **Date:** 2026-07-30
 **Document Type:** Extension Specification
 **Language:** Spanish normative text
-**Origin:** extraído de `talos-0.0.4.md` secciones 42–54
+**Origin:** extraído de `thalos-0.0.4.md` secciones 42–54
 
 ---
 
@@ -20,15 +20,15 @@ Las palabras clave DEBE, NO DEBE, REQUERIDO, PUEDE, RECOMENDADO y OPCIONAL deben
 
 ### 0.2. Naturaleza de esta extensión
 
-`MemoryAdapter` ES una capacidad **OPCIONAL** según `talos-0.0.7.md` sección 37.4.2. El núcleo DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
+`MemoryAdapter` ES una capacidad **OPCIONAL** según `thalos-0.0.7.md` sección 37.4.2. El núcleo DEBE funcionar sin ella, y ningún criterio de aceptación del núcleo PUEDE depender de ella.
 
 Esto la distingue de las capacidades REQUERIDAS como `ExecutionAdapter`, donde el adapter concreto es reemplazable pero la capacidad no es prescindible. Acá tanto la implementación como la capacidad son prescindibles: cero implementaciones de `MemoryAdapter` ES un estado válido del sistema.
 
-`talos-adapter-engram` ES la implementación de referencia, no un requisito.
+`thalos-adapter-engram` ES la implementación de referencia, no un requisito.
 
 ### 0.3. Autoridad
 
-Según `talos-0.0.5.md` sección 43.5, la memoria ocupa el **nivel 5** de la cadena de autoridad de decisión:
+Según `thalos-0.0.5.md` sección 43.5, la memoria ocupa el **nivel 5** de la cadena de autoridad de decisión:
 
 ```txt
 1. Policy y aprobación humana
@@ -53,7 +53,7 @@ Consecuencias normativas:
 
 ## 1. Propósito
 
-La memoria permite que Talos conserve conocimiento destilado entre ejecuciones.
+La memoria permite que Thalos conserve conocimiento destilado entre ejecuciones.
 
 Objetivos:
 
@@ -93,8 +93,8 @@ Define:
 7. Métricas computables con señal de feedback definida.
 8. Privacidad y gobierno con secret scanning fail-closed.
 9. Rol opcional `MemoryCurator`.
-10. Eventos `talos.memory.*`.
-11. Comandos CLI `talos memory *`.
+10. Eventos `thalos.memory.*`.
+11. Comandos CLI `thalos memory *`.
 12. Adapter de referencia para Engram.
 
 No define:
@@ -213,7 +213,7 @@ detect_conflicts
 record_usage         [M]
 ```
 
-Las operaciones marcadas `[M]` mutan estado externo y REQUIEREN `idempotency_key` según `talos-0.0.5.md` sección 38.2.
+Las operaciones marcadas `[M]` mutan estado externo y REQUIEREN `idempotency_key` según `thalos-0.0.5.md` sección 38.2.
 
 **Corrección respecto de 0.0.4:** se elimina `judge_memory` como capacidad del puerto. Delegar el juicio de conflictos al backend acoplaba el núcleo a una capacidad específica de Engram. La resolución de conflictos ahora es responsabilidad de `MemoryCurator` o de `HumanApprover`, y el adapter solo DEBE detectarlos. Se añade `record_usage`, necesaria para las métricas.
 
@@ -231,7 +231,7 @@ Las operaciones marcadas `[M]` mutan estado externo y REQUIEREN `idempotency_key
 10. `MemoryAdapter` NO DEBE producir evidencia.
 11. `MemoryAdapter` DEBE fallar de forma no bloqueante.
 12. `MemoryAdapter` DEBE clasificar errores según la sección 35.1 del núcleo.
-13. `MemoryAdapter` DEBE registrar eventos `talos.memory.*`.
+13. `MemoryAdapter` DEBE registrar eventos `thalos.memory.*`.
 
 ### 4.4. Fallo no bloqueante
 
@@ -246,16 +246,16 @@ Las operaciones marcadas `[M]` mutan estado externo y REQUIEREN `idempotency_key
 
 ### 5.1. Principios
 
-1. Talos DEBE guardar conocimiento destilado.
-2. Talos NO DEBE guardar ruido.
-3. Talos NO DEBE guardar conversaciones crudas.
-4. Talos NO DEBE guardar logs completos.
-5. Talos NO DEBE guardar código completo.
-6. Talos NO DEBE guardar secretos.
-7. Talos DEBE guardar memorias atómicas.
-8. Talos DEBE guardar títulos buscables.
-9. Talos DEBE guardar metadata explícita.
-10. Talos DEBE referenciar artefactos cuando exista evidencia.
+1. Thalos DEBE guardar conocimiento destilado.
+2. Thalos NO DEBE guardar ruido.
+3. Thalos NO DEBE guardar conversaciones crudas.
+4. Thalos NO DEBE guardar logs completos.
+5. Thalos NO DEBE guardar código completo.
+6. Thalos NO DEBE guardar secretos.
+7. Thalos DEBE guardar memorias atómicas.
+8. Thalos DEBE guardar títulos buscables.
+9. Thalos DEBE guardar metadata explícita.
+10. Thalos DEBE referenciar artefactos cuando exista evidencia.
 
 ### 5.2. Atomicidad
 
@@ -301,7 +301,7 @@ camino crítico (síncrono):
   3. secret scan (fail-closed)
   4. calcular importance/confidence
   5. save_memory con status = captured
-  6. emitir talos.memory.saved
+  6. emitir thalos.memory.saved
 
 reconciliación (asíncrona, fuera del camino crítico):
   7. search_memory por similitud
@@ -310,7 +310,7 @@ reconciliación (asíncrona, fuera del camino crítico):
      si contradice       -> marcar ambas conflicted
      si es complementaria-> update_memory o enlazar
      si es nueva         -> promover a candidate
- 10. emitir talos.memory.reconciled
+ 10. emitir thalos.memory.reconciled
 ```
 
 Reglas:
@@ -343,17 +343,17 @@ captured -> candidate -> validated -> active
 
 ### 5.6. Eventos que generan memoria
 
-Talos PUEDE generar memoria desde:
+Thalos PUEDE generar memoria desde:
 
 ```txt
-talos.spec.approved
-talos.program.planned
-talos.feature.merged
-talos.feature.failed
-talos.error.occurred
-talos.escalation.triggered
-talos.review.completed
-talos.feature.checks_failed
+thalos.spec.approved
+thalos.program.planned
+thalos.feature.merged
+thalos.feature.failed
+thalos.error.occurred
+thalos.escalation.triggered
+thalos.review.completed
+thalos.feature.checks_failed
 ```
 
 ### 5.7. Plantillas
@@ -414,16 +414,16 @@ KnownEdgeCases: casos borde
 
 ### 6.1. Principios
 
-1. Talos DEBE recuperar poca memoria y relevante.
-2. Talos NO DEBE inyectar todas las memorias disponibles.
-3. Talos DEBE filtrar por proyecto.
-4. Talos DEBE filtrar por estado.
-5. Talos DEBE limitar por rol.
-6. Talos DEBE respetar el presupuesto de contexto.
-7. Talos DEBE rankear.
-8. Talos DEBE registrar toda query.
-9. Talos DEBE inyectar la memoria como consejo explícito.
-10. Talos NO DEBE tratar la memoria como regla.
+1. Thalos DEBE recuperar poca memoria y relevante.
+2. Thalos NO DEBE inyectar todas las memorias disponibles.
+3. Thalos DEBE filtrar por proyecto.
+4. Thalos DEBE filtrar por estado.
+5. Thalos DEBE limitar por rol.
+6. Thalos DEBE respetar el presupuesto de contexto.
+7. Thalos DEBE rankear.
+8. Thalos DEBE registrar toda query.
+9. Thalos DEBE inyectar la memoria como consejo explícito.
+10. Thalos NO DEBE tratar la memoria como regla.
 
 ### 6.2. Filtros obligatorios
 
@@ -460,7 +460,7 @@ Los roles corresponden al núcleo 0.0.5 (5 roles agente).
 
 ### 6.4. Construcción de query
 
-Talos DEBE construir la query desde:
+Thalos DEBE construir la query desde:
 
 ```txt
 feature title
@@ -495,7 +495,7 @@ Todos los términos DEBEN normalizarse a `[0, 1]` antes de sumarse.
 
 ```txt
 El backend DEBE devolver un score de relevancia.
-Si el score no está acotado, Talos DEBE normalizar min-max
+Si el score no está acotado, Thalos DEBE normalizar min-max
 sobre el conjunto de resultados de la misma query:
 
   n_text_relevance = (score - min_score) / (max_score - min_score)
@@ -568,13 +568,13 @@ máximo 2-4 KB de contexto de memoria
 Reglas:
 
 1. El contexto de memoria DEBE contar contra el presupuesto de tokens del rol.
-2. Si el presupuesto se agota, Talos DEBE truncar por `final_score` descendente.
-3. Talos NO DEBE truncar una memoria a la mitad; DEBE excluirla completa.
+2. Si el presupuesto se agota, Thalos DEBE truncar por `final_score` descendente.
+3. Thalos NO DEBE truncar una memoria a la mitad; DEBE excluirla completa.
 4. Si el presupuesto no permite ninguna memoria, el rol DEBE ejecutarse sin contexto de memoria.
 
 ### 6.7. Formato de inyección
 
-Talos DEBE inyectar la memoria como paquete consultivo, marcado explícitamente como no normativo.
+Thalos DEBE inyectar la memoria como paquete consultivo, marcado explícitamente como no normativo.
 
 ```md
 ## Contexto consultivo del proyecto (NO normativo)
@@ -599,10 +599,10 @@ o la policy, el spec y la policy ganan. Reportá la contradicción.
 
 1. Todo paquete inyectado DEBE incluir el `id` de cada memoria.
 2. El rol DEBE reportar, en su respuesta estructurada, qué `memory_ids` influyeron en su output.
-3. Talos DEBE invocar `record_usage` con esa lista.
+3. Thalos DEBE invocar `record_usage` con esa lista.
 4. `record_usage` DEBE incrementar `usage_count` para toda memoria inyectada.
 5. `record_usage` DEBE incrementar `useful_count` y actualizar `last_useful_at` solo para las memorias reportadas como influyentes.
-6. Si el rol no reporta la lista, Talos DEBE registrar la inyección como no confirmada y NO DEBE incrementar `useful_count`.
+6. Si el rol no reporta la lista, Thalos DEBE registrar la inyección como no confirmada y NO DEBE incrementar `useful_count`.
 
 ---
 
@@ -624,21 +624,21 @@ conflicted
 
 | # | Desde | Hacia | Disparador | Actor | Evento |
 |---|---|---|---|---|---|
-| M1 | — | captured | escritura síncrona | core | `talos.memory.saved` |
-| M2 | captured | candidate | reconciliación sin duplicado | core | `talos.memory.reconciled` |
-| M3 | captured | archived | reconciliación detecta duplicado | core | `talos.memory.archived` |
-| M4 | captured | conflicted | reconciliación detecta contradicción | core | `talos.memory.conflict_detected` |
-| M5 | candidate | validated | validación (requerida por tipo) | MemoryCurator o HumanApprover | `talos.memory.validated` |
-| M6 | candidate | active | tipo no requiere validación | core | `talos.memory.activated` |
-| M7 | validated | active | promoción | core | `talos.memory.activated` |
-| M8 | active | stale | `age > stale_after_days` sin uso útil | core | `talos.memory.stale_detected` |
-| M9 | active | conflicted | nueva memoria contradice | core | `talos.memory.conflict_detected` |
-| M10 | stale | active | uso útil confirmado | core | `talos.memory.activated` |
-| M11 | stale | archived | `age > archive_after_days` | core | `talos.memory.archived` |
-| M12 | conflicted | validated | resolución a favor | MemoryCurator o HumanApprover | `talos.memory.validated` |
-| M13 | conflicted | archived | resolución en contra | MemoryCurator o HumanApprover | `talos.memory.archived` |
-| M14 | active | archived | archivado explícito | usuario | `talos.memory.archived` |
-| M15 | archived | forgotten | olvido explícito | usuario | `talos.memory.forgotten` |
+| M1 | — | captured | escritura síncrona | core | `thalos.memory.saved` |
+| M2 | captured | candidate | reconciliación sin duplicado | core | `thalos.memory.reconciled` |
+| M3 | captured | archived | reconciliación detecta duplicado | core | `thalos.memory.archived` |
+| M4 | captured | conflicted | reconciliación detecta contradicción | core | `thalos.memory.conflict_detected` |
+| M5 | candidate | validated | validación (requerida por tipo) | MemoryCurator o HumanApprover | `thalos.memory.validated` |
+| M6 | candidate | active | tipo no requiere validación | core | `thalos.memory.activated` |
+| M7 | validated | active | promoción | core | `thalos.memory.activated` |
+| M8 | active | stale | `age > stale_after_days` sin uso útil | core | `thalos.memory.stale_detected` |
+| M9 | active | conflicted | nueva memoria contradice | core | `thalos.memory.conflict_detected` |
+| M10 | stale | active | uso útil confirmado | core | `thalos.memory.activated` |
+| M11 | stale | archived | `age > archive_after_days` | core | `thalos.memory.archived` |
+| M12 | conflicted | validated | resolución a favor | MemoryCurator o HumanApprover | `thalos.memory.validated` |
+| M13 | conflicted | archived | resolución en contra | MemoryCurator o HumanApprover | `thalos.memory.archived` |
+| M14 | active | archived | archivado explícito | usuario | `thalos.memory.archived` |
+| M15 | archived | forgotten | olvido explícito | usuario | `thalos.memory.forgotten` |
 
 ### 7.3. Reglas
 
@@ -676,7 +676,7 @@ conflicted
 
 ### 8.2. Uso de métricas
 
-Talos DEBE usar las métricas para:
+Thalos DEBE usar las métricas para:
 
 ```txt
 - ajustar top_k por rol,
@@ -697,7 +697,7 @@ conflict_memory_rate    > 0.10   -> el proyecto cambió de dirección; revisar
 memory_unconfirmed_rate > 0.50   -> los roles no reportan; la métrica no es confiable
 ```
 
-Si `memory_usefulness_rate` se mantiene bajo el umbral durante dos ciclos de reporte, Talos DEBE recomendar deshabilitar la extensión.
+Si `memory_usefulness_rate` se mantiene bajo el umbral durante dos ciclos de reporte, Thalos DEBE recomendar deshabilitar la extensión.
 
 ---
 
@@ -705,15 +705,15 @@ Si `memory_usefulness_rate` se mantiene bajo el umbral durante dos ciclos de rep
 
 ### 9.1. Privacidad
 
-1. Talos NO DEBE guardar secrets, tokens, passwords ni credenciales.
-2. Talos NO DEBE guardar logs sensibles completos.
-3. Talos DEBE aplicar detección de secrets antes de guardar.
-4. La detección de secrets DEBE ser **fail-closed**: ante resultado incierto, Talos NO DEBE guardar y DEBE registrar el descarte.
-5. Talos DEBE limitar el tamaño de payload.
-6. Talos PUEDE marcar memorias sensibles.
-7. Talos DEBE permitir olvido explícito.
-8. Talos DEBE auditar accesos a memorias marcadas sensibles.
-9. Talos DEBE registrar el hecho de una redacción, nunca el valor redactado.
+1. Thalos NO DEBE guardar secrets, tokens, passwords ni credenciales.
+2. Thalos NO DEBE guardar logs sensibles completos.
+3. Thalos DEBE aplicar detección de secrets antes de guardar.
+4. La detección de secrets DEBE ser **fail-closed**: ante resultado incierto, Thalos NO DEBE guardar y DEBE registrar el descarte.
+5. Thalos DEBE limitar el tamaño de payload.
+6. Thalos PUEDE marcar memorias sensibles.
+7. Thalos DEBE permitir olvido explícito.
+8. Thalos DEBE auditar accesos a memorias marcadas sensibles.
+9. Thalos DEBE registrar el hecho de una redacción, nunca el valor redactado.
 
 **Corrección respecto de 0.0.4:** la regla 34.11 decía "filtrar secrets antes de guardar", lo que admite la lectura "filtré lo que reconocí y guardé el resto". La detección de secretos es best-effort por naturaleza; la única política segura es no persistir ante duda.
 
@@ -753,46 +753,46 @@ balanced
 Todos los eventos de esta extensión DEBEN cumplir `event.schema.json` del núcleo, incluidos `seq` y `schema_version`.
 
 ```txt
-talos.memory.saved
-talos.memory.reconciled
-talos.memory.updated
-talos.memory.searched
-talos.memory.injected
-talos.memory.usage_recorded
-talos.memory.validated
-talos.memory.activated
-talos.memory.stale_detected
-talos.memory.conflict_detected
-talos.memory.conflict_resolved
-talos.memory.archived
-talos.memory.forgotten
-talos.memory.discarded_secret
-talos.memory.metric_reported
+thalos.memory.saved
+thalos.memory.reconciled
+thalos.memory.updated
+thalos.memory.searched
+thalos.memory.injected
+thalos.memory.usage_recorded
+thalos.memory.validated
+thalos.memory.activated
+thalos.memory.stale_detected
+thalos.memory.conflict_detected
+thalos.memory.conflict_resolved
+thalos.memory.archived
+thalos.memory.forgotten
+thalos.memory.discarded_secret
+thalos.memory.metric_reported
 ```
 
 Reglas:
 
-1. Toda query DEBE emitir `talos.memory.searched` con la query, los filtros y los `ids` devueltos.
-2. Toda inyección DEBE emitir `talos.memory.injected` con los `ids` y el `final_score` de cada uno.
-3. Todo descarte por secret scanning DEBE emitir `talos.memory.discarded_secret` sin incluir el contenido descartado.
+1. Toda query DEBE emitir `thalos.memory.searched` con la query, los filtros y los `ids` devueltos.
+2. Toda inyección DEBE emitir `thalos.memory.injected` con los `ids` y el `final_score` de cada uno.
+3. Todo descarte por secret scanning DEBE emitir `thalos.memory.discarded_secret` sin incluir el contenido descartado.
 
 ---
 
 ## 11. CLI
 
 ```txt
-talos memory search <query>
-talos memory show <memory_id>
-talos memory save
-talos memory update <memory_id>
-talos memory validate <memory_id>
-talos memory archive <memory_id>
-talos memory forget <memory_id>
-talos memory conflicts
-talos memory reconcile
-talos memory stats
-talos memory doctor
-talos memory export
+thalos memory search <query>
+thalos memory show <memory_id>
+thalos memory save
+thalos memory update <memory_id>
+thalos memory validate <memory_id>
+thalos memory archive <memory_id>
+thalos memory forget <memory_id>
+thalos memory conflicts
+thalos memory reconcile
+thalos memory stats
+thalos memory doctor
+thalos memory export
 ```
 
 DEBEN soportar `--format json`:
@@ -812,17 +812,17 @@ memory doctor
 ### 12.1. Archivo
 
 ```txt
-talos.config/memory.yaml
+thalos.config/memory.yaml
 ```
 
-**Nota:** el directorio de configuración del proyecto es `talos.config/`, no `config/`, según el núcleo 0.0.5 sección 11.
+**Nota:** el directorio de configuración del proyecto es `thalos.config/`, no `config/`, según el núcleo 0.0.5 sección 11.
 
 ```yaml
 version: 1
 
 memory:
   enabled: true
-  adapter: talos.adapter.engram
+  adapter: thalos.adapter.engram
   inject_as: advisory_context
 
   write_policy:
@@ -838,13 +838,13 @@ memory:
       - architecture
       - api_contract
     auto_capture_events:
-      - talos.spec.approved
-      - talos.program.planned
-      - talos.feature.merged
-      - talos.feature.failed
-      - talos.escalation.triggered
-      - talos.error.occurred
-      - talos.review.completed
+      - thalos.spec.approved
+      - thalos.program.planned
+      - thalos.feature.merged
+      - thalos.feature.failed
+      - thalos.escalation.triggered
+      - thalos.error.occurred
+      - thalos.review.completed
 
   reconciliation:
     enabled: true
@@ -930,8 +930,8 @@ memory:
 ### 13.1. Identidad
 
 ```txt
-id:       talos.adapter.engram
-paquete:  talos-adapter-engram
+id:       thalos.adapter.engram
+paquete:  thalos-adapter-engram
 backend:  Engram
 ```
 
@@ -971,7 +971,7 @@ engram project configurado
 transporte disponible (MCP stdio o HTTP)
 ```
 
-Si alguna falla, Talos PUEDE continuar sin memoria y DEBE declararlo en el `PreconditionReport`.
+Si alguna falla, Thalos PUEDE continuar sin memoria y DEBE declararlo en el `PreconditionReport`.
 
 ### 13.5. Prohibiciones
 
@@ -993,7 +993,7 @@ El adapter de Engram NO DEBE:
 1. Escribir memorias atómicas.
 2. No usar passive capture como memoria activa sin reconciliación.
 3. Usar session summaries solo como candidatas.
-4. Aplicar el ranking de Talos sobre los resultados del backend, no confiar en el orden nativo.
+4. Aplicar el ranking de Thalos sobre los resultados del backend, no confiar en el orden nativo.
 5. Reintentar escrituras fallidas fuera del camino crítico con la misma idempotency key.
 
 ---
@@ -1010,15 +1010,15 @@ La extensión 0.0.1 se considera aceptable si:
 6. La escritura síncrona no realiza búsqueda previa.
 7. La reconciliación asíncrona detecta duplicados y contradicciones.
 8. Una memoria en `captured` nunca se inyecta.
-9. El secret scanning descarta ante incertidumbre y emite `talos.memory.discarded_secret`.
+9. El secret scanning descarta ante incertidumbre y emite `thalos.memory.discarded_secret`.
 10. Todos los términos del ranking se normalizan a `[0,1]` de forma determinista.
 11. Una configuración con pesos que no suman 1.0 es rechazada.
 12. El paquete inyectado incluye el aviso de no normatividad y los `ids`.
 13. Los roles reportan `memory_ids` influyentes y `record_usage` los registra.
 14. `memory_usefulness_rate` se calcula con datos reales.
 15. Todo evento de memoria cumple el schema de eventos del núcleo, con `seq` y `schema_version`.
-16. `talos memory export` produce un dump completo y legible.
-17. `talos memory forget` elimina del backend y emite el evento.
+16. `thalos memory export` produce un dump completo y legible.
+17. `thalos memory forget` elimina del backend y emite el evento.
 
 ---
 
@@ -1026,7 +1026,7 @@ La extensión 0.0.1 se considera aceptable si:
 
 ### 0.0.1
 
-Extraído de `talos-0.0.4.md` secciones 42–54, con las siguientes correcciones:
+Extraído de `thalos-0.0.4.md` secciones 42–54, con las siguientes correcciones:
 
 **Autoridad**
 
@@ -1056,7 +1056,7 @@ Extraído de `talos-0.0.4.md` secciones 42–54, con las siguientes correcciones
 **Seguridad**
 
 - Secret scanning pasa a `fail_closed`: ante incertidumbre no se persiste.
-- Añadido `talos.memory.discarded_secret` que registra el descarte sin el contenido.
+- Añadido `thalos.memory.discarded_secret` que registra el descarte sin el contenido.
 
 **Ciclo de vida**
 
@@ -1077,5 +1077,5 @@ Extraído de `talos-0.0.4.md` secciones 42–54, con las siguientes correcciones
 
 **Configuración**
 
-- Movida a `talos.config/memory.yaml` por el renombrado de directorio del núcleo.
+- Movida a `thalos.config/memory.yaml` por el renombrado de directorio del núcleo.
 - Añadidas secciones `reconciliation`, `ranking.normalization` y `metrics.alarms`.

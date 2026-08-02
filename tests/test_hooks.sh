@@ -79,7 +79,7 @@ expect bloquea "asunto de mas de 72 caracteres"       msg "feat(schemas): $(prin
 
 echo ""
 echo "=== mecanismo 2 en vivo: checker generico ==="
-call() { TALOS_ROLE="$1" ./hooks/agent/check-tool-call.sh "$2" "$3"; }
+call() { THALOS_ROLE="$1" ./hooks/agent/check-tool-call.sh "$2" "$3"; }
 expect bloquea "Write de Developer sobre spec/"       call Developer Write spec/SPEC.md
 expect permite "Write de Developer sobre src/"        call Developer Write src/auth.ts
 expect permite "Read no es una escritura"             call Developer Read spec/SPEC.md
@@ -89,7 +89,7 @@ expect bloquea "traversal fuera del proyecto"         call Developer Write src/.
 expect bloquea "traversal al inicio"                  call Developer Write ../otro-repo/src/x.ts
 expect bloquea "ruta que termina en .."               call Developer Write src/..
 expect bloquea "ruta que es solo .."                  call Developer Write ..
-expect permite "sin rol activo Talos no gobierna"     env -u TALOS_ROLE ./hooks/agent/check-tool-call.sh Write spec/SPEC.md
+expect permite "sin rol activo Thalos no gobierna"     env -u THALOS_ROLE ./hooks/agent/check-tool-call.sh Write spec/SPEC.md
 expect bloquea "Edit de Reviewer sobre codigo"        call Reviewer Edit src/auth.ts
 expect permite "ruta con prefijo ./"                  call Developer Write ./src/auth.ts
 
@@ -109,7 +109,7 @@ expect bloquea "y la fisica no relaja el alcance"     call Developer Write "$fis
 echo ""
 echo "=== mecanismo 2 en vivo: shim de opencode ==="
 oc() {
-    printf '%s' "$2" | TALOS_ROLE="$1" ./hooks/agent/opencode/pre-tool-use.sh
+    printf '%s' "$2" | THALOS_ROLE="$1" ./hooks/agent/opencode/pre-tool-use.sh
 }
 expect bloquea "write de opencode sobre spec/" \
     oc Developer '{"tool":"write","args":{"filePath":"spec/SPEC.md"}}'
@@ -123,7 +123,7 @@ expect bloquea "edit de opencode sobre spec/" \
 echo ""
 echo "=== mecanismo 2 en vivo: shim de Claude Code ==="
 shim() {
-    printf '%s' "$2" | TALOS_ROLE="$1" ./hooks/agent/claude-code/pre-tool-use.sh
+    printf '%s' "$2" | THALOS_ROLE="$1" ./hooks/agent/claude-code/pre-tool-use.sh
 }
 expect bloquea "payload que apunta a spec/" \
     shim Developer '{"tool_name":"Write","tool_input":{"file_path":"spec/SPEC.md"}}'

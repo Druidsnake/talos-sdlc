@@ -8,25 +8,25 @@
 # no se usa el reloj mas que para el sello evaluated_at.
 #
 # Uso:  . hooks/lib/gate.sh
-#       talos_gate_eval <maquina> <desde> <hacia> <dir-evidencia> [run_id] [feature_id]
+#       thalos_gate_eval <maquina> <desde> <hacia> <dir-evidencia> [run_id] [feature_id]
 
 _gate_lib_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 case "$_gate_lib_dir" in
-    */lib) TALOS_GATE_SYS=$(dirname "$(dirname "$_gate_lib_dir")") ;;
-    *)     TALOS_GATE_SYS="${TALOS_SYSTEM_ROOT:-$_gate_lib_dir}" ;;
+    */lib) THALOS_GATE_SYS=$(dirname "$(dirname "$_gate_lib_dir")") ;;
+    *)     THALOS_GATE_SYS="${THALOS_SYSTEM_ROOT:-$_gate_lib_dir}" ;;
 esac
-[ -n "${TALOS_SYSTEM_ROOT:-}" ] && TALOS_GATE_SYS="$TALOS_SYSTEM_ROOT"
+[ -n "${THALOS_SYSTEM_ROOT:-}" ] && THALOS_GATE_SYS="$THALOS_SYSTEM_ROOT"
 
 # shellcheck source=./state-machine.sh
-. "$TALOS_GATE_SYS/hooks/lib/state-machine.sh"
+. "$THALOS_GATE_SYS/hooks/lib/state-machine.sh"
 
 # Gates que exigen aprobacion humana explicita. Regla 24.4.6: needs_human
 # transiciona a un estado de espera, nunca a uno de avance.
-TALOS_HUMAN_GATES="HUMAN_GATE"
+THALOS_HUMAN_GATES="HUMAN_GATE"
 
 # Gates criticos: una evidencia con verifiable:false no puede satisfacerlos
 # (regla 23.3.5).
-TALOS_CRITICAL_GATES="MERGE_GATE POLICY_GATE POST_MERGE_GATE CHECKS_GATE"
+THALOS_CRITICAL_GATES="MERGE_GATE POLICY_GATE POST_MERGE_GATE CHECKS_GATE"
 
 _gate_is_in() {
     _needle="$1"; shift
@@ -50,71 +50,71 @@ _gate_is_in() {
 
 # Interprete disponible. Sin python no hay lectura de evidencia, y sin lectura
 # de evidencia no hay gate que pueda autorizar nada.
-talos_python() {
-    if [ -x "${TALOS_PROJECT_ROOT:-.}/.venv/bin/python" ]; then
-        printf '%s' "${TALOS_PROJECT_ROOT:-.}/.venv/bin/python"
+thalos_python() {
+    if [ -x "${THALOS_PROJECT_ROOT:-.}/.venv/bin/python" ]; then
+        printf '%s' "${THALOS_PROJECT_ROOT:-.}/.venv/bin/python"
         return 0
     fi
-    if [ -x "$TALOS_GATE_SYS/.venv/bin/python" ]; then
-        printf '%s' "$TALOS_GATE_SYS/.venv/bin/python"
+    if [ -x "$THALOS_GATE_SYS/.venv/bin/python" ]; then
+        printf '%s' "$THALOS_GATE_SYS/.venv/bin/python"
         return 0
     fi
     command -v python3 2>/dev/null && return 0
     return 1
 }
 
-talos_evidence_read() {
+thalos_evidence_read() {
     [ -d "$1" ] || return 0
-    _py=$(talos_python) || return 0
-    "$_py" "$TALOS_GATE_SYS/hooks/lib/evidence.py" read "$1" 2>/dev/null
+    _py=$(thalos_python) || return 0
+    "$_py" "$THALOS_GATE_SYS/hooks/lib/evidence.py" read "$1" 2>/dev/null
     return 0
 }
 
-# talos_evidence_kinds <dir>
+# thalos_evidence_kinds <dir>
 # Solo cuenta como presente la evidencia con digest valido: una evidencia cuyo
 # digest no cuadra esta rota, y una evidencia rota no justifica una transicion
 # (reglas 23.3.3 y 23.3.4).
-talos_evidence_kinds() {
-    talos_evidence_read "$1" | awk -F'\t' '$3 == "true" { print $1 }'
+thalos_evidence_kinds() {
+    thalos_evidence_read "$1" | awk -F'\t' '$3 == "true" { print $1 }'
 }
 
-# talos_evidence_unverifiable <dir>
+# thalos_evidence_unverifiable <dir>
 # Los kind marcados verifiable:false.
-talos_evidence_unverifiable() {
-    talos_evidence_read "$1" | awk -F'\t' '$2 == "false" { print $1 }'
+thalos_evidence_unverifiable() {
+    thalos_evidence_read "$1" | awk -F'\t' '$2 == "false" { print $1 }'
 }
 
-# talos_evidence_tampered <dir>
+# thalos_evidence_tampered <dir>
 # Presente pero con digest invalido. Se reporta aparte para que el gate no diga
 # "falta" cuando lo cierto es "esta y no se puede confiar".
-talos_evidence_tampered() {
-    talos_evidence_read "$1" | awk -F'\t' '$3 == "false" { print $1 }'
+thalos_evidence_tampered() {
+    thalos_evidence_read "$1" | awk -F'\t' '$3 == "false" { print $1 }'
 }
 
-# talos_gate_eval <maquina> <desde> <hacia> <dir-evidencia> [run_id] [feature_id]
+# thalos_gate_eval <maquina> <desde> <hacia> <dir-evidencia> [run_id] [feature_id]
 #
 # Emite un GateResult que valida contra gate-result.schema.json.
 # Sale 0 si pass, 3 si fail, 4 si needs_human.
-talos_gate_eval() {
+thalos_gate_eval() {
     _m="$1"; _from="$2"; _to="$3"; _evdir="$4"
-    _run="${5:-${TALOS_RUN_ID:-r-unknown}}"
-    _feat="${6:-${TALOS_FEATURE_ID:-}}"
+    _run="${5:-${THALOS_RUN_ID:-r-unknown}}"
+    _feat="${6:-${THALOS_FEATURE_ID:-}}"
 
     # Regla 22.6.1: sin transicion en la tabla no hay nada que evaluar.
-    if ! talos_transition_allowed "$_m" "$_from" "$_to"; then
+    if ! thalos_transition_allowed "$_m" "$_from" "$_to"; then
         _gate_emit "-" "$_run" "$_feat" "$_from" "$_to" fail \
             '{"code":"TRANSITION_NOT_DEFINED","status":"fail","detail":"no existe en la tabla 22.4/22.5"}' \
             ""
         return 3
     fi
 
-    _gate=$(talos_transition_gate "$_m" "$_from" "$_to")
-    _requires=$(talos_transition_requires "$_m" "$_from" "$_to")
-    _cond=$(talos_transition_condition "$_m" "$_from" "$_to")
+    _gate=$(thalos_transition_gate "$_m" "$_from" "$_to")
+    _requires=$(thalos_transition_requires "$_m" "$_from" "$_to")
+    _cond=$(thalos_transition_condition "$_m" "$_from" "$_to")
 
-    _present=$(talos_evidence_kinds "$_evdir" | sort -u | tr '\n' ' ')
-    _unverifiable=$(talos_evidence_unverifiable "$_evdir" | sort -u | tr '\n' ' ')
-    _tampered=$(talos_evidence_tampered "$_evdir" | sort -u | tr '\n' ' ')
+    _present=$(thalos_evidence_kinds "$_evdir" | sort -u | tr '\n' ' ')
+    _unverifiable=$(thalos_evidence_unverifiable "$_evdir" | sort -u | tr '\n' ' ')
+    _tampered=$(thalos_evidence_tampered "$_evdir" | sort -u | tr '\n' ' ')
 
     _reasons=""
     _missing=""
@@ -129,7 +129,7 @@ talos_gate_eval() {
             if _gate_is_in "$_kind" $_present; then
                 _reasons="$_reasons{\"code\":\"EVIDENCE_PRESENT\",\"status\":\"pass\",\"detail\":\"$_kind\"},"
                 # Regla 23.3.5: no verificable no satisface un gate critico.
-                if _gate_is_in "$_gate" $TALOS_CRITICAL_GATES && _gate_is_in "$_kind" $_unverifiable; then
+                if _gate_is_in "$_gate" $THALOS_CRITICAL_GATES && _gate_is_in "$_kind" $_unverifiable; then
                     _reasons="$_reasons{\"code\":\"EVIDENCE_NOT_VERIFIABLE\",\"status\":\"fail\",\"detail\":\"$_kind no puede satisfacer $_gate\"},"
                     _decision=fail
                 fi
@@ -160,7 +160,7 @@ talos_gate_eval() {
     # transiciones fuera de alcance para siempre.
     #
     # needs_human es para cuando falta la decision, no para cuando sobra.
-    if [ "$_decision" = pass ] && _gate_is_in "$_gate" $TALOS_HUMAN_GATES; then
+    if [ "$_decision" = pass ] && _gate_is_in "$_gate" $THALOS_HUMAN_GATES; then
         case "$_requires" in
             *Human*)
                 _reasons="$_reasons{\"code\":\"HUMAN_DECIDED\",\"status\":\"pass\",\"detail\":\"decision humana presente\"},"
@@ -173,7 +173,7 @@ talos_gate_eval() {
     fi
 
     # Regla 37.4.4.3: dry-run-only no puede alcanzar FEATURE_MERGED.
-    if [ "$_to" = "FEATURE_MERGED" ] && [ "$(talos_execution_mode)" = "dry-run-only" ]; then
+    if [ "$_to" = "FEATURE_MERGED" ] && [ "$(thalos_execution_mode)" = "dry-run-only" ]; then
         _decision=fail
         _reasons="$_reasons{\"code\":\"MODE_FORBIDS_MERGE\",\"status\":\"fail\",\"detail\":\"dry-run-only no alcanza FEATURE_MERGED\"},"
     fi
@@ -189,7 +189,7 @@ talos_gate_eval() {
     # condicion sin forma de comprobarse se sigue declarando: mentir sobre lo
     # que se verifico seria peor que no verificar.
     if [ "$_cond" != "-" ]; then
-        _veredicto=$(talos_gate_verdict "$_feat")
+        _veredicto=$(thalos_gate_verdict "$_feat")
         case "$_cond:$_veredicto" in
             pass:approve|changes:request_changes)
                 _reasons="$_reasons{\"code\":\"CONDITION_MET\",\"status\":\"pass\",\"detail\":\"$_cond ($_veredicto)\"},"
@@ -217,7 +217,7 @@ talos_gate_eval() {
     esac
 }
 
-# talos_gate_verdict <feature_id>
+# thalos_gate_verdict <feature_id>
 #
 # El veredicto de la revision de la feature, o vacio si todavia no hay una.
 #
@@ -225,26 +225,26 @@ talos_gate_eval() {
 # review.schema.json. No se lee de la evidencia sellada porque el sello prueba
 # que el artefacto no cambio, no que exista: una feature sin revision tiene que
 # poder distinguirse de una revisada, y ausencia es una respuesta valida.
-talos_gate_verdict() {
+thalos_gate_verdict() {
     [ -n "${1:-}" ] || return 0
-    _gv_f="${TALOS_PROJECT_ROOT:-.}/orchestration/reports/$1/review.json"
+    _gv_f="${THALOS_PROJECT_ROOT:-.}/orchestration/reports/$1/review.json"
     [ -f "$_gv_f" ] || return 0
     sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_gv_f" | head -1
 }
 
-# talos_gate_persist <gate-result-json> <dir-evidencia> [run_id] [feature_id]
+# thalos_gate_persist <gate-result-json> <dir-evidencia> [run_id] [feature_id]
 #
 # Regla 24.4.7: todo GateResult DEBE persistirse como evidencia. Sin esto la
 # regla 22.6.6 -toda transicion registra el GateResult que la autorizo- no se
 # puede cumplir: la decision se perderia al cerrar la terminal.
 #
 # Imprime la ruta escrita.
-talos_gate_persist() {
+thalos_gate_persist() {
     _res="$1"; _dir="$2"
-    _run="${3:-${TALOS_RUN_ID:-r-unknown}}"
-    _feat="${4:-${TALOS_FEATURE_ID:-}}"
+    _run="${3:-${THALOS_RUN_ID:-r-unknown}}"
+    _feat="${4:-${THALOS_FEATURE_ID:-}}"
 
-    _py=$(talos_python) || return 1
+    _py=$(thalos_python) || return 1
     mkdir -p "$_dir" || return 1
 
     # El id solo admite alfanumericos y guiones (evidence.schema.json).
@@ -268,7 +268,7 @@ talos_gate_persist() {
     printf '"produced_at":"%s","digest":"pendiente","verifiable":true,"payload":%s}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$_res" >>"$_out"
 
-    "$_py" "$TALOS_GATE_SYS/hooks/lib/evidence.py" seal "$_out" >/dev/null 2>&1 || {
+    "$_py" "$THALOS_GATE_SYS/hooks/lib/evidence.py" seal "$_out" >/dev/null 2>&1 || {
         rm -f "$_out"
         return 1
     }
@@ -280,8 +280,8 @@ talos_gate_persist() {
     printf '%s\n' "$_out"
 }
 
-talos_execution_mode() {
-    grep -E '^execution_mode:' "$TALOS_GATE_SYS/config/system.yaml" 2>/dev/null \
+thalos_execution_mode() {
+    grep -E '^execution_mode:' "$THALOS_GATE_SYS/config/system.yaml" 2>/dev/null \
         | head -1 | sed 's/execution_mode:[[:space:]]*//' | tr -d '"'
 }
 
@@ -300,7 +300,7 @@ _gate_emit() {
         "$_r" "$_feat_json" "$_fr" "$_t"
     printf '"decision":"%s","reasons":[%s],"missing_evidence":[%s],' "$_d" "$_rs" "$_ms"
     printf '"execution_mode":"%s","evaluated_at":"%s","evaluator_version":"%s"}\n' \
-        "$(talos_execution_mode)" \
+        "$(thalos_execution_mode)" \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        "${TALOS_VERSION:-0.0.6}"
+        "${THALOS_VERSION:-0.0.6}"
 }

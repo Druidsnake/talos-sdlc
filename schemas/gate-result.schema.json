@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/gate-result/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/gate-result/0.0.5",
   "title": "GateResult",
-  "description": "Salida de un GateEvaluator. Ver talos-0.0.7.md seccion 24.",
+  "description": "Salida de un GateEvaluator. Ver thalos-0.0.7.md seccion 24.",
   "type": "object",
   "required": ["gate", "decision", "reasons", "evaluated_at", "evaluator_version"],
   "properties": {

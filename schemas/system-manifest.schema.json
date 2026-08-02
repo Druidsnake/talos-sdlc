@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/system-manifest/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/system-manifest/0.0.6",
   "title": "SystemManifest",
-  "description": "Manifiesto del sistema Talos. Ver talos-0.0.7.md seccion 13.",
+  "description": "Manifiesto del sistema Thalos. Ver thalos-0.0.7.md seccion 13.",
   "type": "object",
   "required": ["system_name", "system_version", "api_version", "spec_schema_version", "config_schema_version", "runtime_schema_version", "event_schema_version", "status", "install_level"],
   "properties": {
-    "system_name": { "type": "string", "const": "Talos" },
+    "system_name": { "type": "string", "const": "Thalos" },
     "system_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "api_version": { "type": "string" },
     "spec_schema_version": { "type": "integer", "minimum": 1 },

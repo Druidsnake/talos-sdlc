@@ -68,9 +68,9 @@ def main():
         # "featurelead.md" y "specassistant.md", que no existen. Despacharlos
         # fallaba con "sin archivo de instrucciones" y ningun check lo veia.
         resuelto = subprocess.run(
-            ["sh", "-c", f'. "{ROOT}/hooks/lib/role.sh"; talos_role_instructions {name}'],
+            ["sh", "-c", f'. "{ROOT}/hooks/lib/role.sh"; thalos_role_instructions {name}'],
             capture_output=True, text=True,
-            env={"PATH": "/usr/bin:/bin", "TALOS_SYSTEM_ROOT": str(ROOT)})
+            env={"PATH": "/usr/bin:/bin", "THALOS_SYSTEM_ROOT": str(ROOT)})
         results.append(check(
             f"[{name}] el resolvedor del nucleo llega a sus instrucciones",
             resuelto.returncode == 0

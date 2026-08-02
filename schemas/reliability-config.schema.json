@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/reliability-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/reliability-config/0.0.6",
   "title": "ReliabilityConfig",
-  "description": "config/reliability.yaml. Timeouts, reintentos y backoff. Ver talos-0.0.7.md seccion 35.",
+  "description": "config/reliability.yaml. Timeouts, reintentos y backoff. Ver thalos-0.0.7.md seccion 35.",
   "type": "object",
   "required": ["version", "reliability"],
   "properties": {

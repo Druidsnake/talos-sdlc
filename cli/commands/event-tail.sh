@@ -1,8 +1,8 @@
 #!/bin/sh
-# talos event tail - muestra los ultimos eventos en orden de seq.
+# thalos event tail - muestra los ultimos eventos en orden de seq.
 set -eu
 # Este comando solo lee el runtime del proyecto; no necesita $SYS.
-PROJ="${TALOS_PROJECT_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 n=20
@@ -13,24 +13,24 @@ while [ $# -gt 0 ]; do
         [0-9]*) n="$1"; shift ;;
         -h|--help)
             cat <<'USAGE'
-talos event tail - muestra los ultimos eventos en orden de secuencia
+thalos event tail - muestra los ultimos eventos en orden de secuencia
 
 USO
-    talos event tail [n] [--format json]
+    thalos event tail [n] [--format json]
 
     n por defecto: 20
 
 SALIDA
     0  ok
-    2  no hay event log; ejecuta talos init
+    2  no hay event log; ejecuta thalos init
 USAGE
             exit 0 ;;
-        *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
+        *) echo "thalos: opcion desconocida: $1" >&2; exit 1 ;;
     esac
 done
 
 if [ ! -d orchestration/events ]; then
-    echo "talos: no hay event log. Ejecuta talos init" >&2
+    echo "thalos: no hay event log. Ejecuta thalos init" >&2
     exit 2
 fi
 

@@ -1,5 +1,5 @@
 // Plantilla del plugin de alcance. install.sh la copia al proyecto y le
-// reemplaza __TALOS_SHIM__ por la ruta absoluta de pre-tool-use.sh.
+// reemplaza __THALOS_SHIM__ por la ruta absoluta de pre-tool-use.sh.
 //
 // opencode descubre solo cualquier *.js o *.ts bajo .opencode/plugin/. El hook
 // tool.execute.before se dispara ANTES de ejecutar la herramienta; si tira una
@@ -8,7 +8,7 @@
 // declarado.
 import { spawnSync } from "node:child_process";
 
-const SHIM = "__TALOS_SHIM__";
+const SHIM = "__THALOS_SHIM__";
 
 export const TalosScope = async () => ({
   "tool.execute.before": async (input, output) => {
@@ -22,12 +22,12 @@ export const TalosScope = async () => ({
     // trabajar sin bloqueo creyendo que hay uno.
     if (veredicto.error) {
       throw new Error(
-        `talos: no se pudo ejecutar el bloqueo de alcance (${SHIM}): ${veredicto.error.message}`,
+        `thalos: no se pudo ejecutar el bloqueo de alcance (${SHIM}): ${veredicto.error.message}`,
       );
     }
     if (veredicto.status !== 0) {
       const motivo = (veredicto.stderr || "").trim();
-      throw new Error(motivo || "talos: DENEGADO por el alcance del rol");
+      throw new Error(motivo || "thalos: DENEGADO por el alcance del rol");
     }
   },
 });

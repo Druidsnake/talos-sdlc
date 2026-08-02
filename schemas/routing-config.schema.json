@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/routing-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/routing-config/0.0.6",
   "title": "RoutingConfig",
-  "description": "config/routing.yaml. Ver talos-0.0.7.md seccion 20. El routing selecciona por capacidad, nunca por costo.",
+  "description": "config/routing.yaml. Ver thalos-0.0.7.md seccion 20. El routing selecciona por capacidad, nunca por costo.",
   "type": "object",
   "required": ["version", "default_tier", "effort_to_tier", "risk_to_tier"],
   "properties": {

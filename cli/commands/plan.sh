@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos plan - planificacion de programa. Ver talos-0.0.7.md seccion 29.
+# thalos plan - planificacion de programa. Ver thalos-0.0.7.md seccion 29.
 #
 # Generar el plan es trabajo del Planner, que es un rol agente.
 # Verificarlo es trabajo de PLAN_GATE, que es codigo y no invoca modelos.
@@ -8,8 +8,8 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 PLAN_PATH="orchestration/program-plan.json"
@@ -17,12 +17,12 @@ SPEC_MANIFEST="spec/manifest.yaml"
 
 usage() {
     cat <<'USAGE'
-talos plan - planificacion de programa
+thalos plan - planificacion de programa
 
 USO
-    talos plan check [ruta]       evalua PLAN_GATE sobre el plan
-    talos plan init               esqueleto para empezar a planificar
-    talos plan show [ruta]        el plan en orden de ejecucion
+    thalos plan check [ruta]       evalua PLAN_GATE sobre el plan
+    thalos plan init               esqueleto para empezar a planificar
+    thalos plan show [ruta]        el plan en orden de ejecucion
 
     Por defecto el plan es orchestration/program-plan.json
 
@@ -45,8 +45,8 @@ QUE VERIFICA PLAN_GATE
 
 QUIEN GENERA EL PLAN
     El Planner. En modo dry-run-only no hay ModelProviderAdapter productivo,
-    asi que talos plan init deja un esqueleto para completar a mano y el gate
-    lo verifica igual. Ver talos-0.0.7.md 29.1 y 37.4.4.
+    asi que thalos plan init deja un esqueleto para completar a mano y el gate
+    lo verifica igual. Ver thalos-0.0.7.md 29.1 y 37.4.4.
 
 SALIDA
     0  el plan pasa PLAN_GATE
@@ -60,8 +60,8 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-PY=$(talos_python) || {
-    echo "talos: no hay python3 para analizar el plan" >&2
+PY=$(thalos_python) || {
+    echo "thalos: no hay python3 para analizar el plan" >&2
     exit 2
 }
 
@@ -75,7 +75,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --format)     [ "${2:-}" = json ] && FORMAT=json; shift 2 ;;
         --no-persist) PERSIST=0; shift ;;
-        -*) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
+        -*) echo "thalos: opcion desconocida: $1" >&2; exit 1 ;;
         *)  TARGET="$1"; shift ;;
     esac
 done
@@ -85,20 +85,20 @@ done
 
 if [ "$sub" = init ]; then
     if [ -f "$PLAN_PATH" ]; then
-        echo "talos: $PLAN_PATH ya existe, no se pisa"
-        echo "talos: el plan es un artefacto humano-revisable, no se regenera solo"
+        echo "thalos: $PLAN_PATH ya existe, no se pisa"
+        echo "thalos: el plan es un artefacto humano-revisable, no se regenera solo"
         exit 0
     fi
     # Regla 29.1: sin spec aprobado no hay nada que planificar.
     if [ ! -f "$SPEC_MANIFEST" ]; then
-        echo "talos: no existe $SPEC_MANIFEST" >&2
-        echo "talos: talos init --with-spec genera un esqueleto" >&2
+        echo "thalos: no existe $SPEC_MANIFEST" >&2
+        echo "thalos: thalos init --with-spec genera un esqueleto" >&2
         exit 2
     fi
     st=$(grep -E '^status:' "$SPEC_MANIFEST" | head -1 | sed 's/status:[[:space:]]*//' | tr -d '"')
     if [ "$st" != approved ]; then
-        echo "talos: el spec esta en $st, no approved" >&2
-        echo "talos: Talos no planifica hasta que sea approved (regla 29.1)" >&2
+        echo "thalos: el spec esta en $st, no approved" >&2
+        echo "thalos: Thalos no planifica hasta que sea approved (regla 29.1)" >&2
         exit 2
     fi
     dg=$(grep -E '^digest:' "$SPEC_MANIFEST" | head -1 | sed 's/digest:[[:space:]]*//' | tr -d '"')
@@ -133,20 +133,20 @@ EOF
     echo "  Es un esqueleto, no un plan. El Planner lo completa; en dry-run-only"
     echo "  no hay ModelProviderAdapter productivo, asi que lo completas vos."
     echo ""
-    echo "  Cuando este listo:  talos plan check"
+    echo "  Cuando este listo:  thalos plan check"
     exit 0
 fi
 
 # ---------- show ----------
 
 if [ "$sub" = show ]; then
-    [ -f "$PLAN_PATH" ] || { echo "talos: no existe $PLAN_PATH" >&2; exit 2; }
+    [ -f "$PLAN_PATH" ] || { echo "thalos: no existe $PLAN_PATH" >&2; exit 2; }
     "$PY" - "$PLAN_PATH" <<'PYEOF'
 import json, sys
 plan = json.loads(open(sys.argv[1]).read())
 feats = {f["id"]: f for f in plan["features"]}
 done, wave = set(), 0
-print(f"talos plan: {plan.get('project','?')}")
+print(f"thalos plan: {plan.get('project','?')}")
 print()
 while len(done) < len(feats):
     listos = [f for i, f in feats.items()
@@ -167,14 +167,14 @@ PYEOF
     exit 0
 fi
 
-[ "$sub" = check ] || { echo "talos: subcomando desconocido: $sub" >&2
-                        echo "talos: disponibles: check, init, show" >&2; exit 1; }
+[ "$sub" = check ] || { echo "thalos: subcomando desconocido: $sub" >&2
+                        echo "thalos: disponibles: check, init, show" >&2; exit 1; }
 
 # ---------- check: PLAN_GATE ----------
 
 if [ ! -f "$PLAN_PATH" ]; then
-    echo "talos: no existe $PLAN_PATH" >&2
-    echo "talos: talos plan init deja un esqueleto" >&2
+    echo "thalos: no existe $PLAN_PATH" >&2
+    echo "thalos: thalos plan init deja un esqueleto" >&2
     exit 2
 fi
 
@@ -209,22 +209,22 @@ EOF
 fi
 
 result=$(printf '{"gate":"PLAN_GATE","run_id":"%s","feature_id":null,"from_state":"PROGRAM_PLANNING","to_state":"%s","decision":"%s","reasons":[%s],"missing_evidence":[],"execution_mode":"%s","evaluated_at":"%s","evaluator_version":"%s"}' \
-    "${TALOS_RUN_ID:-r-unknown}" \
+    "${THALOS_RUN_ID:-r-unknown}" \
     "$([ "$decision" = pass ] && echo PROGRAM_READY || echo PROGRAM_PLANNING)" \
     "$decision" "${reasons_json%,}" \
-    "$(talos_execution_mode)" \
+    "$(thalos_execution_mode)" \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "${TALOS_VERSION:-0.0.6}")
+    "${THALOS_VERSION:-0.0.6}")
 
 saved=""
-[ "$PERSIST" -eq 1 ] && saved=$(talos_gate_persist "$result" "orchestration/evidence" 2>/dev/null || true)
+[ "$PERSIST" -eq 1 ] && saved=$(thalos_gate_persist "$result" "orchestration/evidence" 2>/dev/null || true)
 
 if [ "$FORMAT" = json ]; then
     printf '%s\n' "$result"
     [ "$decision" = pass ] && exit 0 || exit 3
 fi
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  plan  %s\n' "$PLAN_PATH"
 printf '  gate  PLAN_GATE\n'

@@ -7,7 +7,7 @@
 #
 #   {"tool":"write","args":{"filePath":"/abs/ruta"}}
 #
-# La forma la fija el plugin de Talos, no opencode: es el contrato entre las
+# La forma la fija el plugin de Thalos, no opencode: es el contrato entre las
 # dos mitades de este mismo shim.
 #
 # Sale 0 permitido / 2 denegado, con el motivo por stderr. El plugin traduce

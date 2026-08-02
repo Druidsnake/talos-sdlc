@@ -1,8 +1,8 @@
 #!/bin/sh
-# talos.adapter.ci_dryrun - implementacion de referencia de CIAdapter.
+# thalos.adapter.ci_dryrun - implementacion de referencia de CIAdapter.
 #
 # Uso:   run.sh <operacion> [semantic_args_json]
-# Env:   TALOS_RUN_ID, TALOS_FEATURE_ID
+# Env:   THALOS_RUN_ID, THALOS_FEATURE_ID
 # Sale:  0 ok / 5 error de adapter
 #
 # El CheckRunSet que devuelve esta marcado verifiable:false. Regla 30.4.1 dice
@@ -17,28 +17,28 @@ DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 op="${1:-}"
 args="${2:-{\}}"
-run="${TALOS_RUN_ID:-r-unknown}"
-feat="${TALOS_FEATURE_ID:-none}"
+run="${THALOS_RUN_ID:-r-unknown}"
+feat="${THALOS_FEATURE_ID:-none}"
 
 case "$op" in
     health)
-        talos_ok '{"healthy":true,"capability":"CIAdapter","simulated":true}'
+        thalos_ok '{"healthy":true,"capability":"CIAdapter","simulated":true}'
         ;;
     run_checks)
-        talos_mutate "$op" "$run" "$feat" "$args" \
+        thalos_mutate "$op" "$run" "$feat" "$args" \
             '{"id":"ci:run","url":"dry-run://checks"}'
         ;;
     get_check_status)
-        talos_ok '{"check_runs":[],"conclusion":"simulated","verifiable":false}'
+        thalos_ok '{"check_runs":[],"conclusion":"simulated","verifiable":false}'
         ;;
     publish_report)
-        talos_mutate "$op" "$run" "$feat" "$args" \
+        thalos_mutate "$op" "$run" "$feat" "$args" \
             '{"id":"ci:report","url":null}'
         ;;
     "")
-        talos_error precondition "falta la operacion"
+        thalos_error precondition "falta la operacion"
         ;;
     *)
-        talos_unknown_op "$op"
+        thalos_unknown_op "$op"
         ;;
 esac

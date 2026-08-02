@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos gate - evalua si una transicion de estado esta autorizada.
+# thalos gate - evalua si una transicion de estado esta autorizada.
 #
 # El gate es codigo, no criterio: funcion pura de evidencia, policy y config.
 # No invoca modelos (regla 24.4.3).
@@ -8,18 +8,18 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos gate - evalua si una transicion de estado esta autorizada
+thalos gate - evalua si una transicion de estado esta autorizada
 
 USO
-    talos gate <maquina> <desde> <hacia> [--format json]
-    talos gate --list [maquina]
-    talos gate --from <maquina> <estado>
+    thalos gate <maquina> <desde> <hacia> [--format json]
+    thalos gate --list [maquina]
+    thalos gate --from <maquina> <estado>
 
 ARGUMENTOS
     maquina   program | feature
@@ -56,9 +56,9 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-if ! talos_transition_table >/dev/null 2>&1; then
-    echo "talos: falta la tabla de transiciones" >&2
-    echo "talos: generala con  python3 tools/build-transitions.py" >&2
+if ! thalos_transition_table >/dev/null 2>&1; then
+    echo "thalos: falta la tabla de transiciones" >&2
+    echo "thalos: generala con  python3 tools/build-transitions.py" >&2
     exit 2
 fi
 
@@ -66,10 +66,10 @@ fi
 
 if [ "${1:-}" = "--list" ]; then
     m="${2:-}"
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  %-8s %-4s %-24s %-24s %-18s %s\n' MAQUINA ID DESDE HACIA GATE EVENTO
-    talos_transition_table | while IFS='	' read -r mm id from to gate cond actor req event; do
+    thalos_transition_table | while IFS='	' read -r mm id from to gate cond actor req event; do
         [ -n "$m" ] && [ "$mm" != "$m" ] && continue
         printf '  %-8s %-4s %-24s %-24s %-18s %s\n' "$mm" "$id" "$from" "$to" "$gate" "$event"
     done
@@ -79,9 +79,9 @@ fi
 if [ "${1:-}" = "--from" ]; then
     m="${2:?falta la maquina}"
     st="${3:?falta el estado}"
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
-    if talos_is_terminal "$m" "$st"; then
+    if thalos_is_terminal "$m" "$st"; then
         echo "  $st es un estado terminal: no tiene transiciones de salida (regla 22.6.9)."
         echo "  Reabrir exige crear una feature derivada, no reabrir esta."
         exit 0
@@ -91,7 +91,7 @@ if [ "${1:-}" = "--from" ]; then
     # Se leen los nueve campos aunque no se impriman todos: el read tiene que
     # respetar el ancho del registro para que las columnas caigan donde van.
     # shellcheck disable=SC2034
-    talos_transitions_from "$m" "$st" | while IFS='	' read -r mm id from to gate cond actor req event; do
+    thalos_transitions_from "$m" "$st" | while IFS='	' read -r mm id from to gate cond actor req event; do
         printf '  %-4s %-24s %-18s %-14s %s\n' "$id" "$to" "$gate" "$actor" "$req"
     done
     exit 0
@@ -106,7 +106,7 @@ shift 3
 
 case "$machine" in
     program|feature) ;;
-    *) echo "talos: maquina desconocida: $machine (program | feature)" >&2; exit 1 ;;
+    *) echo "thalos: maquina desconocida: $machine (program | feature)" >&2; exit 1 ;;
 esac
 
 EVDIR="orchestration/evidence"
@@ -117,12 +117,12 @@ while [ $# -gt 0 ]; do
         --evidence)   EVDIR="${2:?falta el directorio}"; shift 2 ;;
         --format)     [ "${2:-}" = json ] && FORMAT=json; shift 2 ;;
         --no-persist) PERSIST=0; shift ;;
-        *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
+        *) echo "thalos: opcion desconocida: $1" >&2; exit 1 ;;
     esac
 done
 
 set +e
-result=$(talos_gate_eval "$machine" "$from" "$to" "$EVDIR")
+result=$(thalos_gate_eval "$machine" "$from" "$to" "$EVDIR")
 code=$?
 set -e
 
@@ -130,7 +130,7 @@ set -e
 # rechazo es tan auditable como una autorizacion.
 saved=""
 if [ "$PERSIST" -eq 1 ]; then
-    saved=$(talos_gate_persist "$result" "orchestration/evidence" 2>/dev/null || true)
+    saved=$(thalos_gate_persist "$result" "orchestration/evidence" 2>/dev/null || true)
 fi
 
 if [ "$FORMAT" = json ]; then
@@ -138,12 +138,12 @@ if [ "$FORMAT" = json ]; then
     exit "$code"
 fi
 
-tid=$(talos_transition_id "$machine" "$from" "$to" 2>/dev/null || echo "-")
-gate=$(talos_transition_gate "$machine" "$from" "$to" 2>/dev/null || echo "-")
-req=$(talos_transition_requires "$machine" "$from" "$to" 2>/dev/null || echo "-")
-event=$(talos_transition_event "$machine" "$from" "$to" 2>/dev/null || echo "-")
+tid=$(thalos_transition_id "$machine" "$from" "$to" 2>/dev/null || echo "-")
+gate=$(thalos_transition_gate "$machine" "$from" "$to" 2>/dev/null || echo "-")
+req=$(thalos_transition_requires "$machine" "$from" "$to" 2>/dev/null || echo "-")
+event=$(thalos_transition_event "$machine" "$from" "$to" 2>/dev/null || echo "-")
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  transicion   %s  %s -> %s\n' "$tid" "$from" "$to"
 printf '  gate         %s\n' "$gate"

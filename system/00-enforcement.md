@@ -1,17 +1,17 @@
-# Talos — Modelo de Enforcement
+# Thalos — Modelo de Enforcement
 
 **Documento:** system/00-enforcement.md
 **Versión:** 0.0.1
-**Requiere core:** talos-sdlc >= 0.0.6
+**Requiere core:** thalos-sdlc >= 0.0.6
 **Estado:** Normativo
 
 ---
 
 ## 0. Por qué este documento existe primero
 
-Talos se distribuye como un conjunto de archivos que un modelo de IA consume: `.md`, `.yaml`, `.json`. Esa decisión define el formato, no el poder.
+Thalos se distribuye como un conjunto de archivos que un modelo de IA consume: `.md`, `.yaml`, `.json`. Esa decisión define el formato, no el poder.
 
-El problema central de Talos no es **qué reglas escribir**. Es **cómo lograr que se cumplan**.
+El problema central de Thalos no es **qué reglas escribir**. Es **cómo lograr que se cumplan**.
 
 Este documento define ese mecanismo. Sin él, el resto de la especificación es una lista de deseos.
 
@@ -29,7 +29,7 @@ Consecuencia normativa:
 
 1. Un requisito respaldado únicamente por texto ES **consultivo**, sin importar cómo esté redactado.
 2. Redactar un consejo como obligación NO lo convierte en obligación.
-3. Un requisito que Talos declare obligatorio DEBE tener un mecanismo de enforcement asociado.
+3. Un requisito que Thalos declare obligatorio DEBE tener un mecanismo de enforcement asociado.
 4. Un requisito obligatorio sin mecanismo DEBE reescribirse como recomendación o DEBE recibir un mecanismo.
 
 Esta es la regla que gobierna el resto del documento.
@@ -84,14 +84,14 @@ mecanismos 6-8  -> el requisito ES obligatorio con ventana de violación
 mecanismos 9-10 -> el requisito ES consultivo, aunque diga DEBE
 ```
 
-Un requisito de Talos marcado `DEBE` que solo cuente con mecanismos 9 o 10 está **mal clasificado**.
+Un requisito de Thalos marcado `DEBE` que solo cuente con mecanismos 9 o 10 está **mal clasificado**.
 
 ---
 
 ## 4. Regla de mapeo
 
 ```txt
-Todo requisito normativo de Talos DEBE declarar su mecanismo de enforcement.
+Todo requisito normativo de Thalos DEBE declarar su mecanismo de enforcement.
 ```
 
 Formato requerido en las tablas de reglas:
@@ -115,7 +115,7 @@ Reglas:
 
 ## 5. Los tres niveles de instalación
 
-El enforcement disponible depende de dónde se instala Talos. No todos los proyectos pueden ejecutar todos los mecanismos.
+El enforcement disponible depende de dónde se instala Thalos. No todos los proyectos pueden ejecutar todos los mecanismos.
 
 | Nivel | Qué incluye | Mecanismos disponibles | Enforcement real |
 |---|---|---|---|
@@ -125,19 +125,19 @@ El enforcement disponible depende de dónde se instala Talos. No todos los proye
 
 Reglas:
 
-1. Talos DEBE declarar su nivel de instalación en `config/system.yaml`.
-2. Talos DEBE reportar el nivel en `talos doctor`.
+1. Thalos DEBE declarar su nivel de instalación en `config/system.yaml`.
+2. Thalos DEBE reportar el nivel en `thalos doctor`.
 3. Un requisito cuyo mecanismo no esté disponible en el nivel instalado DEBE degradarse a consultivo **y DEBE reportarse como degradado**.
-4. Talos NO DEBE afirmar que un requisito se cumple cuando su mecanismo no está disponible.
+4. Thalos NO DEBE afirmar que un requisito se cumple cuando su mecanismo no está disponible.
 5. `L0` NO DEBE presentarse como un sistema de gobierno. ES documentación.
 
-La regla 4 es la que preserva la honestidad del sistema: es preferible un Talos que diga "esto no lo puedo garantizar en tu instalación" a uno que finja gobierno que no ejerce.
+La regla 4 es la que preserva la honestidad del sistema: es preferible un Thalos que diga "esto no lo puedo garantizar en tu instalación" a uno que finja gobierno que no ejerce.
 
 ---
 
 ## 6. Mapeo de los requisitos del núcleo
 
-Clasificación de los requisitos estructurales de `talos-0.0.7.md`.
+Clasificación de los requisitos estructurales de `thalos-0.0.7.md`.
 
 ### 6.1. Enforcement duro disponible
 
@@ -180,7 +180,7 @@ Estos requisitos dependen del juicio del modelo. **DEBEN reclasificarse como `RE
 | Planner clasifica riesgo correctamente (§29.6) | la corrección de la clasificación es opinión |
 | Memorias atómicas (memoria §5.2) | la atomicidad es criterio |
 | Títulos buscables (memoria §5.3) | la calidad es criterio |
-| Talos pregunta ante ambigüedad (§5.13) | detectar la ambigüedad requiere el modelo |
+| Thalos pregunta ante ambigüedad (§5.13) | detectar la ambigüedad requiere el modelo |
 
 Regla: para los requisitos de esta tabla, el enforcement disponible es **estructural, no semántico**. Se puede forzar que exista un `Review` con el schema correcto; no se puede forzar que la revisión sea buena. Esa distinción DEBE quedar explícita en cada regla.
 

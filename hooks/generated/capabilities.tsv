@@ -4,11 +4,11 @@
 # Cero implementaciones de una capacidad required falla en PRECONDITION_GATE
 # (regla 37.4.3.2). Cero de una optional es estado valido (regla 37.4.3.4).
 
-FileSystemAdapter	required	talos.adapter.fs_local	adapters/fs_local	-	-	-
-ModelProviderAdapter	required	talos.adapter.model_dryrun	adapters/model_dryrun	-	-	-
-ExecutionAdapter	required	talos.adapter.exec_dryrun	adapters/exec_dryrun	-	-	-
-CoordinationAdapter	required	talos.adapter.coord_dryrun	adapters/coord_dryrun	-	-	-
-CIAdapter	required	talos.adapter.ci_dryrun	adapters/ci_dryrun	-	-	-
+FileSystemAdapter	required	thalos.adapter.fs_local	adapters/fs_local	-	-	-
+ModelProviderAdapter	required	thalos.adapter.model_dryrun	adapters/model_dryrun	-	-	-
+ExecutionAdapter	required	thalos.adapter.exec_dryrun	adapters/exec_dryrun	-	-	-
+CoordinationAdapter	required	thalos.adapter.coord_dryrun	adapters/coord_dryrun	-	-	-
+CIAdapter	required	thalos.adapter.ci_dryrun	adapters/ci_dryrun	-	-	-
 RoutingStrategy	optional	-	-	-	-	-
 RoleRegistry	optional	-	-	-	-	-
 Validator	optional	-	-	-	-	-

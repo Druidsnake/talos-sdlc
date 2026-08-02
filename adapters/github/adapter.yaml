@@ -1,12 +1,12 @@
-id: talos.adapter.github
-package: talos-adapter-github
+id: thalos.adapter.github
+package: thalos-adapter-github
 version: 0.0.7
 api_version: "0.0.7"
 core_compatibility: ">=0.0.7"
 
 implements: CoordinationAdapter
 
-# Con TALOS_DRY_RUN=1 registra la intencion y no toca el remoto. Es lo que
+# Con THALOS_DRY_RUN=1 registra la intencion y no toca el remoto. Es lo que
 # permite ensayar una corrida productiva sin abrir issues ni PRs de verdad.
 supports_dry_run: true
 
@@ -16,7 +16,7 @@ supports_dry_run: true
 external_binary:
   name: gh
   version_range: ">=2.0.0"
-  env_override: TALOS_GH_BIN
+  env_override: THALOS_GH_BIN
   install_hint: "brew install gh && gh auth login"
   machine_level: false
 

@@ -1,14 +1,14 @@
-# Talos Core System Specification
+# Thalos Core System Specification
 
-**System Name:** Talos
-**Canonical Package:** talos-sdlc
+**System Name:** Thalos
+**Canonical Package:** thalos-sdlc
 **System Version:** 0.0.6
 **Status:** Experimental Baseline
 **Date:** 2026-07-30
 **Document Type:** Core System Specification
 **Language:** Spanish normative text
 **Supersedes:** 0.0.5
-**Companion documents:** `talos-memory-0.0.1.md` (extensión opcional de memoria)
+**Companion documents:** `thalos-memory-0.0.1.md` (extensión opcional de memoria)
 
 ---
 
@@ -20,11 +20,11 @@ Las palabras clave DEBE, NO DEBE, REQUERIDO, PUEDE, RECOMENDADO y OPCIONAL deben
 
 ### 0.2. Alcance del documento
 
-Este documento define el **núcleo** del sistema automatizador llamado **Talos**.
+Este documento define el **núcleo** del sistema automatizador llamado **Thalos**.
 
 Este documento NO define el spec del producto a desarrollar.
 
-Este documento NO define el sistema de memoria persistente. La memoria es una extensión OPCIONAL especificada en `talos-memory-0.0.1.md`.
+Este documento NO define el sistema de memoria persistente. La memoria es una extensión OPCIONAL especificada en `thalos-memory-0.0.1.md`.
 
 ### 0.3. Política de términos indefinidos
 
@@ -43,19 +43,19 @@ Las decisiones que requieren resolución humana antes de implementar se marcan c
 El sistema se denomina:
 
 ```txt
-Talos
+Thalos
 ```
 
 Nombre canónico de paquete:
 
 ```txt
-talos-sdlc
+thalos-sdlc
 ```
 
 CLI oficial:
 
 ```txt
-talos
+thalos
 ```
 
 Tagline recomendado:
@@ -73,46 +73,43 @@ Guardián del ciclo de desarrollo con IA
 Inspiración:
 
 ```txt
-Talos, autómata guardián de la mitología griega.
+Thalos, autómata guardián de la mitología griega.
 ```
 
 ---
 
-### 1.1. Riesgo de colisión de nombre
+### 1.1. Nombre y colisión
 
-`DECISIÓN ABIERTA D-001`
+`DECISIÓN D-001 — RESUELTA en 0.0.7`
 
-El nombre `Talos` está tomado por **Talos Linux** (Sidero Labs), sistema operativo inmutable para Kubernetes con ecosistema activo y CLI `talosctl`.
+El proyecto se llamaba `Talos`. El nombre estaba tomado, y no por uno sino por varios proyectos activos:
 
-Implicaciones:
+| Registry | `talos` | `thalos` |
+|---|---|---|
+| npm | tomado (framework de bots IRC, 2014) | libre |
+| PyPI | **tomado y activo** (Talos Hyperparameter Tuning for Keras, v1.4, abril 2024) | libre |
+| crates.io | — | libre |
 
-```txt
-- colisión de SEO en el dominio de infraestructura,
-- posible colisión de binario `talos` en máquinas con tooling de Kubernetes,
-- posible colisión de nombre en registries públicos.
-```
+A eso se suma **Talos Linux** (Sidero Labs), sistema operativo inmutable para Kubernetes con ecosistema activo y CLI `talosctl`, y Cisco Talos en seguridad. Tres proyectos vivos en dominios distintos.
 
-Antes de publicar el primer paquete, el proyecto DEBE:
+Verificado esto, el proyecto pasa a llamarse **Thalos**, con paquete canónico `thalos-sdlc`.
 
-1. Verificar disponibilidad en npm, PyPI y crates.io.
-2. Decidir entre mantener `talos` o renombrar el binario.
+Dos correcciones al análisis que traía 0.0.6:
 
-Mitigación RECOMENDADA si se mantiene el nombre:
+1. **La colisión de binario era más débil de lo que se afirmaba.** El CLI de Talos Linux es `talosctl`, no `talos`. El riesgo real era de registries y de búsqueda, no de `PATH`.
+2. **La colisión de registries era más fuerte.** El documento solo nombraba a Talos Linux; la colisión que de verdad bloqueaba publicar es la de PyPI, que está mantenida y es de otro dominio por completo.
 
-```txt
-paquete: talos-sdlc
-binario: talos-sdlc (alias opcional `talos` instalado solo si no existe conflicto)
-```
+Lo que el cambio NO resuelve, y conviene tener presente: `Thalos` y `Talos` son homófonos en español. Mejora la búsqueda y la publicación; no elimina la confusión hablada.
 
-Esta decisión DEBE resolverse antes de v0.1.0.
+El momento del cambio se eligió por costo: la superficie era de 133 archivos y **cero instalaciones de terceros**. Renombrar más tarde solo podía salir más caro.
 
 ---
 
 ## 2. Propósito
 
-Talos define un marco normativo y extensible para orquestar desarrollo de software asistido por agentes.
+Thalos define un marco normativo y extensible para orquestar desarrollo de software asistido por agentes.
 
-Talos cubre:
+Thalos cubre:
 
 - intake de spec,
 - planificación,
@@ -123,7 +120,7 @@ Talos cubre:
 - merge,
 - trazabilidad.
 
-Talos está diseñado para ser:
+Thalos está diseñado para ser:
 
 - versionado,
 - reutilizable,
@@ -142,7 +139,7 @@ La capacidad de aprender de ejecuciones anteriores es una extensión OPCIONAL, n
 La versión 0.0.6 define, además de todo lo definido en 0.0.5:
 
 1. **Clasificación de extension points por capacidad REQUERIDA u OPCIONAL, separada de la implementación que la satisface.**
-2. **`ExecutionAdapter` como capacidad requerida, con `talos-adapter-herdr` como implementación de referencia.**
+2. **`ExecutionAdapter` como capacidad requerida, con `thalos-adapter-herdr` como implementación de referencia.**
 3. **Precondition de exactamente un `ExecutionAdapter` habilitado y sano.**
 4. **Modo `--dry-run-only` para validar el sistema sin ExecutionAdapter productivo.**
 5. **Prohibición explícita de nombrar implementaciones concretas fuera del extension registry.**
@@ -168,7 +165,7 @@ La versión 0.0.5 definió:
 17. **Semántica de timeout, reintento y backoff.**
 18. **Locks como leases con TTL, heartbeat y fencing token.**
 19. Contratos de plugins.
-20. CLI oficial `talos`.
+20. CLI oficial `thalos`.
 21. **Event system con secuencia monotónica y versión de schema por evento.**
 22. **Schemas completos de los artefactos obligatorios.**
 23. **Cadena de configuración separada de la cadena de autoridad de decisión.**
@@ -203,15 +200,15 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 
 ### 5.1. Separación
 
-1. Talos DEBE ser independiente del spec del producto.
-2. Talos DEBE ser versionado.
+1. Thalos DEBE ser independiente del spec del producto.
+2. Thalos DEBE ser versionado.
 3. El spec del producto DEBE residir en `spec/`.
-4. Talos NO DEBE escribir reglas propias dentro de `spec/`.
+4. Thalos NO DEBE escribir reglas propias dentro de `spec/`.
 
 ### 5.2. Trazabilidad
 
 5. Todo cambio DEBE ser trazable a spec, feature, task y PR.
-6. Toda comunicación entre roles DEBE ser explícita y estructurada. **La estructura es del sobre y la pone Talos; el contenido puede ser cualquier cosa.**
+6. Toda comunicación entre roles DEBE ser explícita y estructurada. **La estructura es del sobre y la pone Thalos; el contenido puede ser cualquier cosa.**
 6.a. Ninguna respuesta de un rol DEBE descartarse por no tener el formato esperado.
 6.b. Toda respuesta que no pueda interpretarse DEBE persistirse igual y entregarse a alguien que pueda actuar sobre ella.
 6.c. La comunicación NO DEBE cortarse de forma inesperada: un paso que termina sin lo que esperaba DEBE dejar registrado lo que sí recibió.
@@ -224,15 +221,15 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 10. Toda ejecución DEBE respetar permisos de rol.
 11. Toda feature DEBE clasificarse por riesgo y esfuerzo.
 12. Todo merge DEBE cumplir gates automáticos y política de aprobación.
-13. Ante ambigüedad, Talos DEBE preguntar o escalar.
+13. Ante ambigüedad, Thalos DEBE preguntar o escalar.
 14. La configuración NO DEBE poder violar policy; una config que viole policy DEBE rechazarse al cargar.
 
 ### 5.4. Desacople
 
-15. El núcleo de Talos DEBE permanecer independiente de vendors.
+15. El núcleo de Thalos DEBE permanecer independiente de vendors.
 16. Toda integración externa DEBE implementarse como adapter.
 17. Toda extensión de UI o automatización DEBE implementarse como plugin.
-18. Talos DEBE poder operar sin plugins.
+18. Thalos DEBE poder operar sin plugins.
 19. Los plugins NO DEBEN reemplazar al núcleo.
 20. Los adapters NO DEBEN definir política de negocio.
 20.a. Una capacidad REQUERIDA obliga a habilitar alguna implementación; NO obliga a una implementación concreta.
@@ -244,7 +241,7 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 21. Toda operación externa mutante DEBE ser idempotente.
 22. Todo lock DEBE tener expiración.
 23. Todo error DEBE clasificarse antes de decidir reintento.
-24. El estado runtime DEBE poder migrarse entre versiones de Talos.
+24. El estado runtime DEBE poder migrarse entre versiones de Thalos.
 25. Toda referencia a un recurso externo DEBE llevar la procedencia de quien la produjo.
 26. Una referencia NO DEBE usarse contra un productor distinto del que la creó.
 27. Que un recurso se haya creado NO prueba que siga existiendo. Antes de reusar una referencia sobre un recurso que puede desaparecer, el estado DEBE reconciliarse contra el backend.
@@ -258,25 +255,25 @@ piloto controlado, serial, con supervisión humana, dry-run preferente, arquitec
 
 ---
 
-## 6. Identidad técnica de Talos
+## 6. Identidad técnica de Thalos
 
 | Elemento | Valor |
 |---|---|
-| Nombre | Talos |
-| Paquete canónico | talos-sdlc |
-| CLI | talos |
-| Namespace de eventos | talos |
-| Prefijo de adapters | talos-adapter- |
-| Prefijo de plugins | talos-plugin- |
-| Runtime local | .talos/ |
-| API namespace | talos/v0 |
-| Extensión de memoria | talos-ext-memory (opcional) |
+| Nombre | Thalos |
+| Paquete canónico | thalos-sdlc |
+| CLI | thalos |
+| Namespace de eventos | thalos |
+| Prefijo de adapters | thalos-adapter- |
+| Prefijo de plugins | thalos-plugin- |
+| Runtime local | .thalos/ |
+| API namespace | thalos/v0 |
+| Extensión de memoria | thalos-ext-memory (opcional) |
 
 ---
 
 ## 7. Arquitectura general
 
-El núcleo de Talos se divide en siete capas normativas:
+El núcleo de Thalos se divide en siete capas normativas:
 
 ```txt
 1. Spec Layer
@@ -288,7 +285,7 @@ El núcleo de Talos se divide en siete capas normativas:
 7. Plugins
 ```
 
-La capa de memoria NO es parte del núcleo. Se integra, si está habilitada, mediante el extension point `MemoryAdapter` definido en `talos-memory-0.0.1.md`.
+La capa de memoria NO es parte del núcleo. Se integra, si está habilitada, mediante el extension point `MemoryAdapter` definido en `thalos-memory-0.0.1.md`.
 
 ---
 
@@ -296,7 +293,7 @@ La capa de memoria NO es parte del núcleo. Se integra, si está habilitada, med
 
 ### 8.1. Automation System
 
-Capa normativa y ejecutable de Talos.
+Capa normativa y ejecutable de Thalos.
 
 Contiene:
 
@@ -341,11 +338,11 @@ Toda capacidad no requerida por los criterios de aceptación del núcleo DEBE vi
 
 | Directorio | Significado | Normatividad |
 |---|---|---|
-| `system/` | Documentos normativos de Talos | Obligatorio |
+| `system/` | Documentos normativos de Thalos | Obligatorio |
 | `contracts/` | Contratos funcionales y puertos | Obligatorio |
 | `schemas/` | Contratos estructurales JSON Schema | Obligatorio |
-| `core/` | Lógica central de Talos | Obligatorio |
-| `cli/` | Interfaz de comandos `talos` | Obligatorio |
+| `core/` | Lógica central de Thalos | Obligatorio |
+| `cli/` | Interfaz de comandos `thalos` | Obligatorio |
 | `config/` | Configuración base del sistema | Obligatorio |
 | `adapters/` | Integraciones externas | Obligatorio |
 | `plugins/` | Extensiones opcionales | Opcional |
@@ -360,7 +357,7 @@ Toda capacidad no requerida por los criterios de aceptación del núcleo DEBE vi
 ## 10. Estructura del repositorio del sistema
 
 ```txt
-talos-sdlc/
+thalos-sdlc/
   VERSION
   CHANGELOG.md
   README.md
@@ -426,7 +423,7 @@ talos-sdlc/
     migration/
 
   cli/
-    talos
+    thalos
     commands/
 
   config/
@@ -462,7 +459,7 @@ talos-sdlc/
 
 ```txt
 my-project/
-  .talos/
+  .thalos/
     VERSION
     system/
     contracts/
@@ -481,7 +478,7 @@ my-project/
     constraints.md
     test_plan.md
 
-  talos.config/
+  thalos.config/
     project.yaml
     overrides.yaml
     extensions.yaml
@@ -503,7 +500,7 @@ my-project/
   docs/
 ```
 
-**Nota de corrección respecto de 0.0.4:** el directorio de configuración del proyecto se renombra de `config/` a `talos.config/` para eliminar la colisión con el `config/` del sistema vendoreado en `.talos/config/` y con cualquier `config/` propio del producto.
+**Nota de corrección respecto de 0.0.4:** el directorio de configuración del proyecto se renombra de `config/` a `thalos.config/` para eliminar la colisión con el `config/` del sistema vendoreado en `.thalos/config/` y con cualquier `config/` propio del producto.
 
 ---
 
@@ -511,11 +508,11 @@ my-project/
 
 ### 12.1. Versionado
 
-1. Talos DEBE tener un archivo `VERSION`.
-2. Talos DEBE seguir versionado semántico.
-3. Cada proyecto DEBE fijar una versión específica de Talos.
-4. Talos NO DEBE depender de cambios no versionados en el proyecto.
-5. Talos DEBE poder ser instalado como subdirectorio `.talos/`.
+1. Thalos DEBE tener un archivo `VERSION`.
+2. Thalos DEBE seguir versionado semántico.
+3. Cada proyecto DEBE fijar una versión específica de Thalos.
+4. Thalos NO DEBE depender de cambios no versionados en el proyecto.
+5. Thalos DEBE poder ser instalado como subdirectorio `.thalos/`.
 6. Los plugins DEBEN declarar compatibilidad con versiones del core.
 7. Los adapters DEBEN declarar versión y API soportada.
 
@@ -526,7 +523,7 @@ Todo runtime DEBE contener `orchestration/.meta.json`:
 ```json
 {
   "runtime_schema_version": 1,
-  "talos_version": "0.0.6",
+  "thalos_version": "0.0.6",
   "run_id": "r-2026-07-30-001",
   "created_at": "2026-07-30T10:00:00Z",
   "last_migrated_at": null,
@@ -536,21 +533,21 @@ Todo runtime DEBE contener `orchestration/.meta.json`:
 
 ### 12.3. Contrato de migración
 
-1. Talos DEBE comparar `runtime_schema_version` contra la versión soportada al arrancar.
-2. Si el runtime es más viejo, Talos DEBE detenerse y exigir `talos migrate`.
-3. Si el runtime es más nuevo, Talos DEBE detenerse y exigir upgrade del sistema.
-4. `talos migrate` DEBE crear un backup completo de `orchestration/` antes de modificar.
+1. Thalos DEBE comparar `runtime_schema_version` contra la versión soportada al arrancar.
+2. Si el runtime es más viejo, Thalos DEBE detenerse y exigir `thalos migrate`.
+3. Si el runtime es más nuevo, Thalos DEBE detenerse y exigir upgrade del sistema.
+4. `thalos migrate` DEBE crear un backup completo de `orchestration/` antes de modificar.
 5. Las migraciones DEBEN ser forward-only.
 6. Toda migración DEBE ser idempotente.
-7. Toda migración DEBE emitir `talos.runtime.migrated`.
-8. Si el estado no puede migrarse, Talos DEBE ofrecer reconstrucción desde el event log.
+7. Toda migración DEBE emitir `thalos.runtime.migrated`.
+8. Si el estado no puede migrarse, Thalos DEBE ofrecer reconstrucción desde el event log.
 9. El event log DEBE conservarse íntegro entre migraciones.
 
 ---
 
 ## 13. Manifiesto del sistema
 
-Talos DEBE declarar:
+Thalos DEBE declarar:
 
 ```txt
 system_name
@@ -590,7 +587,7 @@ extensions
 ### 15.1. Reserva de `spec/`
 
 1. `spec/` DEBE contener únicamente el spec del producto.
-2. `spec/` NO DEBE contener configuración de Talos.
+2. `spec/` NO DEBE contener configuración de Thalos.
 3. `spec/` NO DEBE contener estado de orquestación.
 4. `spec/` NO DEBE contener ejemplos del sistema.
 5. `spec/` NO DEBE contener reportes de ejecución.
@@ -641,11 +638,11 @@ test_plan
 
 ### 16.1. Spec faltante
 
-1. Talos DEBE verificar presencia de spec.
-2. Si no existe spec, Talos DEBE entrar en `SPEC_MISSING`.
-3. Talos DEBE preguntar al usuario si desea asistencia.
-4. Si el usuario acepta, Talos DEBE entrar en `SPEC_GENERATING` con `SpecAssistant`.
-5. Si el usuario rechaza, Talos DEBE entrar en `HALTED`.
+1. Thalos DEBE verificar presencia de spec.
+2. Si no existe spec, Thalos DEBE entrar en `SPEC_MISSING`.
+3. Thalos DEBE preguntar al usuario si desea asistencia.
+4. Si el usuario acepta, Thalos DEBE entrar en `SPEC_GENERATING` con `SpecAssistant`.
+5. Si el usuario rechaza, Thalos DEBE entrar en `HALTED`.
 6. `SpecAssistant` SOLO PUEDE escribir dentro de `spec/`.
 7. `SpecAssistant` NO PUEDE aprobar el spec.
 8. El spec generado DEBE requerir aprobación humana.
@@ -654,20 +651,20 @@ test_plan
 
 **Corrección respecto de 0.0.4: este caso no tenía estado.**
 
-1. Si el spec existe pero no valida contra `spec-manifest.schema.json`, Talos DEBE entrar en `SPEC_INVALID`.
-2. Talos DEBE producir un `SchemaValidationReport` con la lista completa de violaciones.
-3. Talos NO DEBE intentar corregir el spec sin autorización explícita del usuario.
+1. Si el spec existe pero no valida contra `spec-manifest.schema.json`, Thalos DEBE entrar en `SPEC_INVALID`.
+2. Thalos DEBE producir un `SchemaValidationReport` con la lista completa de violaciones.
+3. Thalos NO DEBE intentar corregir el spec sin autorización explícita del usuario.
 4. Desde `SPEC_INVALID` el usuario PUEDE corregir manualmente o autorizar a `SpecAssistant`.
-5. Talos NO DEBE planificar desde `SPEC_INVALID`.
+5. Thalos NO DEBE planificar desde `SPEC_INVALID`.
 
 ---
 
-## 17. Entidades de Talos
+## 17. Entidades de Thalos
 
 | Entidad | Definición |
 |---|---|
 | Project | Entidad raíz del desarrollo actual |
-| System | Motor normativo y ejecutable llamado Talos |
+| System | Motor normativo y ejecutable llamado Thalos |
 | Spec | Descripción normativa del producto a construir |
 | Program | Conjunto planificado de features derivadas del spec |
 | Feature | Unidad independiente de valor |
@@ -765,7 +762,7 @@ Deterministas. Sin modelo. Sin presupuesto de tokens. **No son roles.**
 
 ### 20.1. Ejes ortogonales
 
-Talos separa dos dimensiones que 0.0.4 mezclaba:
+Thalos separa dos dimensiones que 0.0.4 mezclaba:
 
 ```txt
 capability_tier -> qué tan capaz debe ser el modelo (ordena el routing)
@@ -998,68 +995,68 @@ POST_MERGE_GATE
 
 | # | Desde | Hacia | Gate | Actor | Evidencia requerida | Evento |
 |---|---|---|---|---|---|---|
-| P1 | INIT | PRECONDITION_CHECK | — | Orchestrator | — | `talos.run.started` |
-| P2 | PRECONDITION_CHECK | PRECONDITION_FAILED | PRECONDITION_GATE=fail | Orchestrator | `PreconditionReport` | `talos.precondition.failed` |
-| P3 | PRECONDITION_CHECK | SPEC_MISSING | PRECONDITION_GATE=pass | Orchestrator | `PreconditionReport` | `talos.spec.missing` |
-| P4 | PRECONDITION_CHECK | SPEC_INVALID | SPEC_SCHEMA_GATE=fail | Orchestrator | `PreconditionReport`, `SchemaValidationReport` | `talos.spec.invalid` |
-| P5 | PRECONDITION_CHECK | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | Orchestrator | `PreconditionReport`, `SchemaValidationReport` | `talos.spec.validated` |
-| P6 | PRECONDITION_CHECK | SPEC_APPROVED | SPEC_SCHEMA_GATE=pass + status=approved | Orchestrator | `SchemaValidationReport`, `HumanApproval` | `talos.spec.approved` |
-| P7 | PRECONDITION_FAILED | PRECONDITION_CHECK | — | HumanApprover | `HumanDecision(retry)` | `talos.precondition.recheck` |
-| P8 | PRECONDITION_FAILED | HALTED | — | HumanApprover | `HumanDecision(abort)` | `talos.run.halted` |
-| P9 | SPEC_MISSING | SPEC_ASSIST_OFFERED | — | Orchestrator | — | `talos.spec.assist_offered` |
-| P10 | SPEC_ASSIST_OFFERED | SPEC_GENERATING | HUMAN_GATE=accept | HumanApprover | `HumanDecision(accept)` | `talos.spec.assist_requested` |
-| P11 | SPEC_ASSIST_OFFERED | HALTED | HUMAN_GATE=decline | HumanApprover | `HumanDecision(decline)` | `talos.run.halted` |
-| P12 | SPEC_GENERATING | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | SpecAssistant | `SpecDraft`, `SchemaValidationReport` | `talos.spec.draft_generated` |
-| P13 | SPEC_GENERATING | SPEC_INVALID | SPEC_SCHEMA_GATE=fail | SpecAssistant | `SchemaValidationReport` | `talos.spec.invalid` |
-| P14 | SPEC_INVALID | SPEC_GENERATING | HUMAN_GATE=accept | HumanApprover | `HumanDecision(assist)` | `talos.spec.assist_requested` |
-| P15 | SPEC_INVALID | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | HumanApprover | `SchemaValidationReport` | `talos.spec.validated` |
-| P16 | SPEC_INVALID | HALTED | — | HumanApprover | `HumanDecision(abort)` | `talos.run.halted` |
-| P17 | SPEC_REVIEW | SPEC_APPROVED | HUMAN_GATE=approve | HumanApprover | `HumanApproval` | `talos.spec.approved` |
-| P18 | SPEC_REVIEW | SPEC_GENERATING | HUMAN_GATE=revise | HumanApprover | `HumanDecision(revise)` | `talos.spec.revision_requested` |
-| P19 | SPEC_REVIEW | HALTED | HUMAN_GATE=reject | HumanApprover | `HumanDecision(reject)` | `talos.run.halted` |
-| P20 | SPEC_APPROVED | PROGRAM_PLANNING | SPEC_GATE | Planner | `ApprovedSpecRef` | `talos.program.planning_started` |
-| P21 | PROGRAM_PLANNING | PROGRAM_READY | PLAN_GATE=pass | Orchestrator | `ProgramPlan`, `SchemaValidationReport` | `talos.program.planned` |
-| P22 | PROGRAM_PLANNING | PROGRAM_PLANNING | PLAN_GATE=fail, attempts<max | Planner | `ErrorRecord` | `talos.program.planning_retried` |
-| P23 | PROGRAM_PLANNING | HALTED | PLAN_GATE=fail, attempts>=max | Orchestrator | `ErrorRecord` | `talos.escalation.triggered` |
-| P24 | PROGRAM_READY | PROGRAM_DONE | — | Orchestrator | `FeatureStateSet(all terminal)` | `talos.program.completed` |
-| P25 | PROGRAM_READY | HALTED | — | HumanApprover | `HumanDecision(abort)` | `talos.run.halted` |
+| P1 | INIT | PRECONDITION_CHECK | — | Orchestrator | — | `thalos.run.started` |
+| P2 | PRECONDITION_CHECK | PRECONDITION_FAILED | PRECONDITION_GATE=fail | Orchestrator | `PreconditionReport` | `thalos.precondition.failed` |
+| P3 | PRECONDITION_CHECK | SPEC_MISSING | PRECONDITION_GATE=pass | Orchestrator | `PreconditionReport` | `thalos.spec.missing` |
+| P4 | PRECONDITION_CHECK | SPEC_INVALID | SPEC_SCHEMA_GATE=fail | Orchestrator | `PreconditionReport`, `SchemaValidationReport` | `thalos.spec.invalid` |
+| P5 | PRECONDITION_CHECK | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | Orchestrator | `PreconditionReport`, `SchemaValidationReport` | `thalos.spec.validated` |
+| P6 | PRECONDITION_CHECK | SPEC_APPROVED | SPEC_SCHEMA_GATE=pass + status=approved | Orchestrator | `SchemaValidationReport`, `HumanApproval` | `thalos.spec.approved` |
+| P7 | PRECONDITION_FAILED | PRECONDITION_CHECK | — | HumanApprover | `HumanDecision(retry)` | `thalos.precondition.recheck` |
+| P8 | PRECONDITION_FAILED | HALTED | — | HumanApprover | `HumanDecision(abort)` | `thalos.run.halted` |
+| P9 | SPEC_MISSING | SPEC_ASSIST_OFFERED | — | Orchestrator | — | `thalos.spec.assist_offered` |
+| P10 | SPEC_ASSIST_OFFERED | SPEC_GENERATING | HUMAN_GATE=accept | HumanApprover | `HumanDecision(accept)` | `thalos.spec.assist_requested` |
+| P11 | SPEC_ASSIST_OFFERED | HALTED | HUMAN_GATE=decline | HumanApprover | `HumanDecision(decline)` | `thalos.run.halted` |
+| P12 | SPEC_GENERATING | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | SpecAssistant | `SpecDraft`, `SchemaValidationReport` | `thalos.spec.draft_generated` |
+| P13 | SPEC_GENERATING | SPEC_INVALID | SPEC_SCHEMA_GATE=fail | SpecAssistant | `SchemaValidationReport` | `thalos.spec.invalid` |
+| P14 | SPEC_INVALID | SPEC_GENERATING | HUMAN_GATE=accept | HumanApprover | `HumanDecision(assist)` | `thalos.spec.assist_requested` |
+| P15 | SPEC_INVALID | SPEC_REVIEW | SPEC_SCHEMA_GATE=pass | HumanApprover | `SchemaValidationReport` | `thalos.spec.validated` |
+| P16 | SPEC_INVALID | HALTED | — | HumanApprover | `HumanDecision(abort)` | `thalos.run.halted` |
+| P17 | SPEC_REVIEW | SPEC_APPROVED | HUMAN_GATE=approve | HumanApprover | `HumanApproval` | `thalos.spec.approved` |
+| P18 | SPEC_REVIEW | SPEC_GENERATING | HUMAN_GATE=revise | HumanApprover | `HumanDecision(revise)` | `thalos.spec.revision_requested` |
+| P19 | SPEC_REVIEW | HALTED | HUMAN_GATE=reject | HumanApprover | `HumanDecision(reject)` | `thalos.run.halted` |
+| P20 | SPEC_APPROVED | PROGRAM_PLANNING | SPEC_GATE | Planner | `ApprovedSpecRef` | `thalos.program.planning_started` |
+| P21 | PROGRAM_PLANNING | PROGRAM_READY | PLAN_GATE=pass | Orchestrator | `ProgramPlan`, `SchemaValidationReport` | `thalos.program.planned` |
+| P22 | PROGRAM_PLANNING | PROGRAM_PLANNING | PLAN_GATE=fail, attempts<max | Planner | `ErrorRecord` | `thalos.program.planning_retried` |
+| P23 | PROGRAM_PLANNING | HALTED | PLAN_GATE=fail, attempts>=max | Orchestrator | `ErrorRecord` | `thalos.escalation.triggered` |
+| P24 | PROGRAM_READY | PROGRAM_DONE | — | Orchestrator | `FeatureStateSet(all terminal)` | `thalos.program.completed` |
+| P25 | PROGRAM_READY | HALTED | — | HumanApprover | `HumanDecision(abort)` | `thalos.run.halted` |
 
 ### 22.5. Tabla de transiciones — feature
 
 | # | Desde | Hacia | Gate | Actor | Evidencia requerida | Evento |
 |---|---|---|---|---|---|---|
-| F1 | — | FEATURE_READY | READY_GATE | Orchestrator | `ProgramPlanEntry`, `DependencySet(satisfied)` | `talos.feature.ready` |
-| F2 | FEATURE_READY | FEATURE_IN_PROGRESS | READY_GATE + lease otorgado | FeatureLead | `LockLease`, `IssueRef`, `BranchRef` | `talos.feature.started` |
-| F3 | FEATURE_READY | FEATURE_BLOCKED | READY_GATE=fail | Orchestrator | `GateResult(reasons)` | `talos.feature.blocked` |
-| F4 | FEATURE_IN_PROGRESS | FEATURE_REVIEW | DEV_GATE=pass | Developer | `TaskResultSet`, `LocalTestReport`, `CommitRef` | `talos.feature.dev_complete` |
-| F5 | FEATURE_IN_PROGRESS | FEATURE_BLOCKED | DEV_GATE=fail | Orchestrator | `ErrorRecord` | `talos.feature.blocked` |
-| F6 | FEATURE_REVIEW | FEATURE_IN_PROGRESS | REVIEW_GATE=changes | Reviewer | `Review(blockers>0)` | `talos.review.changes_requested` |
-| F7 | FEATURE_REVIEW | FEATURE_PR_OPEN | REVIEW_GATE=pass | FeatureLead | `Review(blockers=0)`, `PullRequestRef` | `talos.feature.pr_opened` |
-| F8 | FEATURE_PR_OPEN | FEATURE_CHECKS_RUNNING | — | Orchestrator | `CheckRunSet(pending)` | `talos.feature.checks_started` |
-| F9 | FEATURE_CHECKS_RUNNING | FEATURE_CHECKS_PASS | CHECKS_GATE=pass | Orchestrator | `CheckRunSet(all pass)` | `talos.feature.checks_passed` |
-| F10 | FEATURE_CHECKS_RUNNING | FEATURE_CHECKS_FAIL | CHECKS_GATE=fail | Orchestrator | `CheckRunSet(>=1 fail)` | `talos.feature.checks_failed` |
-| F11 | FEATURE_CHECKS_FAIL | FEATURE_FIXING | — | FeatureLead | `IssueList` | `talos.feature.fixing` |
-| F12 | FEATURE_CHECKS_FAIL | FEATURE_ESCALATED | attempts>=max | Orchestrator | `ErrorRecord(attempts)` | `talos.escalation.triggered` |
-| F13 | FEATURE_FIXING | FEATURE_CHECKS_RUNNING | DEV_GATE=pass | Developer | `TaskResultSet`, `CommitRef` | `talos.feature.checks_started` |
-| F14 | FEATURE_CHECKS_PASS | FEATURE_HUMAN_REVIEW | POLICY_GATE=needs_human | Orchestrator | `PolicyDecision(human_required)` | `talos.feature.human_requested` |
-| F15 | FEATURE_CHECKS_PASS | FEATURE_MERGING | POLICY_GATE=pass | Orchestrator | `PolicyDecision(auto_allowed)` | `talos.feature.merge_requested` |
-| F16 | FEATURE_HUMAN_REVIEW | FEATURE_MERGING | HUMAN_GATE=approve | HumanApprover | `HumanApproval` | `talos.feature.merge_requested` |
-| F17 | FEATURE_HUMAN_REVIEW | FEATURE_IN_PROGRESS | HUMAN_GATE=changes | HumanApprover | `HumanDecision(changes)` | `talos.review.changes_requested` |
-| F18 | FEATURE_HUMAN_REVIEW | FEATURE_ABANDONED | HUMAN_GATE=reject | HumanApprover | `HumanDecision(reject)` | `talos.feature.abandoned` |
-| F19 | FEATURE_MERGING | FEATURE_MERGED | MERGE_GATE=pass | MergeGate | `CheckRunSet`, `PolicyDecision`, `MergeResult` | `talos.feature.merged` |
-| F20 | FEATURE_MERGING | FEATURE_BLOCKED | MERGE_GATE=fail | MergeGate | `MergeGateReport` | `talos.feature.blocked` |
-| F21 | FEATURE_MERGED | FEATURE_DONE | POST_MERGE_GATE=pass | Orchestrator | `PostMergeReport`, `LockRelease` | `talos.feature.done` |
-| F22 | FEATURE_MERGED | FEATURE_ESCALATED | POST_MERGE_GATE=fail | Orchestrator | `PostMergeReport(failures)` | `talos.escalation.triggered` |
-| F23 | FEATURE_BLOCKED | FEATURE_IN_PROGRESS | — | FeatureLead | `BlockerResolution` | `talos.feature.unblocked` |
-| F24 | FEATURE_BLOCKED | FEATURE_ESCALATED | timeout o attempts>=max | Orchestrator | `ErrorRecord` | `talos.escalation.triggered` |
-| F25 | FEATURE_ESCALATED | FEATURE_IN_PROGRESS | HUMAN_GATE=resume | HumanApprover | `HumanDecision(resume)` | `talos.feature.unblocked` |
-| F26 | FEATURE_ESCALATED | FEATURE_FAILED | HUMAN_GATE=abort | HumanApprover | `HumanDecision(abort)` | `talos.feature.failed` |
-| F27 | cualquier no terminal | FEATURE_ABANDONED | HUMAN_GATE=abandon | HumanApprover | `HumanDecision(abandon)`, `LockRelease` | `talos.feature.abandoned` |
+| F1 | — | FEATURE_READY | READY_GATE | Orchestrator | `ProgramPlanEntry`, `DependencySet(satisfied)` | `thalos.feature.ready` |
+| F2 | FEATURE_READY | FEATURE_IN_PROGRESS | READY_GATE + lease otorgado | FeatureLead | `LockLease`, `IssueRef`, `BranchRef` | `thalos.feature.started` |
+| F3 | FEATURE_READY | FEATURE_BLOCKED | READY_GATE=fail | Orchestrator | `GateResult(reasons)` | `thalos.feature.blocked` |
+| F4 | FEATURE_IN_PROGRESS | FEATURE_REVIEW | DEV_GATE=pass | Developer | `TaskResultSet`, `LocalTestReport`, `CommitRef` | `thalos.feature.dev_complete` |
+| F5 | FEATURE_IN_PROGRESS | FEATURE_BLOCKED | DEV_GATE=fail | Orchestrator | `ErrorRecord` | `thalos.feature.blocked` |
+| F6 | FEATURE_REVIEW | FEATURE_IN_PROGRESS | REVIEW_GATE=changes | Reviewer | `Review(blockers>0)` | `thalos.review.changes_requested` |
+| F7 | FEATURE_REVIEW | FEATURE_PR_OPEN | REVIEW_GATE=pass | FeatureLead | `Review(blockers=0)`, `PullRequestRef` | `thalos.feature.pr_opened` |
+| F8 | FEATURE_PR_OPEN | FEATURE_CHECKS_RUNNING | — | Orchestrator | `CheckRunSet(pending)` | `thalos.feature.checks_started` |
+| F9 | FEATURE_CHECKS_RUNNING | FEATURE_CHECKS_PASS | CHECKS_GATE=pass | Orchestrator | `CheckRunSet(all pass)` | `thalos.feature.checks_passed` |
+| F10 | FEATURE_CHECKS_RUNNING | FEATURE_CHECKS_FAIL | CHECKS_GATE=fail | Orchestrator | `CheckRunSet(>=1 fail)` | `thalos.feature.checks_failed` |
+| F11 | FEATURE_CHECKS_FAIL | FEATURE_FIXING | — | FeatureLead | `IssueList` | `thalos.feature.fixing` |
+| F12 | FEATURE_CHECKS_FAIL | FEATURE_ESCALATED | attempts>=max | Orchestrator | `ErrorRecord(attempts)` | `thalos.escalation.triggered` |
+| F13 | FEATURE_FIXING | FEATURE_CHECKS_RUNNING | DEV_GATE=pass | Developer | `TaskResultSet`, `CommitRef` | `thalos.feature.checks_started` |
+| F14 | FEATURE_CHECKS_PASS | FEATURE_HUMAN_REVIEW | POLICY_GATE=needs_human | Orchestrator | `PolicyDecision(human_required)` | `thalos.feature.human_requested` |
+| F15 | FEATURE_CHECKS_PASS | FEATURE_MERGING | POLICY_GATE=pass | Orchestrator | `PolicyDecision(auto_allowed)` | `thalos.feature.merge_requested` |
+| F16 | FEATURE_HUMAN_REVIEW | FEATURE_MERGING | HUMAN_GATE=approve | HumanApprover | `HumanApproval` | `thalos.feature.merge_requested` |
+| F17 | FEATURE_HUMAN_REVIEW | FEATURE_IN_PROGRESS | HUMAN_GATE=changes | HumanApprover | `HumanDecision(changes)` | `thalos.review.changes_requested` |
+| F18 | FEATURE_HUMAN_REVIEW | FEATURE_ABANDONED | HUMAN_GATE=reject | HumanApprover | `HumanDecision(reject)` | `thalos.feature.abandoned` |
+| F19 | FEATURE_MERGING | FEATURE_MERGED | MERGE_GATE=pass | MergeGate | `CheckRunSet`, `PolicyDecision`, `MergeResult` | `thalos.feature.merged` |
+| F20 | FEATURE_MERGING | FEATURE_BLOCKED | MERGE_GATE=fail | MergeGate | `MergeGateReport` | `thalos.feature.blocked` |
+| F21 | FEATURE_MERGED | FEATURE_DONE | POST_MERGE_GATE=pass | Orchestrator | `PostMergeReport`, `LockRelease` | `thalos.feature.done` |
+| F22 | FEATURE_MERGED | FEATURE_ESCALATED | POST_MERGE_GATE=fail | Orchestrator | `PostMergeReport(failures)` | `thalos.escalation.triggered` |
+| F23 | FEATURE_BLOCKED | FEATURE_IN_PROGRESS | — | FeatureLead | `BlockerResolution` | `thalos.feature.unblocked` |
+| F24 | FEATURE_BLOCKED | FEATURE_ESCALATED | timeout o attempts>=max | Orchestrator | `ErrorRecord` | `thalos.escalation.triggered` |
+| F25 | FEATURE_ESCALATED | FEATURE_IN_PROGRESS | HUMAN_GATE=resume | HumanApprover | `HumanDecision(resume)` | `thalos.feature.unblocked` |
+| F26 | FEATURE_ESCALATED | FEATURE_FAILED | HUMAN_GATE=abort | HumanApprover | `HumanDecision(abort)` | `thalos.feature.failed` |
+| F27 | cualquier no terminal | FEATURE_ABANDONED | HUMAN_GATE=abandon | HumanApprover | `HumanDecision(abandon)`, `LockRelease` | `thalos.feature.abandoned` |
 
 ### 22.6. Reglas de transición
 
 1. Una transición DEBE existir en la tabla 22.4 o 22.5 para ser permitida.
-2. Toda transición no listada DEBE rechazarse y emitir `talos.transition.rejected`.
+2. Toda transición no listada DEBE rechazarse y emitir `thalos.transition.rejected`.
 3. Toda transición DEBE presentar la evidencia requerida antes de evaluar el gate.
 4. Si falta evidencia, el gate DEBE resolver `fail` con `missing_evidence` poblado.
 5. Toda transición DEBE emitir exactamente un evento de estado.
@@ -1089,7 +1086,7 @@ Toda evidencia DEBE cumplir:
   "schema_version": 1,
   "run_id": "r-2026-07-30-001",
   "feature_id": "F001",
-  "produced_by": "adapter:talos.adapter.github",
+  "produced_by": "adapter:thalos.adapter.github",
   "produced_at": "2026-07-30T12:00:00Z",
   "artifact_refs": ["orchestration/reports/F001/checks.json"],
   "digest": "sha256:...",
@@ -1206,11 +1203,11 @@ needs_human
 
 ## 25. Comunicación
 
-**Corrección respecto de 0.0.6: esta sección estaba especificada entera y no la implementaba nadie.** Tipos, estados, hilos, canales, expiración y límite de payload, más su schema, y lo único que la mencionaba en el código era el `init` creando `orchestration/messages/` vacío. La consecuencia se vio corriendo: un agente contestó *"no puedo seguir, confirmame si reiniciaron el workspace"* y Talos lo descartó porque esperaba un archivo con otro formato. El motivo existía, era bueno, y no llegaba a nadie.
+**Corrección respecto de 0.0.6: esta sección estaba especificada entera y no la implementaba nadie.** Tipos, estados, hilos, canales, expiración y límite de payload, más su schema, y lo único que la mencionaba en el código era el `init` creando `orchestration/messages/` vacío. La consecuencia se vio corriendo: un agente contestó *"no puedo seguir, confirmame si reiniciaron el workspace"* y Thalos lo descartó porque esperaba un archivo con otro formato. El motivo existía, era bueno, y no llegaba a nadie.
 
 ### 25.1. Principios
 
-1. Toda comunicación entre roles DEBE ser estructurada. **Lo estructurado es el sobre —quién, a quién, sobre qué, en qué hilo— y lo pone Talos. El cuerpo puede ser cualquier cosa, incluido ruido.**
+1. Toda comunicación entre roles DEBE ser estructurada. **Lo estructurado es el sobre —quién, a quién, sobre qué, en qué hilo— y lo pone Thalos. El cuerpo puede ser cualquier cosa, incluido ruido.**
 1.a. Un rol NO DEBE quedar obligado a conocer un formato para ser escuchado. Exigirle la estructura al emisor es lo que rompe la comunicación: si contesta distinto, se pierde.
 1.b. Una respuesta que no se puede interpretar DEBE persistirse igual y entregarse a quien pueda actuar sobre ella. Un mensaje ilegible entregado vale más que uno perfecto que nunca se escribió.
 1.c. Un paso que termina sin lo que esperaba DEBE registrar lo que sí recibió, y DEBE decir dónde leerlo y cómo responder.
@@ -1314,7 +1311,7 @@ ESCALATED
 
 ### 27.2. Comprobación de cuenta git
 
-Talos DEBE verificar como mínimo:
+Thalos DEBE verificar como mínimo:
 
 ```txt
 git --version
@@ -1324,7 +1321,7 @@ git config user.email
 git remote get-url origin
 ```
 
-Si se usa GitHub, Talos DEBE verificar:
+Si se usa GitHub, Thalos DEBE verificar:
 
 ```txt
 gh auth status
@@ -1332,27 +1329,27 @@ gh auth status
 
 ### 27.3. Fallo de precondition
 
-1. Si una precondition requerida falla, Talos DEBE transicionar a `PRECONDITION_FAILED`.
-2. Talos DEBE producir un `PreconditionReport` con el resultado de cada verificación.
-3. Talos DEBE mostrar el requisito faltante.
-4. Talos DEBE sugerir comando de remediación.
-5. Talos NO DEBE continuar en modo silencioso.
-6. Talos PUEDE continuar en modo dry-run si la falla es externa y no crítica, y DEBE declararlo explícitamente en el reporte.
-7. Si falla el health check de un adapter OPCIONAL, Talos PUEDE continuar sin esa capacidad.
+1. Si una precondition requerida falla, Thalos DEBE transicionar a `PRECONDITION_FAILED`.
+2. Thalos DEBE producir un `PreconditionReport` con el resultado de cada verificación.
+3. Thalos DEBE mostrar el requisito faltante.
+4. Thalos DEBE sugerir comando de remediación.
+5. Thalos NO DEBE continuar en modo silencioso.
+6. Thalos PUEDE continuar en modo dry-run si la falla es externa y no crítica, y DEBE declararlo explícitamente en el reporte.
+7. Si falla el health check de un adapter OPCIONAL, Thalos PUEDE continuar sin esa capacidad.
 
 ---
 
 ## 28. Spec intake
 
-1. Talos DEBE leer `spec/manifest.yaml`.
-2. Talos DEBE validar el spec contra `spec-manifest.schema.json`.
-3. Talos DEBE producir `SchemaValidationReport` en toda validación.
-4. Talos NO DEBE planificar si el spec no está `approved`.
-5. Talos PUEDE asistir la generación del spec en estado `draft`.
-6. Talos DEBE requerir aprobación humana para pasar a `approved`.
+1. Thalos DEBE leer `spec/manifest.yaml`.
+2. Thalos DEBE validar el spec contra `spec-manifest.schema.json`.
+3. Thalos DEBE producir `SchemaValidationReport` en toda validación.
+4. Thalos NO DEBE planificar si el spec no está `approved`.
+5. Thalos PUEDE asistir la generación del spec en estado `draft`.
+6. Thalos DEBE requerir aprobación humana para pasar a `approved`.
 7. El spec intake DEBE poder ejecutarse sin plugins.
 8. El digest del spec aprobado DEBE registrarse en `ApprovedSpecRef`.
-9. Si el spec cambia después de `SPEC_APPROVED`, Talos DEBE detectarlo por digest y DEBE exigir re-aprobación.
+9. Si el spec cambia después de `SPEC_APPROVED`, Thalos DEBE detectarlo por digest y DEBE exigir re-aprobación.
 
 ---
 
@@ -1459,7 +1456,7 @@ Un lock es un **lease**: una concesión con expiración.
 3. El propietario DEBE emitir heartbeat con intervalo menor o igual a `ttl_seconds / 3`.
 4. Un heartbeat DEBE extender `expires_at`.
 5. Si `now > expires_at`, el `LockManager` DEBE considerar el lease expirado.
-6. Al expirar, el `LockManager` DEBE incrementar `generation` y emitir `talos.lock.expired`.
+6. Al expirar, el `LockManager` DEBE incrementar `generation` y emitir `thalos.lock.expired`.
 7. El lease DEBE liberarse al alcanzar un estado terminal de feature.
 8. Los leases DEBEN persistirse en `orchestration/locks.json`.
 
@@ -1472,8 +1469,8 @@ Un lock es un **lease**: una concesión con expiración.
 
 ### 32.4. Concurrencia
 
-1. Si dos features requieren el mismo recurso, Talos DEBE serializar.
-2. Si la serialización excede `config.reliability.lock_wait_timeout`, Talos DEBE escalar.
+1. Si dos features requieren el mismo recurso, Thalos DEBE serializar.
+2. Si la serialización excede `config.reliability.lock_wait_timeout`, Thalos DEBE escalar.
 3. v0.0.6 RECOMIENDA `max_parallel_features = 1`.
 4. Los plugins PUEDEN visualizar leases.
 5. Los plugins NO DEBEN liberar leases.
@@ -1485,11 +1482,11 @@ Un lock es un **lease**: una concesión con expiración.
 1. Toda ejecución PUEDE tener presupuesto.
 2. Todo rol agente PUEDE tener límite de costo.
 3. Toda feature PUEDE tener límite de iteraciones.
-4. Si se excede el presupuesto, Talos DEBE pausar o escalar.
+4. Si se excede el presupuesto, Thalos DEBE pausar o escalar.
 5. v0.0.6 RECOMIENDA límites estrictos.
 6. Todo consumo de presupuesto DEBE registrarse como evento.
 7. El presupuesto NO DEBE influir en el routing por capacidad (sección 20.1); DEBE limitar la ejecución.
-8. Si el presupuesto impide usar el tier requerido, Talos DEBE escalar en lugar de degradar silenciosamente el modelo.
+8. Si el presupuesto impide usar el tier requerido, Thalos DEBE escalar en lugar de degradar silenciosamente el modelo.
 9. Los plugins PUEDEN mostrar presupuesto.
 10. Los plugins NO DEBEN omitir límites.
 
@@ -1503,8 +1500,8 @@ Un lock es un **lease**: una concesión con expiración.
 4. Todo PR DEBE exponer checks.
 5. Todo fallo DEBE registrar `ErrorRecord`.
 6. Todo `GateResult` DEBE persistirse.
-7. Talos DEBE permitir reconstruir el historial completo desde el event log.
-8. Talos DEBE exponer consumo de tokens y costo por rol y por feature.
+7. Thalos DEBE permitir reconstruir el historial completo desde el event log.
+8. Thalos DEBE exponer consumo de tokens y costo por rol y por feature.
 9. Los plugins PUEDEN proveer vistas.
 10. La observabilidad del núcleo NO DEBE depender de plugins.
 
@@ -1527,7 +1524,7 @@ Todo error DEBE clasificarse en exactamente una clase:
 | `AUTH` | no | credenciales inválidas o insuficientes |
 | `PRECONDITION` | no | condición previa no cumplida |
 | `VALIDATION` | no | entrada inválida |
-| `INTERNAL` | no | defecto del propio Talos |
+| `INTERNAL` | no | defecto del propio Thalos |
 
 ### 35.2. Reglas
 
@@ -1537,8 +1534,8 @@ Todo error DEBE clasificarse en exactamente una clase:
 4. Todo reintento DEBE usar backoff exponencial con jitter.
 5. `RATE_LIMITED` DEBE respetar el `retry_after` del proveedor si existe.
 6. Todo reintento DEBE reutilizar la misma idempotency key.
-7. Al agotar `max_attempts`, Talos DEBE escalar y registrar `ErrorRecord` con el historial de intentos.
-8. Talos NO DEBE ocultar errores.
+7. Al agotar `max_attempts`, Thalos DEBE escalar y registrar `ErrorRecord` con el historial de intentos.
+8. Thalos NO DEBE ocultar errores.
 9. Los adapters DEBEN reportar errores estructurados con clase.
 10. Los plugins DEBEN mostrar errores sin mutar estado.
 
@@ -1589,14 +1586,14 @@ reliability:
 3. Los tokens DEBEN tener mínimo privilegio.
 4. Los logs NO DEBEN exponer secrets.
 5. La aprobación humana DEBE exigirse en rutas críticas.
-6. Talos DEBE respetar branch protection.
+6. Thalos DEBE respetar branch protection.
 7. Los plugins NO DEBEN almacenar secrets en claro.
 8. Los adapters DEBEN soportar credenciales externas.
 9. Las extensiones DEBEN declarar permisos sensibles.
 10. La evidencia NO DEBE contener secrets.
-11. Talos DEBE aplicar detección de secrets antes de persistir cualquier artefacto derivado de salida de modelo.
-12. La detección de secrets DEBE ser **fail-closed**: ante resultado incierto, Talos NO DEBE persistir y DEBE escalar.
-13. Talos DEBE redactar y registrar el hecho de la redacción, nunca el valor redactado.
+11. Thalos DEBE aplicar detección de secrets antes de persistir cualquier artefacto derivado de salida de modelo.
+12. La detección de secrets DEBE ser **fail-closed**: ante resultado incierto, Thalos NO DEBE persistir y DEBE escalar.
+13. Thalos DEBE redactar y registrar el hecho de la redacción, nunca el valor redactado.
 
 ---
 
@@ -1609,10 +1606,10 @@ reliability:
 3. Los plugins DEBEN consumir la CLI/API del core.
 4. Los plugins NO DEBEN acceder directamente a estado interno no expuesto.
 5. El core NO DEBE depender de implementaciones concretas.
-6. Talos DEBE poder reemplazar adapters sin cambiar el core.
-7. Talos DEBE poder operar sin plugins.
-8. Talos DEBE poder operar solo con el adapter dry-run.
-9. Talos DEBE poder operar sin ninguna extensión opcional.
+6. Thalos DEBE poder reemplazar adapters sin cambiar el core.
+7. Thalos DEBE poder operar sin plugins.
+8. Thalos DEBE poder operar solo con el adapter dry-run.
+9. Thalos DEBE poder operar sin ninguna extensión opcional.
 
 ### 37.2. Extension points
 
@@ -1631,7 +1628,7 @@ RoleRegistry
 Validator
 Reporter
 Plugin
-MemoryAdapter        (definido en talos-memory-0.0.1.md)
+MemoryAdapter        (definido en thalos-memory-0.0.1.md)
 ```
 
 ### 37.3. Reglas de extensión
@@ -1653,7 +1650,7 @@ MemoryAdapter        (definido en talos-memory-0.0.1.md)
 
 ### 37.4. Capacidades requeridas e implementaciones
 
-**Novedad de 0.0.6.** La versión 0.0.5 marcaba adapters concretos como "opcionales" sin distinguir entre la capacidad y quién la implementa. Eso era arquitectónicamente correcto y operacionalmente engañoso: `talos-adapter-herdr` es reemplazable, pero la capacidad que implementa no es prescindible.
+**Novedad de 0.0.6.** La versión 0.0.5 marcaba adapters concretos como "opcionales" sin distinguir entre la capacidad y quién la implementa. Eso era arquitectónicamente correcto y operacionalmente engañoso: `thalos-adapter-herdr` es reemplazable, pero la capacidad que implementa no es prescindible.
 
 #### 37.4.1. Definiciones
 
@@ -1670,11 +1667,11 @@ Una capacidad ES **OPCIONAL** si el sistema cumple todos sus criterios de acepta
 
 | Extension point | Capacidad | Implementación de referencia | Satisfacible por dry-run |
 |---|---|---|---|
-| `FileSystemAdapter` | REQUERIDA | `talos-adapter-filesystem` | no |
-| `ModelProviderAdapter` | REQUERIDA | `talos-adapter-model` | no |
-| `ExecutionAdapter` | REQUERIDA | `talos-adapter-herdr` | solo simulación |
-| `CoordinationAdapter` | REQUERIDA | `talos-adapter-github` | sí |
-| `CIAdapter` | REQUERIDA | `talos-adapter-ci` | sí |
+| `FileSystemAdapter` | REQUERIDA | `thalos-adapter-filesystem` | no |
+| `ModelProviderAdapter` | REQUERIDA | `thalos-adapter-model` | no |
+| `ExecutionAdapter` | REQUERIDA | `thalos-adapter-herdr` | solo simulación |
+| `CoordinationAdapter` | REQUERIDA | `thalos-adapter-github` | sí |
+| `CIAdapter` | REQUERIDA | `thalos-adapter-ci` | sí |
 | `MessageTransport` | REQUERIDA | incluida en el núcleo | n/a |
 | `StateStore` | REQUERIDA | incluida en el núcleo | n/a |
 | `EventBus` | REQUERIDA | incluida en el núcleo | n/a |
@@ -1683,8 +1680,8 @@ Una capacidad ES **OPCIONAL** si el sistema cumple todos sus criterios de acepta
 | `RoleRegistry` | OPCIONAL | incluida en el núcleo | n/a |
 | `Validator` | OPCIONAL | — | n/a |
 | `Reporter` | OPCIONAL | — | n/a |
-| `Plugin` | OPCIONAL | `talos-plugin-herdr` | n/a |
-| `MemoryAdapter` | OPCIONAL | `talos-adapter-engram` | n/a |
+| `Plugin` | OPCIONAL | `thalos-plugin-herdr` | n/a |
+| `MemoryAdapter` | OPCIONAL | `thalos-adapter-engram` | n/a |
 
 #### 37.4.3. Reglas
 
@@ -1700,7 +1697,7 @@ Una capacidad ES **OPCIONAL** si el sistema cumple todos sus criterios de acepta
 
 | Modo | ExecutionAdapter | CoordinationAdapter | CIAdapter | Uso |
 |---|---|---|---|---|
-| `dry-run-only` | dryrun | dryrun | dryrun | validar el sistema, tests del propio Talos |
+| `dry-run-only` | dryrun | dryrun | dryrun | validar el sistema, tests del propio Thalos |
 | `partial` | productivo | dryrun | dryrun | ejecutar agentes sin tocar el repositorio remoto |
 | `production` | productivo | productivo | productivo | ejecución real |
 
@@ -1710,15 +1707,15 @@ Reglas:
 2. `dry-run-only` NO PUEDE producir evidencia con `verifiable: true`.
 3. `dry-run-only` NO PUEDE alcanzar `FEATURE_MERGED`.
 4. El modo DEBE declararse en `config/system.yaml` y DEBE registrarse en todo `GateResult`.
-5. Un cambio de modo DEBE emitir `talos.run.mode_changed`.
+5. Un cambio de modo DEBE emitir `thalos.run.mode_changed`.
 
 #### 37.4.5. Resolución de binarios externos
 
 Cuando una implementación depende de un binario externo, la resolución DEBE seguir esta cascada:
 
 ```txt
-1. variable de entorno específica    (p. ej. TALOS_HERDR_BIN)
-2. .talos/bin/<binario>
+1. variable de entorno específica    (p. ej. THALOS_HERDR_BIN)
+2. .thalos/bin/<binario>
 3. PATH del sistema
 ```
 
@@ -1727,9 +1724,9 @@ Reglas:
 1. La primera coincidencia gana.
 2. El adapter DEBE verificar la versión del binario resuelto contra su rango declarado.
 3. Una versión fuera de rango DEBE fallar en `PRECONDITION_GATE`.
-4. Talos NO DEBE instalar binarios de terceros de forma automática.
-5. Talos DEBE mostrar el comando de instalación exacto cuando el binario falte.
-6. Talos DEBE reportar la ruta resuelta en `talos doctor`.
+4. Thalos NO DEBE instalar binarios de terceros de forma automática.
+5. Thalos DEBE mostrar el comando de instalación exacto cuando el binario falte.
+6. Thalos DEBE reportar la ruta resuelta en `thalos doctor`.
 
 **Nota sobre vendoring:** el paso 2 existe para casos de pinneo deliberado. NO ES el mecanismo recomendado para herramientas que gestionan estado a nivel de máquina o de sesión de terminal, porque múltiples copias compiten por el mismo recurso. Las herramientas de esa clase DEBEN instalarse a nivel de sistema.
 
@@ -1783,12 +1780,12 @@ idempotency_key = sha256(
 ### 38.3. Adapters recomendados
 
 ```txt
-talos-adapter-filesystem
-talos-adapter-github
-talos-adapter-herdr
-talos-adapter-ci
-talos-adapter-model
-talos-adapter-dryrun
+thalos-adapter-filesystem
+thalos-adapter-github
+thalos-adapter-herdr
+thalos-adapter-ci
+thalos-adapter-model
+thalos-adapter-dryrun
 ```
 
 ### 38.4. Capacidades esperadas
@@ -1859,20 +1856,20 @@ return_mock_result
 
 **Corrección respecto de 0.0.5: este adapter estaba marcado "opcional", lo que confundía la reemplazabilidad de la implementación con la prescindibilidad de la capacidad.**
 
-`talos-adapter-herdr` ES la **implementación de referencia** de `ExecutionAdapter`, que es una capacidad **REQUERIDA** según la sección 37.4.2.
+`thalos-adapter-herdr` ES la **implementación de referencia** de `ExecutionAdapter`, que es una capacidad **REQUERIDA** según la sección 37.4.2.
 
 Consecuencias normativas:
 
 1. Toda instalación productiva DEBE tener exactamente un `ExecutionAdapter` habilitado.
-2. `talos-adapter-herdr` DEBE ser reemplazable por otra implementación sin modificar el núcleo.
-3. Talos DEBE poder validarse en modo `dry-run-only` sin Herdr instalado.
-4. Talos NO PUEDE ejecutar trabajo real sin un `ExecutionAdapter` productivo.
+2. `thalos-adapter-herdr` DEBE ser reemplazable por otra implementación sin modificar el núcleo.
+3. Thalos DEBE poder validarse en modo `dry-run-only` sin Herdr instalado.
+4. Thalos NO PUEDE ejecutar trabajo real sin un `ExecutionAdapter` productivo.
 5. El núcleo NO DEBE nombrar a Herdr fuera del extension registry y de la configuración.
 
 ID:
 
 ```txt
-talos.adapter.herdr
+thalos.adapter.herdr
 ```
 
 Implementa:
@@ -1890,7 +1887,7 @@ herdr >= 0.7.0
 Resolución del binario según la sección 37.4.5:
 
 ```txt
-TALOS_HERDR_BIN -> .talos/bin/herdr -> PATH
+THALOS_HERDR_BIN -> .thalos/bin/herdr -> PATH
 ```
 
 Herdr gestiona workspaces y paneles de terminal, que ES estado a nivel de máquina y de sesión. Por lo tanto DEBE instalarse a nivel de sistema y NO DEBE vendorearse por proyecto.
@@ -1910,7 +1907,7 @@ El adapter de Herdr ES responsable del **ciclo de vida de procesos**:
 - reportar metadata de ejecución.
 ```
 
-**Corrección respecto de 0.0.6 inicial: la lista declaraba un ciclo de vida sin cierre.** Talos abría sesiones y no cerraba ninguna: cada despacho dejaba un panel ocupando la pantalla, y quien decidiera que una sesión ya no hace falta -una persona o un rol coordinador- no tenía por dónde pedirlo. Un ciclo de vida con nacimiento y sin fin no es un ciclo.
+**Corrección respecto de 0.0.6 inicial: la lista declaraba un ciclo de vida sin cierre.** Thalos abría sesiones y no cerraba ninguna: cada despacho dejaba un panel ocupando la pantalla, y quien decidiera que una sesión ya no hace falta -una persona o un rol coordinador- no tenía por dónde pedirlo. Un ciclo de vida con nacimiento y sin fin no es un ciclo.
 
 El adapter de Herdr NO DEBE:
 
@@ -1945,7 +1942,7 @@ Un plugin NO ejecuta trabajo del ciclo de vida. Un plugin **invoca** al núcleo.
 ### 39.2. Principios
 
 1. Un plugin NO DEBE ser requerido para ejecutar el núcleo.
-2. Un plugin DEBE invocar a Talos mediante CLI/API.
+2. Un plugin DEBE invocar a Thalos mediante CLI/API.
 3. Un plugin NO DEBE mutar estado interno directamente.
 4. Un plugin NO DEBE redefinir política.
 5. Un plugin NO DEBE crear recursos de ejecución; eso es responsabilidad de un adapter.
@@ -1960,24 +1957,24 @@ Un plugin NO ejecuta trabajo del ciclo de vida. Un plugin **invoca** al núcleo.
 ID recomendado:
 
 ```txt
-talos.plugin.herdr
+thalos.plugin.herdr
 ```
 
 Paquete recomendado:
 
 ```txt
-talos-plugin-herdr
+thalos-plugin-herdr
 ```
 
 El plugin PUEDE exponer comandos que invocan la CLI:
 
 ```txt
-Start SDLC      -> talos plan
-Start Feature   -> talos feature start <id>
-Run Review      -> talos review run <id>
-Open PR         -> talos feature pr <id>
-Merge Guard     -> talos merge guard <pr>
-Show Status     -> talos status --format json
+Start SDLC      -> thalos plan
+Start Feature   -> thalos feature start <id>
+Run Review      -> thalos review run <id>
+Open PR         -> thalos feature pr <id>
+Merge Guard     -> thalos merge guard <pr>
+Show Status     -> thalos status --format json
 ```
 
 El plugin PUEDE definir layouts de visualización:
@@ -1991,7 +1988,7 @@ Workspace: proyecto
   Tab: logs
 ```
 
-El plugin NO DEBE lanzar agentes por su cuenta; DEBE delegar en `talos` que a su vez usa `ExecutionAdapter`.
+El plugin NO DEBE lanzar agentes por su cuenta; DEBE delegar en `thalos` que a su vez usa `ExecutionAdapter`.
 
 ---
 
@@ -1999,7 +1996,7 @@ El plugin NO DEBE lanzar agentes por su cuenta; DEBE delegar en `talos` que a su
 
 ### 40.1. Principios
 
-1. Talos DEBE exponer una CLI principal llamada `talos`.
+1. Thalos DEBE exponer una CLI principal llamada `thalos`.
 2. La CLI DEBE poder operar sin plugins.
 3. La CLI DEBE ser el medio principal de automatización.
 4. Los plugins DEBEN usar CLI/API en lugar de acceso directo a archivos internos.
@@ -2013,52 +2010,52 @@ El plugin NO DEBE lanzar agentes por su cuenta; DEBE delegar en `talos` que a su
 Los pasos que PRODUCEN evidencia se listan aparte porque son los que hacen avanzar el ciclo: sin ellos la máquina de estados sabe qué falta y nadie lo produce.
 
 ```txt
-talos init
-talos init --dry-run-only
-talos doctor
-talos migrate
-talos spec check
-talos spec assist
-talos plan
-talos status
-talos next
-talos run [--max N]
-talos boot <feature_id>
-talos feature start <id>
-talos feature dispatch <id> --role <rol>
-talos feature work <id>
-talos feature commit <id>
-talos feature test <id>
-talos feature collect <id>
-talos feature pr <id>
-talos feature checks <id>
-talos feature advance <id> --to <estado>
-talos feature release <id>
-talos feature status <id>
-talos review run <feature_id>
-talos merge guard <pr_number>
-talos message list
-talos message show <id>
-talos message answer <id> --text "..."
-talos message send
-talos budget [feature_id]
-talos events tail
-talos evidence show <evidence_id>
-talos gate explain <gate> <feature_id>
-talos lock list
-talos lock reclaim <resource>
-talos plugin list
-talos plugin enable <id>
-talos plugin disable <id>
-talos adapter list
-talos adapter check <id>
-talos adapter capabilities
-talos adapter set <capability> <adapter_id>
-talos mode show
-talos mode set <dry-run-only|partial|production>
+thalos init
+thalos init --dry-run-only
+thalos doctor
+thalos migrate
+thalos spec check
+thalos spec assist
+thalos plan
+thalos status
+thalos next
+thalos run [--max N]
+thalos boot <feature_id>
+thalos feature start <id>
+thalos feature dispatch <id> --role <rol>
+thalos feature work <id>
+thalos feature commit <id>
+thalos feature test <id>
+thalos feature collect <id>
+thalos feature pr <id>
+thalos feature checks <id>
+thalos feature advance <id> --to <estado>
+thalos feature release <id>
+thalos feature status <id>
+thalos review run <feature_id>
+thalos merge guard <pr_number>
+thalos message list
+thalos message show <id>
+thalos message answer <id> --text "..."
+thalos message send
+thalos budget [feature_id]
+thalos events tail
+thalos evidence show <evidence_id>
+thalos gate explain <gate> <feature_id>
+thalos lock list
+thalos lock reclaim <resource>
+thalos plugin list
+thalos plugin enable <id>
+thalos plugin disable <id>
+thalos adapter list
+thalos adapter check <id>
+thalos adapter capabilities
+thalos adapter set <capability> <adapter_id>
+thalos mode show
+thalos mode set <dry-run-only|partial|production>
 ```
 
-`talos adapter capabilities` DEBE listar cada capacidad, su clasificación REQUERIDA u OPCIONAL, la implementación habilitada y el estado de su binario externo si aplica.
+`thalos adapter capabilities` DEBE listar cada capacidad, su clasificación REQUERIDA u OPCIONAL, la implementación habilitada y el estado de su binario externo si aplica.
 
 ### 40.3. Salida estructurada
 
@@ -2121,7 +2118,7 @@ lock list
   "id": "ev-01H...",
   "seq": 142,
   "schema_version": 1,
-  "type": "talos.feature.merged",
+  "type": "thalos.feature.merged",
   "ts": "2026-07-30T12:05:00Z",
   "run_id": "r-2026-07-30-001",
   "project": "my-project",
@@ -2136,71 +2133,71 @@ lock list
 
 ### 41.4. Namespace
 
-Todos los eventos oficiales DEBEN usar namespace `talos`.
+Todos los eventos oficiales DEBEN usar namespace `thalos`.
 
 ### 41.5. Catálogo de eventos
 
 ```txt
-talos.run.started
-talos.run.halted
-talos.runtime.migrated
+thalos.run.started
+thalos.run.halted
+thalos.runtime.migrated
 
-talos.precondition.checked
-talos.precondition.failed
-talos.precondition.recheck
+thalos.precondition.checked
+thalos.precondition.failed
+thalos.precondition.recheck
 
-talos.spec.missing
-talos.spec.invalid
-talos.spec.assist_offered
-talos.spec.assist_requested
-talos.spec.draft_generated
-talos.spec.validated
-talos.spec.revision_requested
-talos.spec.approved
+thalos.spec.missing
+thalos.spec.invalid
+thalos.spec.assist_offered
+thalos.spec.assist_requested
+thalos.spec.draft_generated
+thalos.spec.validated
+thalos.spec.revision_requested
+thalos.spec.approved
 
-talos.program.planning_started
-talos.program.planning_retried
-talos.program.planned
-talos.program.completed
+thalos.program.planning_started
+thalos.program.planning_retried
+thalos.program.planned
+thalos.program.completed
 
-talos.feature.ready
-talos.feature.started
-talos.feature.dev_complete
-talos.feature.pr_opened
-talos.feature.checks_started
-talos.feature.checks_passed
-talos.feature.checks_failed
-talos.feature.fixing
-talos.feature.human_requested
-talos.feature.merge_requested
-talos.feature.merged
-talos.feature.done
-talos.feature.blocked
-talos.feature.unblocked
-talos.feature.failed
-talos.feature.abandoned
+thalos.feature.ready
+thalos.feature.started
+thalos.feature.dev_complete
+thalos.feature.pr_opened
+thalos.feature.checks_started
+thalos.feature.checks_passed
+thalos.feature.checks_failed
+thalos.feature.fixing
+thalos.feature.human_requested
+thalos.feature.merge_requested
+thalos.feature.merged
+thalos.feature.done
+thalos.feature.blocked
+thalos.feature.unblocked
+thalos.feature.failed
+thalos.feature.abandoned
 
-talos.review.changes_requested
-talos.review.completed
+thalos.review.changes_requested
+thalos.review.completed
 
-talos.gate.evaluated
-talos.transition.rejected
+thalos.gate.evaluated
+thalos.transition.rejected
 
-talos.message.sent
-talos.message.acked
-talos.message.expired
+thalos.message.sent
+thalos.message.acked
+thalos.message.expired
 
-talos.lock.acquired
-talos.lock.renewed
-talos.lock.released
-talos.lock.expired
-talos.lock.reclaimed
+thalos.lock.acquired
+thalos.lock.renewed
+thalos.lock.released
+thalos.lock.expired
+thalos.lock.reclaimed
 
-talos.budget.consumed
-talos.budget.exceeded
+thalos.budget.consumed
+thalos.budget.exceeded
 
-talos.error.occurred
-talos.escalation.triggered
+thalos.error.occurred
+thalos.escalation.triggered
 ```
 
 ---
@@ -2240,7 +2237,7 @@ orchestration/
 
 ### 42.3. Reconstrucción
 
-1. `talos doctor --rebuild-state` DEBE reconstruir `state.json` desde `events/`.
+1. `thalos doctor --rebuild-state` DEBE reconstruir `state.json` desde `events/`.
 2. La reconstrucción DEBE validar continuidad de `seq`.
 3. La reconstrucción DEBE producir un estado idéntico al proyectado.
 4. Una divergencia entre proyección y reconstrucción DEBE reportarse como error `INTERNAL`.
@@ -2266,10 +2263,10 @@ config/reliability.yaml
 ### 43.2. Archivos del proyecto
 
 ```txt
-talos.config/project.yaml
-talos.config/overrides.yaml
-talos.config/extensions.yaml
-talos.config/reliability.yaml
+thalos.config/project.yaml
+thalos.config/overrides.yaml
+thalos.config/extensions.yaml
+thalos.config/reliability.yaml
 ```
 
 ### 43.3. Cadena de resolución de configuración
@@ -2280,9 +2277,9 @@ Resolución de un valor de configuración, de menor a mayor precedencia:
 
 ```txt
 1. system defaults        (config/*.yaml del sistema)
-2. project config         (talos.config/project.yaml)
-3. project overrides      (talos.config/overrides.yaml)
-4. environment variables  (TALOS_*)
+2. project config         (thalos.config/project.yaml)
+3. project overrides      (thalos.config/overrides.yaml)
+4. environment variables  (THALOS_*)
 5. CLI flags
 ```
 
@@ -2296,14 +2293,14 @@ Reglas:
 ### 43.4. Restricción de policy sobre configuración
 
 1. `config/policy.yaml` NO participa en la cadena de resolución: **restringe** el resultado.
-2. Tras resolver la configuración, Talos DEBE validarla contra policy.
+2. Tras resolver la configuración, Thalos DEBE validarla contra policy.
 3. Un valor resuelto que viole policy DEBE causar error `VALIDATION` al cargar.
-4. Talos NO DEBE sobreescribir silenciosamente un valor que viole policy.
+4. Thalos NO DEBE sobreescribir silenciosamente un valor que viole policy.
 5. Un override de proyecto NO PUEDE relajar una restricción de policy.
 
 ### 43.5. Cadena de autoridad de decisión
 
-Cuando Talos debe decidir y las fuentes se contradicen, el orden de autoridad, de mayor a menor, ES:
+Cuando Thalos debe decidir y las fuentes se contradicen, el orden de autoridad, de mayor a menor, ES:
 
 ```txt
 1. Policy y aprobación humana
@@ -2347,7 +2344,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/evidence/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/evidence/0.0.5",
   "type": "object",
   "required": [
     "id", "kind", "schema_version", "run_id",
@@ -2387,7 +2384,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/gate-result/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/gate-result/0.0.5",
   "type": "object",
   "required": ["gate", "decision", "reasons", "evaluated_at", "evaluator_version"],
   "properties": {
@@ -2431,14 +2428,14 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/event/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/event/0.0.5",
   "type": "object",
   "required": ["id", "seq", "schema_version", "type", "ts", "run_id", "project", "actor"],
   "properties": {
     "id": { "type": "string" },
     "seq": { "type": "integer", "minimum": 1 },
     "schema_version": { "type": "integer", "minimum": 1 },
-    "type": { "type": "string", "pattern": "^talos\\.[a-z_]+\\.[a-z_]+$" },
+    "type": { "type": "string", "pattern": "^thalos\\.[a-z_]+\\.[a-z_]+$" },
     "ts": { "type": "string", "format": "date-time" },
     "run_id": { "type": "string" },
     "project": { "type": "string" },
@@ -2458,7 +2455,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/program-plan/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/program-plan/0.0.5",
   "type": "object",
   "required": ["schema_version", "project", "spec_digest", "created_at", "features"],
   "properties": {
@@ -2506,7 +2503,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/feature-state/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/feature-state/0.0.5",
   "type": "object",
   "required": ["schema_version", "feature_id", "state", "updated_at", "last_event_seq"],
   "properties": {
@@ -2571,7 +2568,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/review/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/review/0.0.5",
   "type": "object",
   "required": ["schema_version", "feature_id", "reviewer", "created_at", "verdict", "findings"],
   "properties": {
@@ -2610,7 +2607,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/locks/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/locks/0.0.5",
   "type": "object",
   "required": ["schema_version", "leases"],
   "properties": {
@@ -2646,7 +2643,7 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/message/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/message/0.0.5",
   "type": "object",
   "required": ["id", "thread_id", "type", "from", "to", "state", "created_at"],
   "properties": {
@@ -2687,12 +2684,12 @@ permisos
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/runtime-meta/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/runtime-meta/0.0.5",
   "type": "object",
-  "required": ["runtime_schema_version", "talos_version", "run_id", "created_at", "last_event_seq"],
+  "required": ["runtime_schema_version", "thalos_version", "run_id", "created_at", "last_event_seq"],
   "properties": {
     "runtime_schema_version": { "type": "integer", "minimum": 1 },
-    "talos_version": { "type": "string" },
+    "thalos_version": { "type": "string" },
     "run_id": { "type": "string" },
     "created_at": { "type": "string", "format": "date-time" },
     "last_migrated_at": { "type": ["string", "null"], "format": "date-time" },
@@ -2711,7 +2708,7 @@ El `declared_scope` de la task DEBE salir del alcance del rol —el mismo que im
 
 ```json
 {
-  "$id": "https://talos-sdlc/schemas/task/0.0.7",
+  "$id": "https://thalos-sdlc/schemas/task/0.0.7",
   "required": ["schema_version", "feature_id", "task_id", "title", "declared_scope", "created_at"],
   "properties": {
     "role": "quién la ejecuta",
@@ -2725,13 +2722,13 @@ El `declared_scope` de la task DEBE salir del alcance del rol —el mismo que im
 
 ### 44.11. blocker.schema.json
 
-**Añadido en 0.0.7.** La OTRA salida de un encargo. Un rol tenía una sola forma de terminar —su entregable— y ninguna de decir "no puedo": cuando no podía, contestaba en prosa, Talos esperaba un archivo que no llegaba y reportaba "terminó sin dejar entregable", perdiendo el motivo.
+**Añadido en 0.0.7.** La OTRA salida de un encargo. Un rol tenía una sola forma de terminar —su entregable— y ninguna de decir "no puedo": cuando no podía, contestaba en prosa, Thalos esperaba un archivo que no llegaba y reportaba "terminó sin dejar entregable", perdiendo el motivo.
 
 Esto NO reemplaza al canal de mensajes de la sección 25, lo complementa: el rol que puede contestar estructurado tiene por dónde, y el que no, igual es escuchado. Exigir este formato como única vía sería repetir el error que la regla 25.1.a corrige.
 
 ```json
 {
-  "$id": "https://talos-sdlc/schemas/blocker/0.0.7",
+  "$id": "https://thalos-sdlc/schemas/blocker/0.0.7",
   "required": ["schema_version", "feature_id", "task_id", "role", "reason", "created_at"],
   "properties": {
     "reason": "por qué no se puede seguir, concreto",
@@ -2761,7 +2758,7 @@ La memoria persistente ES una extensión opcional.
 Su especificación completa vive en:
 
 ```txt
-talos-memory-0.0.1.md
+thalos-memory-0.0.1.md
 ```
 
 El núcleo solo declara:
@@ -2773,13 +2770,13 @@ El núcleo solo declara:
 
 ---
 
-## 46. Criterios de aceptación de Talos v0.0.6
+## 46. Criterios de aceptación de Thalos v0.0.6
 
 La versión 0.0.6 se considera aceptable si:
 
 **Identidad y estructura**
 
-1. El paquete canónico es `talos-sdlc` y la decisión `D-001` está resuelta.
+1. El paquete canónico es `thalos-sdlc` y la decisión `D-001` está resuelta.
 2. El sistema respeta la reserva semántica de directorios.
 3. El sistema no escribe reglas dentro de `spec/`.
 
@@ -2794,7 +2791,7 @@ La versión 0.0.6 se considera aceptable si:
 **Ciclo de vida**
 
 9. Toda transición ejecutada existe en la tabla de transiciones.
-10. Toda transición no listada se rechaza y emite `talos.transition.rejected`.
+10. Toda transición no listada se rechaza y emite `thalos.transition.rejected`.
 11. Toda transición produce y persiste la evidencia declarada.
 12. Todo gate devuelve un `GateResult` válido contra su schema.
 13. Un gate con evidencia faltante devuelve `fail` con `missing_evidence` poblado.
@@ -2813,7 +2810,7 @@ La versión 0.0.6 se considera aceptable si:
 **Eventos y estado**
 
 22. Todo evento tiene `seq` monotónico y `schema_version`.
-23. `talos doctor --rebuild-state` reconstruye el estado y coincide con la proyección.
+23. `thalos doctor --rebuild-state` reconstruye el estado y coincide con la proyección.
 24. Un hueco en `seq` detiene la reconstrucción y reporta error.
 25. El runtime declara `runtime_schema_version` y exige migración cuando corresponde.
 
@@ -2844,12 +2841,12 @@ La versión 0.0.6 se considera aceptable si:
 39. Cero implementaciones de una capacidad REQUERIDA falla en `PRECONDITION_GATE`.
 40. Dos implementaciones de la misma capacidad falla en `PRECONDITION_GATE` por ambigüedad.
 41. El núcleo no nombra `herdr`, `engram`, `github` ni ninguna otra implementación fuera del extension registry y la configuración.
-42. `talos-adapter-herdr` puede reemplazarse por otra implementación de `ExecutionAdapter` sin modificar el núcleo.
+42. `thalos-adapter-herdr` puede reemplazarse por otra implementación de `ExecutionAdapter` sin modificar el núcleo.
 43. Un binario externo faltante produce un mensaje con el comando de instalación exacto y no instala nada por su cuenta.
 44. Un binario externo fuera del rango de versión declarado falla en `PRECONDITION_GATE`.
-45. La cascada de resolución de binarios respeta el orden entorno → `.talos/bin/` → `PATH`.
+45. La cascada de resolución de binarios respeta el orden entorno → `.thalos/bin/` → `PATH`.
 46. El modo `dry-run-only` no produce evidencia con `verifiable: true` ni alcanza `FEATURE_MERGED`.
-47. `talos adapter capabilities` reporta la clasificación y el estado real de cada capacidad.
+47. `thalos adapter capabilities` reporta la clasificación y el estado real de cada capacidad.
 
 ---
 
@@ -2863,9 +2860,9 @@ auto_merge = false
 human_approval = required_for_critical
 routing = capability_based
 
-execution_adapter = talos.adapter.dryrun
-coordination_adapter = talos.adapter.dryrun
-ci_adapter = talos.adapter.dryrun
+execution_adapter = thalos.adapter.dryrun
+coordination_adapter = thalos.adapter.dryrun
+ci_adapter = thalos.adapter.dryrun
 
 plugins = none
 memory_extension = disabled
@@ -2891,11 +2888,11 @@ No DEBE avanzarse de modo hasta que el modo anterior cumpla sus criterios de ace
 | `api_version` de los manifiestos | subir a `0.0.7`; `core_compatibility` pasa a `>=0.0.7` |
 | Comando de pruebas del proyecto | declarar `test_command` en `config/system.yaml` |
 | Alcance del `Developer` | regenerar `write-scope.rules`; el deny total sobre `orchestration/` se reemplaza por denies dirigidos |
-| Canal de mensajes | ninguna: `orchestration/messages/` ya lo creaba `talos init` |
+| Canal de mensajes | ninguna: `orchestration/messages/` ya lo creaba `thalos init` |
 
-**Este es el único cambio que rompe compatibilidad de adapters.** Un `ExecutionAdapter` de 0.0.6 no implementa `close_session`: `talos adapters` lo reporta como operación faltante y el ciclo no puede cerrar sesiones, aunque el resto siga funcionando.
+**Este es el único cambio que rompe compatibilidad de adapters.** Un `ExecutionAdapter` de 0.0.6 no implementa `close_session`: `thalos adapters` lo reporta como operación faltante y el ciclo no puede cerrar sesiones, aunque el resto siga funcionando.
 
-No hay cambios de schema de estado runtime. `runtime_schema_version` permanece en `1`. La migración desde 0.0.6 NO requiere `talos migrate`.
+No hay cambios de schema de estado runtime. `runtime_schema_version` permanece en `1`. La migración desde 0.0.6 NO requiere `thalos migrate`.
 
 ---
 
@@ -2904,12 +2901,12 @@ No hay cambios de schema de estado runtime. `runtime_schema_version` permanece e
 | Cambio | Acción requerida |
 |---|---|
 | Extension points clasificados por capacidad | declarar exactamente una implementación por capacidad REQUERIDA |
-| `ExecutionAdapter` pasa a capacidad REQUERIDA | habilitar `talos-adapter-herdr` o `talos-adapter-dryrun` |
+| `ExecutionAdapter` pasa a capacidad REQUERIDA | habilitar `thalos-adapter-herdr` o `thalos-adapter-dryrun` |
 | Modo de operación explícito | declarar `execution_mode` en `config/system.yaml` |
-| Preconditions 13, 14 y 15 añadidas | verificar con `talos doctor` |
-| Resolución de binarios en cascada | definir `TALOS_HERDR_BIN` solo si se necesita override |
+| Preconditions 13, 14 y 15 añadidas | verificar con `thalos doctor` |
+| Resolución de binarios en cascada | definir `THALOS_HERDR_BIN` solo si se necesita override |
 
-No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanece en `1`. La migración desde 0.0.5 NO requiere `talos migrate`.
+No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanece en `1`. La migración desde 0.0.5 NO requiere `thalos migrate`.
 
 ---
 
@@ -2917,7 +2914,7 @@ No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanec
 
 | Cambio | Acción requerida |
 |---|---|
-| `config/` de proyecto renombrado a `talos.config/` | mover archivos |
+| `config/` de proyecto renombrado a `thalos.config/` | mover archivos |
 | Perfiles `cheap/mid/expensive` → `fast/balanced/deep` | reescribir `models.yaml` y `routing.yaml` |
 | `dynamic` y `none` eliminados del dominio de tier | usar `null` en `role_minimum_tier` |
 | Roles `QA`, `Fixer`, `MergeManager`, `Escalation`, `Orchestrator` eliminados | reasignar según tabla 18.4 |
@@ -2928,16 +2925,16 @@ No hay cambios de schema ni de estado runtime. `runtime_schema_version` permanec
 | Locks requieren `ttl_seconds`, `expires_at`, `generation` | migrar `locks.json` |
 | Adapters mutantes requieren `idempotency_key` | actualizar implementaciones |
 | Cadena de precedencia de config corregida | revisar overrides que dependían del orden anterior |
-| Memoria movida a documento aparte | migrar config a `talos-memory-0.0.1.md` |
+| Memoria movida a documento aparte | migrar config a `thalos-memory-0.0.1.md` |
 
 ### 48.3. Procedimiento
 
 ```txt
-1. talos migrate --dry-run
+1. thalos migrate --dry-run
 2. revisar el plan de migración
-3. talos migrate
-4. talos doctor
-5. talos doctor --rebuild-state
+3. thalos migrate
+4. thalos doctor
+5. thalos doctor --rebuild-state
 6. comparar proyección contra reconstrucción
 ```
 
@@ -2962,11 +2959,11 @@ En los cuatro casos la operación reportaba éxito. Ninguno era detectable sin e
 
 **Comunicación: la estructura es del sobre (reglas 6.a a 6.c)**
 
-La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al agente es justamente lo que la rompe: si contesta distinto, se pierde. Un agente contestó *"no puedo seguir: el repo ya tiene memorias de F001 y el árbol está vacío, confirmame si reiniciaron el workspace"* —un bloqueo legítimo y bien argumentado— y Talos lo descartó porque esperaba un archivo con un formato.
+La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al agente es justamente lo que la rompe: si contesta distinto, se pierde. Un agente contestó *"no puedo seguir: el repo ya tiene memorias de F001 y el árbol está vacío, confirmame si reiniciaron el workspace"* —un bloqueo legítimo y bien argumentado— y Thalos lo descartó porque esperaba un archivo con un formato.
 
 - La sección 25 estaba especificada entera y **no la implementaba nadie**: lo único que la mencionaba era el `init` creando `orchestration/messages/` vacío.
 - Un paso que termina sin su entregable ahora lee lo que el agente dijo y lo persiste como mensaje dirigido a quien pueda actuar.
-- `talos message answer` cierra el circuito: persiste la respuesta en el mismo hilo, referencia la pregunta **y se la entrega al agente**. Sin ese último tramo la respuesta queda escrita y nadie la lee.
+- `thalos message answer` cierra el circuito: persiste la respuesta en el mismo hilo, referencia la pregunta **y se la entrega al agente**. Sin ese último tramo la respuesta queda escrita y nadie la lee.
 
 **El encargo tiene contrato, y tiene dos salidas**
 
@@ -2976,9 +2973,9 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 **Ciclo de vida completo**
 
-- Añadida `close_session` al contrato de `ExecutionAdapter` (38.5). La lista de responsabilidades iba de "crear sesiones" a "reportar metadata" sin pasar por cerrar: Talos abría paneles y no cerraba ninguno. Un ciclo de vida con nacimiento y sin fin no es un ciclo. **Cambio de contrato: ver 48.0.**
-- `talos feature pr` y `talos feature checks`: después de aprobar la revisión el ciclo se quedaba sin camino, porque las transiciones siguientes exigen `PullRequestRef` y `CheckRunSet` y ningún comando los producía.
-- `talos boot` enciende al coordinador y le cede la decisión del próximo paso, conservando gates, alcance y evidencia en el núcleo.
+- Añadida `close_session` al contrato de `ExecutionAdapter` (38.5). La lista de responsabilidades iba de "crear sesiones" a "reportar metadata" sin pasar por cerrar: Thalos abría paneles y no cerraba ninguno. Un ciclo de vida con nacimiento y sin fin no es un ciclo. **Cambio de contrato: ver 48.0.**
+- `thalos feature pr` y `thalos feature checks`: después de aprobar la revisión el ciclo se quedaba sin camino, porque las transiciones siguientes exigen `PullRequestRef` y `CheckRunSet` y ningún comando los producía.
+- `thalos boot` enciende al coordinador y le cede la decisión del próximo paso, conservando gates, alcance y evidencia en el núcleo.
 
 **Los gates evalúan sus condiciones**
 
@@ -2994,6 +2991,12 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 - El tier ahora sale de `max(tier de la feature, mínimo del rol)`, que es el algoritmo que 20.5 ya definía. Mirar solo la feature dejaba el mínimo del rol declarado y sin efecto.
 - `FeatureLead` pasa a exigir piso `deep` (20.4): coordinar mal no cuesta una tarea, cuesta la feature.
+
+**Nombre**
+
+- `D-001` resuelta: el proyecto pasa de `Talos` a **Thalos**. `talos` estaba tomado en npm y en PyPI —esta última mantenida y de otro dominio— más Talos Linux y Cisco Talos. `thalos` está libre en npm, PyPI y crates.io.
+- El análisis de 0.0.6 tenía dos errores: sobreestimaba la colisión de binario (el CLI ajeno es `talosctl`) y subestimaba la de registries (solo nombraba a Talos Linux).
+- Se hizo ahora y no en `v0.1.0` por costo: 133 archivos y cero instalaciones de terceros. Más tarde solo podía ser más caro.
 
 **Lo que ejecutar enseñó sobre el propio contrato**
 
@@ -3015,7 +3018,7 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 **Herdr**
 
-- Reformulada la sección 38.5: `talos-adapter-herdr` deja de ser "opcional" y pasa a ser la **implementación de referencia** de una capacidad REQUERIDA, reemplazable sin modificar el núcleo.
+- Reformulada la sección 38.5: `thalos-adapter-herdr` deja de ser "opcional" y pasa a ser la **implementación de referencia** de una capacidad REQUERIDA, reemplazable sin modificar el núcleo.
 - Declarado el binario externo requerido `herdr >= 0.7.0`.
 - Declarado que Herdr gestiona estado de máquina y sesión, por lo que debe instalarse a nivel de sistema y no debe vendorearse por proyecto.
 
@@ -3027,9 +3030,9 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 **Resolución de binarios externos**
 
-- Añadida la sección 37.4.5 con cascada `variable de entorno → .talos/bin/ → PATH`.
+- Añadida la sección 37.4.5 con cascada `variable de entorno → .thalos/bin/ → PATH`.
 - Verificación obligatoria de rango de versión.
-- Prohibición explícita de instalar binarios de terceros de forma automática; Talos detecta y guía, no instala.
+- Prohibición explícita de instalar binarios de terceros de forma automática; Thalos detecta y guía, no instala.
 
 **Aislamiento de vendors**
 
@@ -3039,10 +3042,10 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 **Otros**
 
 - Preconditions 13, 14 y 15 añadidas: una implementación por capacidad requerida, binarios resueltos y en rango, modo coherente.
-- Comandos nuevos: `talos adapter capabilities`, `talos adapter set`, `talos mode show`, `talos mode set`, y el flag `talos init --dry-run-only`.
+- Comandos nuevos: `thalos adapter capabilities`, `thalos adapter set`, `thalos mode show`, `thalos mode set`, y el flag `thalos init --dry-run-only`.
 - Criterios de aceptación ampliados de 37 a 47.
 - Modo recomendado de la sección 47 pasa a arrancar en `dry-run-only` con progresión explícita.
-- Sin cambios de schema ni de estado runtime: migrar desde 0.0.5 no requiere `talos migrate`.
+- Sin cambios de schema ni de estado runtime: migrar desde 0.0.5 no requiere `thalos migrate`.
 
 ### 0.0.5
 
@@ -3097,8 +3100,8 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 **Estructura y alcance**
 
-- Extraída la especificación de memoria a `talos-memory-0.0.1.md`. El núcleo pasa de ~38% de contenido opcional a 0%.
-- Renombrado el directorio de configuración de proyecto de `config/` a `talos.config/` para eliminar la colisión con `.talos/config/`.
+- Extraída la especificación de memoria a `thalos-memory-0.0.1.md`. El núcleo pasa de ~38% de contenido opcional a 0%.
+- Renombrado el directorio de configuración de proyecto de `config/` a `thalos.config/` para eliminar la colisión con `.thalos/config/`.
 - Sharpened la frontera entre el adapter y el plugin de Herdr: adapter gobierna procesos, plugin gobierna UI y comandos.
 - Documentado el riesgo de colisión de nombre con Talos Linux como `DECISIÓN ABIERTA D-001`.
 
@@ -3111,7 +3114,7 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 - Añadida la regla de agregación de riesgo (sección 21.5).
 - Añadida la verificación por digest de cambios de spec posteriores a la aprobación.
 - Añadidos códigos de salida de CLI.
-- Añadidos comandos `talos migrate`, `talos events tail`, `talos evidence show`, `talos gate explain`, `talos lock list`, `talos lock reclaim`.
+- Añadidos comandos `thalos migrate`, `thalos events tail`, `thalos evidence show`, `thalos gate explain`, `thalos lock list`, `thalos lock reclaim`.
 
 ### 0.0.4
 
@@ -3119,15 +3122,15 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 - Nuevo extension point: MemoryAdapter.
 - Nueva entidad: Memory.
 - Nuevo rol opcional: MemoryCurator.
-- Nuevos eventos `talos.memory.*` y comandos CLI `talos memory *`.
+- Nuevos eventos `thalos.memory.*` y comandos CLI `thalos memory *`.
 - Regla explícita: memoria es consultiva, no normativa.
 
 ### 0.0.3
 
-- Nombre oficial del sistema: Talos.
-- Paquete canónico: talos-sdlc. CLI oficial: talos.
-- Runtime local recomendado: `.talos/`.
-- Namespace de eventos: talos.
+- Nombre oficial del sistema: Thalos.
+- Paquete canónico: thalos-sdlc. CLI oficial: thalos.
+- Runtime local recomendado: `.thalos/`.
+- Namespace de eventos: thalos.
 - Prefijos oficiales para adapters y plugins.
 
 ### 0.0.2
@@ -3150,7 +3153,6 @@ La regla 6 pedía comunicación "estructurada", y exigirle esa estructura al age
 
 | ID | Decisión | Bloquea | Recomendación |
 |---|---|---|---|
-| D-001 | Nombre del binario ante colisión con Talos Linux | v0.1.0 | verificar registries; binario `talos-sdlc` con alias condicional |
 | D-002 | Backend por defecto del `StateStore` (archivos vs SQLite) | paralelismo > 1 | archivos para el piloto serial; SQLite antes de habilitar paralelismo |
 | D-003 | Estrategia de merge por defecto (squash / merge / rebase) | primer merge real | squash, para mantener una trazabilidad de un commit por feature |
 | D-004 | Alcance del primer vertical slice | inicio de implementación | `doctor → spec check → plan → feature start` en dry-run, sin extensiones |
@@ -3170,9 +3172,9 @@ modo dry-run-only
   3. Máquina de estados + gates       (secciones 22, 23, 24)
   4. Registro de capacidades          (sección 37.4)
   5. DryRunAdapter                    (sección 38)
-  6. talos doctor / talos spec check  (secciones 27, 28)
-  7. talos plan                       (sección 29)
-  8. talos feature start              (sección 30)
+  6. thalos doctor / thalos spec check  (secciones 27, 28)
+  7. thalos plan                       (sección 29)
+  8. thalos feature start              (sección 30)
 
 modo partial
   9. ExecutionAdapter real (herdr)    (sección 38.5)

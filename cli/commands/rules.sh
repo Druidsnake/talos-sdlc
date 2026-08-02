@@ -1,16 +1,16 @@
 #!/bin/sh
-# talos rules - reglas activas y su mecanismo de enforcement.
+# thalos rules - reglas activas y su mecanismo de enforcement.
 set -eu
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos rules - reglas normativas activas y su mecanismo de enforcement
+thalos rules - reglas normativas activas y su mecanismo de enforcement
 
 USO
-    talos rules [topic]
+    thalos rules [topic]
 
 TOPICS
     roles  lifecycle  evidence  gates  spec  merge
@@ -22,17 +22,17 @@ FUERZA (derivada del mecanismo, no declarada)
     blanda  9-10  consultivo, aunque el texto suene a orden
 
 EJEMPLO
-    talos rules merge
+    thalos rules merge
 USAGE
 }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
-[ -f "$SYS/system/rules.yaml" ] || { echo "talos: falta system/rules.yaml" >&2; exit 2; }
+[ -f "$SYS/system/rules.yaml" ] || { echo "thalos: falta system/rules.yaml" >&2; exit 2; }
 
 PY=""
 [ -x .venv/bin/python ] && PY=".venv/bin/python"
 [ -z "$PY" ] && command -v python3 >/dev/null 2>&1 && PY="python3"
-[ -n "$PY" ] || { echo "talos: hace falta python con pyyaml" >&2; exit 3; }
+[ -n "$PY" ] || { echo "thalos: hace falta python con pyyaml" >&2; exit 3; }
 
 exec "$PY" - "$SYS" "$@" <<'PY'
 import sys, pathlib, yaml

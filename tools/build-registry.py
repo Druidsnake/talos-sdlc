@@ -26,7 +26,7 @@ REGISTRY = ROOT / "config" / "extensions.yaml"
 ADAPTERS = ROOT / "adapters"
 OUT = ROOT / "hooks" / "generated" / "capabilities.tsv"
 
-# Clasificacion de talos-0.0.7.md 37.4.2. Vive aca y no en el YAML porque es
+# Clasificacion de thalos-0.0.7.md 37.4.2. Vive aca y no en el YAML porque es
 # normativa del nucleo, no configuracion: el usuario no puede degradar una
 # capacidad requerida a opcional editando su config.
 REQUIRED = [
@@ -48,7 +48,7 @@ OPTIONAL = [
 def adapter_index():
     """id declarado en cada manifiesto -> (directorio, binario externo).
 
-    El binario viaja a la tabla para que talos doctor pueda reportar la ruta
+    El binario viaja a la tabla para que thalos doctor pueda reportar la ruta
     resuelta (regla 37.4.5.6) sin volver a parsear YAML en el camino caliente.
     """
     index = {}

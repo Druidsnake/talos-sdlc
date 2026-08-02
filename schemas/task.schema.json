@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/task/0.0.7",
+  "$id": "https://thalos-sdlc/schemas/task/0.0.7",
   "title": "Task",
-  "description": "El encargo concreto que recibe un rol ejecutor. Ver talos-0.0.7.md seccion 30.2. Existe porque task-result.schema.json exige declared_scope y nada declaraba ese alcance: el rol tenia que producir un resultado sobre una task que ningun artefacto definia. Un entregable cuyo contrato de entrada no existe no es verificable, es adivinado.",
+  "description": "El encargo concreto que recibe un rol ejecutor. Ver thalos-0.0.7.md seccion 30.2. Existe porque task-result.schema.json exige declared_scope y nada declaraba ese alcance: el rol tenia que producir un resultado sobre una task que ningun artefacto definia. Un entregable cuyo contrato de entrada no existe no es verificable, es adivinado.",
   "type": "object",
   "required": [
     "schema_version",

@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos human - la via por la que una persona acuña su decision.
+# thalos human - la via por la que una persona acuña su decision.
 #
 # Diecisiete transiciones de las tablas 22.4 y 22.5 exigen HumanDecision o
 # HumanApproval. Sin una forma de producirlas, esas transiciones son
@@ -13,20 +13,20 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 EVDIR=orchestration/evidence
 
 usage() {
     cat <<'USAGE'
-talos human - registra una decision humana como evidencia
+thalos human - registra una decision humana como evidencia
 
 USO
-    talos human approve <FEATURE> [--scope TEXTO] [--note TEXTO]
-    talos human decide  <FEATURE> --decision <D> [--note TEXTO]
-    talos human list    [FEATURE]
+    thalos human approve <FEATURE> [--scope TEXTO] [--note TEXTO]
+    thalos human decide  <FEATURE> --decision <D> [--note TEXTO]
+    thalos human list    [FEATURE]
 
 DECISIONES
     retry     reintentar lo que fallo
@@ -57,7 +57,7 @@ case "${1:-}" in -h|--help|"") usage; [ -z "${1:-}" ] && exit 1 || exit 0 ;; esa
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
+PY=$(thalos_python) || { echo "thalos: no hay python3" >&2; exit 2; }
 
 VALID="retry abort accept decline revise reject changes resume abandon"
 
@@ -68,7 +68,7 @@ FEAT="${1:-}"
 # ---------- list ----------
 
 if [ "$sub" = list ]; then
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     [ -d "$EVDIR" ] || { echo "  sin evidencia"; exit 0; }
     printf '  %-14s %-12s %-26s %s\n' TIPO FEATURE ACTOR DETALLE
@@ -86,14 +86,14 @@ if [ "$sub" = list ]; then
     exit 0
 fi
 
-[ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+[ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
 
 # El actor no se elige: sale de la identidad del repositorio. Firmar por otro
 # convertiria la aprobacion humana en un campo de texto.
 who=$(git config user.email 2>/dev/null || true)
 [ -n "$who" ] || {
-    echo "talos: git no tiene identidad configurada en este repositorio" >&2
-    echo "talos: git config user.email <tu correo>" >&2
+    echo "thalos: git no tiene identidad configurada en este repositorio" >&2
+    echo "thalos: git config user.email <tu correo>" >&2
     exit 2
 }
 
@@ -117,12 +117,12 @@ case "$sub" in
         payload="{\"scope\":\"${SCOPE:-feature:$FEAT}\",\"note\":\"$NOTE\",\"approved_by\":\"$who\"}"
         ;;
     decide)
-        [ -n "$DECISION" ] || { echo "talos: falta --decision" >&2; exit 1; }
+        [ -n "$DECISION" ] || { echo "thalos: falta --decision" >&2; exit 1; }
         ok=0
         for d in $VALID; do [ "$d" = "$DECISION" ] && ok=1; done
         [ "$ok" -eq 1 ] || {
-            echo "talos: decision fuera del dominio: $DECISION" >&2
-            echo "talos: validas: $VALID" >&2
+            echo "thalos: decision fuera del dominio: $DECISION" >&2
+            echo "thalos: validas: $VALID" >&2
             exit 2
         }
         kind=HumanDecision
@@ -130,8 +130,8 @@ case "$sub" in
         payload="{\"decision\":\"$DECISION\",\"note\":\"$NOTE\",\"decided_by\":\"$who\"}"
         ;;
     *)
-        echo "talos: subcomando desconocido: $sub" >&2
-        echo "talos: disponibles: approve, decide, list" >&2
+        echo "thalos: subcomando desconocido: $sub" >&2
+        echo "thalos: disponibles: approve, decide, list" >&2
         exit 1
         ;;
 esac
@@ -139,7 +139,7 @@ esac
 mkdir -p "$EVDIR"
 cat > "$EVDIR/$evid.json" <<EOF
 {"id":"$evid","kind":"$kind","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"human:$who","produced_at":"$now",
  "digest":"pendiente","verifiable":true,"payload":$payload}
 EOF
@@ -147,11 +147,11 @@ EOF
 
 if ! "$SYS/hooks/validate-artifact.sh" evidence "$EVDIR/$evid.json" >/dev/null 2>&1; then
     rm -f "$EVDIR/$evid.json"
-    echo "talos: lo generado no valida contra evidence.schema.json" >&2
+    echo "thalos: lo generado no valida contra evidence.schema.json" >&2
     exit 2
 fi
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  %s registrada\n' "$kind"
 printf '  feature   %s\n' "$FEAT"

@@ -1,6 +1,6 @@
 version: 1
 
-# Registro de reglas normativas de Talos con su mecanismo de enforcement.
+# Registro de reglas normativas de Thalos con su mecanismo de enforcement.
 # Ver system/00-enforcement.md seccion 4.
 #
 # La FUERZA no se declara: se deriva del mecanismo.
@@ -25,7 +25,7 @@ rules:
       - hooks/check-write-scope.sh
       - hooks/agent/check-tool-call.sh
       - hooks/generated/write-scope.rules
-    spec_ref: talos-0.0.7.md#19-permisos-de-rol
+    spec_ref: thalos-0.0.7.md#19-permisos-de-rol
 
   - id: R-ROLE-002
     topic: roles
@@ -45,7 +45,7 @@ rules:
     implementacion:
       - schemas/roles-config.schema.json
       - hooks/validate-artifact.sh
-    spec_ref: talos-0.0.7.md#18-roles-y-componentes
+    spec_ref: thalos-0.0.7.md#18-roles-y-componentes
 
   - id: R-ROLE-004
     topic: roles
@@ -55,7 +55,7 @@ rules:
     implementacion:
       - tools/setup-branch-protection.sh
       - config/roles.yaml
-    spec_ref: talos-0.0.7.md#31-merge-governance
+    spec_ref: thalos-0.0.7.md#31-merge-governance
     nota: MergeGate es un componente determinista, no un rol.
 
   - id: R-ROLE-005
@@ -66,7 +66,7 @@ rules:
     implementacion:
       - hooks/generated/write-scope.rules
       - tests/test_roles.py
-    spec_ref: talos-0.0.7.md#19-1-matriz-minima
+    spec_ref: thalos-0.0.7.md#19-1-matriz-minima
 
   - id: R-ROLE-006
     topic: roles
@@ -76,7 +76,7 @@ rules:
     implementacion:
       - schemas/task-result.schema.json
       - schemas/review.schema.json
-    spec_ref: talos-0.0.7.md#30-2-developer
+    spec_ref: thalos-0.0.7.md#30-2-developer
     nota: Detectable comparando files_changed contra declared_scope. Se detecta despues del hecho, no antes.
 
   # ---------- spec ----------
@@ -88,7 +88,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/spec-manifest.schema.json
-    spec_ref: talos-0.0.7.md#28-spec-intake
+    spec_ref: thalos-0.0.7.md#28-spec-intake
 
   - id: R-SPEC-002
     topic: spec
@@ -97,7 +97,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/spec-manifest.schema.json
-    spec_ref: talos-0.0.7.md#15-3-spec-minimo-aceptable
+    spec_ref: thalos-0.0.7.md#15-3-spec-minimo-aceptable
 
   - id: R-SPEC-003
     topic: spec
@@ -107,7 +107,7 @@ rules:
     implementacion:
       - schemas/spec-manifest.schema.json
       - hooks/generated/write-scope.rules
-    spec_ref: talos-0.0.7.md#16-1-spec-faltante
+    spec_ref: thalos-0.0.7.md#16-1-spec-faltante
     nota: El rol no puede producir approved_by ni digest, asi que la aprobacion queda del lado humano por construccion.
 
   - id: R-SPEC-004
@@ -130,7 +130,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/evidence.schema.json
-    spec_ref: talos-0.0.7.md#23-evidencia
+    spec_ref: thalos-0.0.7.md#23-evidencia
 
   - id: R-EVID-002
     topic: evidence
@@ -139,7 +139,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/task-result.schema.json
-    spec_ref: talos-0.0.7.md#30-4-verificacion-de-pruebas
+    spec_ref: thalos-0.0.7.md#30-4-verificacion-de-pruebas
     nota: task-result no tiene campo para afirmarlo y additionalProperties es false.
 
   - id: R-EVID-003
@@ -160,7 +160,7 @@ rules:
       - separacion_roles
       - salida_estructurada
       - contexto_minimo
-    spec_ref: talos-0.0.7.md#30-3-reviewer
+    spec_ref: thalos-0.0.7.md#30-3-reviewer
     nota: No se puede forzar que una revision sea buena. Se fuerza que sea trazable y que la haga otro rol.
 
   # ---------- eventos y estado ----------
@@ -172,17 +172,17 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/event.schema.json
-    spec_ref: talos-0.0.7.md#41-event-system
+    spec_ref: thalos-0.0.7.md#41-event-system
     nota: Sin secuencia no hay reconstruccion de estado.
 
   - id: R-EVNT-002
     topic: events
     nivel_normativo: DEBE
-    requisito: Todo evento debe usar el namespace talos.
+    requisito: Todo evento debe usar el namespace thalos.
     mecanismo: 1
     implementacion:
       - schemas/event.schema.json
-    spec_ref: talos-0.0.7.md#41-4-namespace
+    spec_ref: thalos-0.0.7.md#41-4-namespace
 
   # ---------- gates y merge ----------
 
@@ -193,7 +193,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/gate-result.schema.json
-    spec_ref: talos-0.0.7.md#24-contrato-de-gates
+    spec_ref: thalos-0.0.7.md#24-contrato-de-gates
 
   - id: R-MERG-001
     topic: merge
@@ -203,8 +203,8 @@ rules:
     implementacion:
       - schemas/policy-config.schema.json
       - tools/setup-branch-protection.sh
-      - .github/workflows/talos.yml
-    spec_ref: talos-0.0.7.md#31-merge-governance
+      - .github/workflows/thalos.yml
+    spec_ref: thalos-0.0.7.md#31-merge-governance
 
   - id: R-MERG-002
     topic: merge
@@ -214,7 +214,7 @@ rules:
     implementacion:
       - schemas/policy-config.schema.json
       - tools/setup-branch-protection.sh
-    spec_ref: talos-0.0.7.md#21-5-regla-de-agregacion
+    spec_ref: thalos-0.0.7.md#21-5-regla-de-agregacion
 
   - id: R-MERG-003
     topic: merge
@@ -223,7 +223,7 @@ rules:
     mecanismo: 4
     implementacion:
       - hooks/git/commit-msg
-    spec_ref: talos-0.0.7.md#5-2-trazabilidad
+    spec_ref: thalos-0.0.7.md#5-2-trazabilidad
 
   # ---------- locks ----------
 
@@ -234,7 +234,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/locks.schema.json
-    spec_ref: talos-0.0.7.md#32-locks-y-concurrencia
+    spec_ref: thalos-0.0.7.md#32-locks-y-concurrencia
     nota: Sin expiracion, un propietario que muere deja el sistema en deadlock permanente.
 
   # ---------- extensiones ----------
@@ -246,7 +246,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/extension-registry.schema.json
-    spec_ref: talos-0.0.7.md#37-4-capacidades-requeridas-e-implementaciones
+    spec_ref: thalos-0.0.7.md#37-4-capacidades-requeridas-e-implementaciones
 
   - id: R-EXTN-002
     topic: extensions
@@ -255,7 +255,7 @@ rules:
     mecanismo: 1
     implementacion:
       - schemas/adapter-manifest.schema.json
-    spec_ref: talos-0.0.7.md#38-2-idempotencia-obligatoria
+    spec_ref: thalos-0.0.7.md#38-2-idempotencia-obligatoria
     nota: Sin esto, un reintento de open_pr tras timeout duplica el PR.
 
   # ---------- configuracion ----------
@@ -268,7 +268,7 @@ rules:
     implementacion:
       - schemas/policy-config.schema.json
       - hooks/git/pre-commit
-    spec_ref: talos-0.0.7.md#43-4-restriccion-de-policy-sobre-configuracion
+    spec_ref: thalos-0.0.7.md#43-4-restriccion-de-policy-sobre-configuracion
 
   - id: R-CONF-002
     topic: config
@@ -276,7 +276,7 @@ rules:
     requisito: Un archivo generado debe coincidir con lo que produce su generador desde la fuente actual.
     mecanismo: 3
     implementacion:
-      - .github/workflows/talos.yml
+      - .github/workflows/thalos.yml
       - hooks/git/pre-commit
       - tools/build-rules.py
     spec_ref: hooks/README.md
@@ -286,11 +286,11 @@ rules:
   - id: R-SECU-001
     topic: security
     nivel_normativo: NO_DEBE
-    requisito: Un rol no debe escribir en la definicion de CI ni en la configuracion del propio Talos.
+    requisito: Un rol no debe escribir en la definicion de CI ni en la configuracion del propio Thalos.
     mecanismo: 2
     implementacion:
       - hooks/generated/write-scope.rules
-    spec_ref: talos-0.0.7.md#36-seguridad
+    spec_ref: thalos-0.0.7.md#36-seguridad
     nota: Poder editar el workflow es poder desactivar el enforcement.
 
   - id: R-SECU-002
@@ -300,4 +300,4 @@ rules:
     mecanismo: 2
     implementacion:
       - hooks/agent/check-tool-call.sh
-    spec_ref: talos-0.0.7.md#36-seguridad
+    spec_ref: thalos-0.0.7.md#36-seguridad

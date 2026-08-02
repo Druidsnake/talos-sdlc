@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos adapters - que capacidad esta ligada a que implementacion, y si responde.
+# thalos adapters - que capacidad esta ligada a que implementacion, y si responde.
 #
 # El nucleo no nombra implementaciones concretas: las lee del registry
 # (regla 37.4.3.5). Este comando muestra lo que el registry declara.
@@ -8,16 +8,16 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos adapters - capacidades, implementaciones ligadas y su health check
+thalos adapters - capacidades, implementaciones ligadas y su health check
 
 USO
-    talos adapters [--format json]
+    thalos adapters [--format json]
 
 QUE MUESTRA
     cada extension point del sistema
@@ -33,7 +33,7 @@ CAPACIDAD vs IMPLEMENTACION
     Cero implementaciones de una capacidad REQUERIDA falla.
     Cero implementaciones de una capacidad OPCIONAL es un estado valido.
 
-    Ver talos-0.0.7.md seccion 37.4.
+    Ver thalos-0.0.7.md seccion 37.4.
 
 SALIDA
     0  toda capacidad requerida ligada y sana
@@ -48,17 +48,17 @@ FORMAT=text
 # shellcheck source=../../hooks/lib/resolve-capability.sh
 . "$SYS/hooks/lib/resolve-capability.sh"
 
-if ! talos_capability_table >/dev/null 2>&1; then
-    echo "talos: falta la tabla de capacidades" >&2
-    echo "talos: generala con  python3 tools/build-registry.py" >&2
+if ! thalos_capability_table >/dev/null 2>&1; then
+    echo "thalos: falta la tabla de capacidades" >&2
+    echo "thalos: generala con  python3 tools/build-registry.py" >&2
     exit 2
 fi
 
 mode=$(grep -E '^execution_mode:' "$SYS/config/system.yaml" 2>/dev/null \
        | head -1 | sed 's/execution_mode:[[:space:]]*//' | tr -d '"' || echo "?")
 
-rows=$(talos_capability_audit || true)
-fails=$(talos_capability_failures "$rows")
+rows=$(thalos_capability_audit || true)
+fails=$(thalos_capability_failures "$rows")
 
 if [ "$FORMAT" = json ]; then
     printf '{\n  "execution_mode": "%s",\n  "capabilities": [\n' "$mode"
@@ -75,7 +75,7 @@ if [ "$FORMAT" = json ]; then
     exit 0
 fi
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  modo de ejecucion: %s\n' "$mode"
 echo ""
@@ -93,7 +93,7 @@ done
 echo ""
 if [ "$fails" -gt 0 ]; then
     echo "  $fails capacidad(es) REQUERIDA(s) sin satisfacer"
-    echo "  Ver talos-0.0.7.md 37.4.3: cero implementaciones falla en PRECONDITION_GATE."
+    echo "  Ver thalos-0.0.7.md 37.4.3: cero implementaciones falla en PRECONDITION_GATE."
     exit 2
 fi
 echo "  capacidades requeridas: OK"

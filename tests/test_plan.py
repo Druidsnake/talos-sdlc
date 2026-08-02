@@ -1,4 +1,4 @@
-"""Auditoria de PLAN_GATE. Ver talos-0.0.7.md seccion 29.
+"""Auditoria de PLAN_GATE. Ver thalos-0.0.7.md seccion 29.
 
 Paso 7 de la ruta de implementacion (seccion 51).
 
@@ -207,17 +207,17 @@ def main():
         pp = d / "plan.json"
         pp.write_text(json.dumps(plan_doc))
         p = subprocess.run(
-            [str(ROOT / "cli" / "talos"), "plan", "check", str(pp),
+            [str(ROOT / "cli" / "thalos"), "plan", "check", str(pp),
              "--format", "json", "--no-persist"],
             capture_output=True, text=True,
             env={"PATH": "/usr/bin:/bin:/usr/local/bin",
                  "HOME": str(pathlib.Path.home()),
-                 "TALOS_PROJECT_ROOT": str(d)})
+                 "THALOS_PROJECT_ROOT": str(d)})
         return p.returncode, p.stdout
 
     code, out = run_gate(sano)
     results.append(check(
-        "talos plan check sale 0 con un plan sano",
+        "thalos plan check sale 0 con un plan sano",
         code == 0, f"exit={code} out={out[:200]}",
     ))
 
@@ -237,7 +237,7 @@ def main():
 
     code, out = run_gate(ciclo)
     results.append(check(
-        "talos plan check sale 3 con un ciclo (gate rechazado)",
+        "thalos plan check sale 3 con un ciclo (gate rechazado)",
         code == 3, f"exit={code}",
     ))
     gr_fail = json.loads(out) if out.strip().startswith("{") else {}

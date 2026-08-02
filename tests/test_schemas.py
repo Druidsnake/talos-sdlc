@@ -1,4 +1,4 @@
-"""Verifica que los schemas de Talos rechacen lo que deben rechazar.
+"""Verifica que los schemas de Thalos rechacen lo que deben rechazar.
 
 Un schema que acepta todo no es un mecanismo de enforcement.
 Cada caso NEGATIVO corresponde a un requisito normativo de la spec.
@@ -44,32 +44,32 @@ CASES = [
     ("extension-registry", "todas las capacidades requeridas ligadas", {
         "version": 1,
         "capabilities": {
-            "FileSystemAdapter": {"implementation": "talos.adapter.filesystem"},
-            "ModelProviderAdapter": {"implementation": "talos.adapter.model"},
-            "ExecutionAdapter": {"implementation": "talos.adapter.dryrun"},
-            "CoordinationAdapter": {"implementation": "talos.adapter.dryrun"},
-            "CIAdapter": {"implementation": "talos.adapter.dryrun"},
+            "FileSystemAdapter": {"implementation": "thalos.adapter.filesystem"},
+            "ModelProviderAdapter": {"implementation": "thalos.adapter.model"},
+            "ExecutionAdapter": {"implementation": "thalos.adapter.dryrun"},
+            "CoordinationAdapter": {"implementation": "thalos.adapter.dryrun"},
+            "CIAdapter": {"implementation": "thalos.adapter.dryrun"},
         },
     }, True, "37.4.3: una implementacion por capacidad requerida"),
 
     ("extension-registry", "SIN ExecutionAdapter", {
         "version": 1,
         "capabilities": {
-            "FileSystemAdapter": {"implementation": "talos.adapter.filesystem"},
-            "ModelProviderAdapter": {"implementation": "talos.adapter.model"},
-            "CoordinationAdapter": {"implementation": "talos.adapter.dryrun"},
-            "CIAdapter": {"implementation": "talos.adapter.dryrun"},
+            "FileSystemAdapter": {"implementation": "thalos.adapter.filesystem"},
+            "ModelProviderAdapter": {"implementation": "thalos.adapter.model"},
+            "CoordinationAdapter": {"implementation": "thalos.adapter.dryrun"},
+            "CIAdapter": {"implementation": "thalos.adapter.dryrun"},
         },
     }, False, "37.4.3: cero implementaciones de capacidad requerida falla"),
 
     ("extension-registry", "MemoryAdapter ausente (opcional)", {
         "version": 1,
         "capabilities": {
-            "FileSystemAdapter": {"implementation": "talos.adapter.filesystem"},
-            "ModelProviderAdapter": {"implementation": "talos.adapter.model"},
-            "ExecutionAdapter": {"implementation": "talos.adapter.herdr"},
-            "CoordinationAdapter": {"implementation": "talos.adapter.github"},
-            "CIAdapter": {"implementation": "talos.adapter.ci"},
+            "FileSystemAdapter": {"implementation": "thalos.adapter.filesystem"},
+            "ModelProviderAdapter": {"implementation": "thalos.adapter.model"},
+            "ExecutionAdapter": {"implementation": "thalos.adapter.herdr"},
+            "CoordinationAdapter": {"implementation": "thalos.adapter.github"},
+            "CIAdapter": {"implementation": "thalos.adapter.ci"},
         },
     }, True, "37.4.3: capacidad opcional puede tener cero implementaciones"),
 
@@ -157,14 +157,14 @@ CASES = [
     # --- evidence: digest y verificabilidad (23.3)
     ("evidence", "CheckRunSet verificable", {
         "id": "ev-01HZ", "kind": "CheckRunSet", "schema_version": 1,
-        "run_id": "r-001", "produced_by": "adapter:talos.adapter.ci",
+        "run_id": "r-001", "produced_by": "adapter:thalos.adapter.ci",
         "produced_at": "2026-07-30T12:00:00Z",
         "digest": "sha256:" + "a" * 64, "verifiable": True, "payload": {},
     }, True, "evidencia de adapter es verificable"),
 
     ("evidence", "digest con formato invalido", {
         "id": "ev-01HZ", "kind": "CheckRunSet", "schema_version": 1,
-        "run_id": "r-001", "produced_by": "adapter:talos.adapter.ci",
+        "run_id": "r-001", "produced_by": "adapter:thalos.adapter.ci",
         "produced_at": "2026-07-30T12:00:00Z",
         "digest": "abc123", "verifiable": True,
     }, False, "23.3.3: toda evidencia exige digest sha256"),
@@ -179,21 +179,21 @@ CASES = [
     # --- event: seq obligatorio (41.2)
     ("event", "evento con seq", {
         "id": "ev-01HZ", "seq": 42, "schema_version": 1,
-        "type": "talos.feature.merged", "ts": "2026-07-30T12:00:00Z",
+        "type": "thalos.feature.merged", "ts": "2026-07-30T12:00:00Z",
         "run_id": "r-001", "project": "p", "actor": "core:MergeGate",
     }, True, "41.2: evento con secuencia"),
 
     ("event", "evento SIN seq", {
         "id": "ev-01HZ", "schema_version": 1,
-        "type": "talos.feature.merged", "ts": "2026-07-30T12:00:00Z",
+        "type": "thalos.feature.merged", "ts": "2026-07-30T12:00:00Z",
         "run_id": "r-001", "project": "p", "actor": "core:MergeGate",
     }, False, "41.2: seq es obligatorio para reconstruir estado"),
 
-    ("event", "tipo fuera del namespace talos", {
+    ("event", "tipo fuera del namespace thalos", {
         "id": "ev-01HZ", "seq": 1, "schema_version": 1,
         "type": "custom.thing.happened", "ts": "2026-07-30T12:00:00Z",
         "run_id": "r-001", "project": "p", "actor": "core",
-    }, False, "41.4: namespace talos obligatorio"),
+    }, False, "41.4: namespace thalos obligatorio"),
 
     # --- gate-result: fail exige razones (24.4)
     ("gate-result", "gate pass con razones", {
@@ -254,14 +254,14 @@ CASES = [
 
     # --- adapter-manifest: idempotencia en mutantes (38.2)
     ("adapter-manifest", "operacion mutante con idempotencia", {
-        "id": "talos.adapter.github", "version": "0.1.0", "api_version": "talos/v0",
+        "id": "thalos.adapter.github", "version": "0.1.0", "api_version": "thalos/v0",
         "implements": "CoordinationAdapter", "supports_dry_run": True,
         "health_check": {"command": "gh auth status"},
         "operations": [{"name": "open_pr", "mutating": True, "idempotency": "required"}],
     }, True, "38.2.1: mutante declara idempotencia"),
 
     ("adapter-manifest", "operacion mutante SIN idempotencia", {
-        "id": "talos.adapter.github", "version": "0.1.0", "api_version": "talos/v0",
+        "id": "thalos.adapter.github", "version": "0.1.0", "api_version": "thalos/v0",
         "implements": "CoordinationAdapter", "supports_dry_run": True,
         "health_check": {"command": "gh auth status"},
         "operations": [{"name": "open_pr", "mutating": True}],

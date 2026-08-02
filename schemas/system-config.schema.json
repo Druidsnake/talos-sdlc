@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/system-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/system-config/0.0.6",
   "title": "SystemConfig",
-  "description": "config/system.yaml. Ver talos-0.0.7.md secciones 37.4.4 y 47.",
+  "description": "config/system.yaml. Ver thalos-0.0.7.md secciones 37.4.4 y 47.",
   "type": "object",
   "required": [
     "version",
@@ -69,7 +69,7 @@
     "test_command": {
       "type": "string",
       "minLength": 1,
-      "description": "Como se corren las pruebas de ESTE proyecto. Talos no lo adivina: producir un LocalTestReport exige un comando concreto, y cual es depende del stack, no del sistema. Se declara aca para que el loop pueda pedirlo sin que nadie escriba un comando con espacios dentro de una orden."
+      "description": "Como se corren las pruebas de ESTE proyecto. Thalos no lo adivina: producir un LocalTestReport exige un comando concreto, y cual es depende del stack, no del sistema. Se declara aca para que el loop pueda pedirlo sin que nadie escriba un comando con espacios dentro de una orden."
     }
   },
   "additionalProperties": false,

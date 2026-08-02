@@ -1,4 +1,4 @@
-"""Auditoria de MergeGate y del CIAdapter. Ver talos-0.0.7.md secciones 30.4 y 31.
+"""Auditoria de MergeGate y del CIAdapter. Ver thalos-0.0.7.md secciones 30.4 y 31.
 
 Pasos 12 y 13 de la ruta de implementacion (seccion 51).
 
@@ -95,7 +95,7 @@ def main():
     cmd = (ROOT / "cli" / "commands" / "merge.sh").read_text()
     results.append(check(
         "el merge se delega al CoordinationAdapter (regla 31.8)",
-        "talos_capability_run CoordinationAdapter merge_pr" in cmd))
+        "thalos_capability_run CoordinationAdapter merge_pr" in cmd))
     results.append(check(
         "no se mergea si el gate no autoriza",
         'No se ejecuta ningun merge' in cmd))
@@ -108,10 +108,10 @@ def main():
     def corre(*args, root=None, env=None):
         e = {"PATH": "/usr/bin:/bin:/usr/local/bin",
              "HOME": str(pathlib.Path.home()),
-             "TALOS_PROJECT_ROOT": str(root or tempfile.mkdtemp())}
+             "THALOS_PROJECT_ROOT": str(root or tempfile.mkdtemp())}
         if env:
             e.update(env)
-        p = subprocess.run([str(ROOT / "cli" / "talos"), *args],
+        p = subprocess.run([str(ROOT / "cli" / "thalos"), *args],
                            capture_output=True, text=True, env=e)
         return p.returncode, p.stdout + p.stderr
 

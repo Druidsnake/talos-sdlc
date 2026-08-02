@@ -1,10 +1,10 @@
 #!/bin/sh
-# talos run - el loop del orquestador.
+# thalos run - el loop del orquestador.
 #
 # Avanza mientras los gates autoricen, y se detiene apenas dejan de hacerlo.
 #
 # NO decide nada por su cuenta. Cada paso sale de la misma proyeccion que
-# muestra `talos next`, que a su vez se deriva del spec aprobado y del plan. El
+# muestra `thalos next`, que a su vez se deriva del spec aprobado y del plan. El
 # loop no es una fuente de intencion: es un ejecutor de lo que ya esta
 # autorizado.
 #
@@ -22,30 +22,30 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 MAX_PASOS=20
 
 usage() {
     cat <<'USAGE'
-talos run - avanza mientras los gates autoricen
+thalos run - avanza mientras los gates autoricen
 
 USO
-    talos run [--max N] [--dry-run]
+    thalos run [--max N] [--dry-run]
 
 OPCIONES
     --max N      cota de pasos (default 20)
     --dry-run    muestra que haria, sin ejecutar nada
 
 DONDE CORREN LOS AGENTES
-    Talos abre las ventanas que necesita por el ExecutionAdapter. Este pane es
+    Thalos abre las ventanas que necesita por el ExecutionAdapter. Este pane es
     la CONSOLA del orquestador: aca va el log, no un agente. Los agentes
     aparecen al lado, en panes hermanos, para que se los pueda mirar.
 
 QUE HACE
-    1. deriva que sigue, igual que talos next
+    1. deriva que sigue, igual que thalos next
     2. ejecuta la primera accion disponible
     3. vuelve a derivar
 
@@ -81,13 +81,13 @@ done
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
+PY=$(thalos_python) || { echo "thalos: no hay python3" >&2; exit 2; }
 TABLA="$SYS/hooks/generated/transitions.tsv"
-[ -f "$TABLA" ] || { echo "talos: falta la tabla de transiciones" >&2; exit 2; }
+[ -f "$TABLA" ] || { echo "thalos: falta la tabla de transiciones" >&2; exit 2; }
 
-CLI="$SYS/cli/talos"
+CLI="$SYS/cli/thalos"
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 [ "$DRY" -eq 1 ] && echo "  modo dry-run: no se ejecuta nada" && echo ""
 # Donde se abren los agentes lo decide el ExecutionAdapter, que es quien
@@ -95,7 +95,7 @@ echo ""
 echo "  esta terminal es la consola: aca va el log, los agentes se abren aparte"
 echo ""
 
-# Regla 33.4: si se excede el presupuesto, Talos DEBE pausar o escalar. El
+# Regla 33.4: si se excede el presupuesto, Thalos DEBE pausar o escalar. El
 # loop es justamente lo que puede gastar sin que nadie mire, asi que se
 # verifica antes de cada paso y no solo al principio.
 presupuesto_ok() {
@@ -117,7 +117,7 @@ while [ "$paso" -lt "$MAX_PASOS" ]; do
                echo "  Bajar el tier no es una opcion (reglas 33.7 y 33.8)." ;;
             *) echo "  presupuesto excedido: el loop pausa (regla 33.4)" ;;
         esac
-        echo "  Ver  talos budget"
+        echo "  Ver  thalos budget"
         salida=4
         break
     fi
@@ -165,7 +165,7 @@ for f in (json.load(sys.stdin).get("frenos") or []):
 
     set +e
     # shellcheck disable=SC2086
-    out=$(cd "$PROJ" && $CLI ${orden#talos } 2>&1)
+    out=$(cd "$PROJ" && $CLI ${orden#thalos } 2>&1)
     rc=$?
     set -e
 

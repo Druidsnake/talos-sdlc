@@ -1,6 +1,6 @@
 version: 1
 
-# Mapeo capability_tier -> modelo concreto. Ver talos-0.0.7.md seccion 20.3.
+# Mapeo capability_tier -> modelo concreto. Ver thalos-0.0.7.md seccion 20.3.
 #
 # El nucleo NO conoce identificadores de modelo: solo tiers. Este archivo es
 # el unico lugar donde un tier se convierte en un modelo, igual que

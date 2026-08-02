@@ -18,8 +18,8 @@ from jsonschema import Draft202012Validator
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEMAS = ROOT / "schemas"
 TABLE = ROOT / "hooks" / "generated" / "transitions.tsv"
-SPEC = ROOT / "talos-0.0.7.md"
-TALOS = ROOT / "cli" / "talos"
+SPEC = ROOT / "thalos-0.0.7.md"
+THALOS = ROOT / "cli" / "thalos"
 
 TERMINAL = {
     "program": {"PROGRAM_DONE", "HALTED"},
@@ -47,8 +47,8 @@ def rows():
 
 
 def gate(*args, evidence=None, run_root=None):
-    """Corre talos gate y devuelve (exit_code, stdout)."""
-    cmd = [str(TALOS), "gate", *args]
+    """Corre thalos gate y devuelve (exit_code, stdout)."""
+    cmd = [str(THALOS), "gate", *args]
     if evidence:
         cmd += ["--evidence", str(evidence)]
     cmd += ["--format", "json"]
@@ -57,7 +57,7 @@ def gate(*args, evidence=None, run_root=None):
     env = {
         "PATH": "/usr/bin:/bin:/usr/local/bin",
         "HOME": str(pathlib.Path.home()),
-        "TALOS_PROJECT_ROOT": str(run_root or tempfile.mkdtemp()),
+        "THALOS_PROJECT_ROOT": str(run_root or tempfile.mkdtemp()),
     }
     p = subprocess.run(cmd, capture_output=True, text=True, env=env)
     return p.returncode, p.stdout

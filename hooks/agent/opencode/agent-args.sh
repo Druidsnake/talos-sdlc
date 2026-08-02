@@ -23,10 +23,10 @@ proveedor="${2:-}"
 # alguien conteste. Un sistema que despacha agentes para que trabajen solos y
 # los deja esperando a un humano por cada paso no despacha nada.
 #
-# Lo que contiene al agente es el mecanismo 2: el plugin que Talos instala en
+# Lo que contiene al agente es el mecanismo 2: el plugin que Thalos instala en
 # su runtime deniega toda escritura fuera del alcance del rol, y eso ocurre
 # despues de --auto y sin consultarlo. El dialogo del runtime pregunta; el hook
-# de Talos decide. Ver system/00-enforcement.md seccion 3.
+# de Thalos decide. Ver system/00-enforcement.md seccion 3.
 _auto="--auto"
 
 [ "$proveedor" = "opencode" ] || exit 0

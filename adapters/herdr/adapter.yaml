@@ -1,5 +1,5 @@
-id: talos.adapter.herdr
-package: talos-adapter-herdr
+id: thalos.adapter.herdr
+package: thalos-adapter-herdr
 version: 0.0.7
 api_version: "0.0.7"
 core_compatibility: ">=0.0.7"
@@ -7,7 +7,7 @@ core_compatibility: ">=0.0.7"
 implements: ExecutionAdapter
 
 # Regla 38.1.5: todo adapter soporta dry-run. Aca no significa "simula": con
-# TALOS_DRY_RUN=1 registra la intencion y no toca el servidor de Herdr. Es lo
+# THALOS_DRY_RUN=1 registra la intencion y no toca el servidor de Herdr. Es lo
 # que permite ensayar una corrida productiva sin efectos.
 supports_dry_run: true
 
@@ -18,7 +18,7 @@ supports_dry_run: true
 external_binary:
   name: herdr
   version_range: ">=0.7.0"
-  env_override: TALOS_HERDR_BIN
+  env_override: THALOS_HERDR_BIN
   install_hint: "curl -fsSL https://herdr.dev/install.sh | sh"
   machine_level: true
 
@@ -58,7 +58,7 @@ operations:
     max_attempts: 1
 
   # Cerrar es parte del ciclo de vida, no una comodidad. Sin esta operacion
-  # Talos abre paneles y no cierra ninguno.
+  # Thalos abre paneles y no cierra ninguno.
   - name: close_session
     mutating: true
     idempotency: required

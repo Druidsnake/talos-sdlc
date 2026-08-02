@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos spec check - valida el spec del producto contra su schema.
+# thalos spec check - valida el spec del producto contra su schema.
 #
 # Verifica tres cosas que el schema solo no puede:
 #   - que los archivos que el manifiesto referencia existan
@@ -10,16 +10,16 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos spec check - valida el spec del producto
+thalos spec check - valida el spec del producto
 
 USO
-    talos spec check [ruta-al-manifiesto]
+    thalos spec check [ruta-al-manifiesto]
 
     Por defecto: spec/manifest.yaml
 
@@ -41,8 +41,8 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 MANIFEST="${1:-spec/manifest.yaml}"
 
 if [ ! -f "$MANIFEST" ]; then
-    echo "talos: no existe $MANIFEST" >&2
-    echo "talos: genera un esqueleto con: talos init --with-spec" >&2
+    echo "thalos: no existe $MANIFEST" >&2
+    echo "thalos: genera un esqueleto con: thalos init --with-spec" >&2
     exit 2
 fi
 
@@ -130,7 +130,7 @@ case "$status" in
         if [ "$st" = "approved" ]; then
             echo "spec aprobado y consistente. Se puede planificar."
         else
-            echo "spec valido, status=$st. Talos no planifica hasta que sea approved."
+            echo "spec valido, status=$st. Thalos no planifica hasta que sea approved."
         fi
         ;;
     *) echo "spec RECHAZADO" ;;

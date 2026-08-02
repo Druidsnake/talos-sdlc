@@ -7,11 +7,11 @@
 #
 # Sin esto, "declara herdr >= 0.7.0" es un comentario, no una precondition.
 
-# talos_semver_ge <a> <b>  -> 0 si a >= b
+# thalos_semver_ge <a> <b>  -> 0 si a >= b
 #
 # Compara mayor, menor y patch como enteros. Ordenar versiones como texto
 # diria que 0.10.0 < 0.9.0, que es exactamente el error que hay que evitar.
-talos_semver_ge() {
+thalos_semver_ge() {
     _a=$(printf '%s' "$1" | sed 's/^[^0-9]*//' | cut -d- -f1)
     _b=$(printf '%s' "$2" | sed 's/^[^0-9]*//' | cut -d- -f1)
 
@@ -45,13 +45,13 @@ talos_semver_ge() {
     return 1
 }
 
-# talos_semver_satisfies <version> <rango>
+# thalos_semver_satisfies <version> <rango>
 # Soporta ">=X.Y.Z" y "X.Y.Z" exacto, que es lo que declaran los manifiestos.
-talos_semver_satisfies() {
+thalos_semver_satisfies() {
     _ver="$1"; _range="$2"
     case "$_range" in
         ">="*)
-            talos_semver_ge "$_ver" "${_range#>=}"
+            thalos_semver_ge "$_ver" "${_range#>=}"
             ;;
         "")
             return 0

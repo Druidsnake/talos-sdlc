@@ -1,5 +1,5 @@
-id: talos.adapter.fs_local
-package: talos-adapter-filesystem
+id: thalos.adapter.fs_local
+package: thalos-adapter-filesystem
 version: 0.0.7
 api_version: "0.0.7"
 core_compatibility: ">=0.0.7"

@@ -1,23 +1,23 @@
 #!/bin/sh
-# talos evidence - sella y verifica la evidencia que justifica una transicion.
+# thalos evidence - sella y verifica la evidencia que justifica una transicion.
 #
 # Sin sellar, una evidencia no satisface ningun gate: el digest se verifica al
 # leer (reglas 23.3.3 y 23.3.4).
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos evidence - sella y verifica evidencia
+thalos evidence - sella y verifica evidencia
 
 USO
-    talos evidence seal <archivo.json>    calcula y escribe su digest
-    talos evidence check [dir]            que hay y si cierra
-    talos evidence digest <archivo.json>  el digest que le corresponde
+    thalos evidence seal <archivo.json>    calcula y escribe su digest
+    thalos evidence check [dir]            que hay y si cierra
+    thalos evidence digest <archivo.json>  el digest que le corresponde
 
 QUE ES UNA EVIDENCIA
     Un artefacto tipado, persistido e inmutable que justifica una transicion
@@ -45,9 +45,9 @@ case "${1:-}" in -h|--help|"") usage; [ -z "${1:-}" ] && exit 2 || exit 0 ;; esa
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-PY=$(talos_python) || {
-    echo "talos: no hay python3 para leer evidencia" >&2
-    echo "talos: python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml" >&2
+PY=$(thalos_python) || {
+    echo "thalos: no hay python3 para leer evidencia" >&2
+    echo "thalos: python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml" >&2
     exit 2
 }
 LIB="$SYS/hooks/lib/evidence.py"
@@ -58,7 +58,7 @@ shift
 case "$sub" in
     seal)
         f="${1:?falta el archivo}"
-        [ -f "$f" ] || { echo "talos: no existe $f" >&2; exit 2; }
+        [ -f "$f" ] || { echo "thalos: no existe $f" >&2; exit 2; }
         d=$("$PY" "$LIB" seal "$f") || exit 1
         # Validar despues de sellar: un digest correcto sobre un documento que
         # no cumple el envoltorio de la seccion 23.2 no sirve de nada.
@@ -76,8 +76,8 @@ case "$sub" in
         ;;
     check)
         dir="${1:-orchestration/evidence}"
-        [ -d "$dir" ] || { echo "talos: no existe $dir" >&2; exit 2; }
-        echo "talos ${TALOS_VERSION:-?}"
+        [ -d "$dir" ] || { echo "thalos: no existe $dir" >&2; exit 2; }
+        echo "thalos ${THALOS_VERSION:-?}"
         echo ""
         printf '  evidencia en %s\n\n' "$dir"
         rows=$("$PY" "$LIB" read "$dir")
@@ -101,8 +101,8 @@ case "$sub" in
         echo "  toda la evidencia cierra contra su digest"
         ;;
     *)
-        echo "talos: subcomando desconocido: $sub" >&2
-        echo "talos: disponibles: seal, check, digest" >&2
+        echo "thalos: subcomando desconocido: $sub" >&2
+        echo "thalos: disponibles: seal, check, digest" >&2
         exit 2
         ;;
 esac

@@ -17,7 +17,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SPEC = ROOT / "talos-0.0.7.md"
+SPEC = ROOT / "thalos-0.0.7.md"
 OUT = ROOT / "hooks" / "generated" / "transitions.tsv"
 
 # Estados terminales, seccion 22.1 y 22.2. Regla 22.6.9: no tienen salida.
@@ -81,7 +81,7 @@ def main():
 
     lines = [
         "# GENERADO por tools/build-transitions.py - NO EDITAR A MANO",
-        "# fuente: talos-0.0.7.md secciones 22.4 y 22.5",
+        "# fuente: thalos-0.0.7.md secciones 22.4 y 22.5",
         "# formato: <maquina>\\t<id>\\t<desde>\\t<hacia>\\t<gate>\\t<condicion>\\t<actor>\\t<evidencia>\\t<evento>",
         "# Regla 22.6.1: una transicion debe existir aca para ser permitida.",
         "# Regla 22.6.2: toda transicion no listada se rechaza.",

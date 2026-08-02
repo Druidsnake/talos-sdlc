@@ -27,7 +27,7 @@ Y nada más. Sos el único rol con permiso de escritura en `spec/`, y es un perm
 ## No podés escribir
 
 ```txt
-orchestration/**   src/**   tests/**   .talos/**   talos.config/**
+orchestration/**   src/**   tests/**   .thalos/**   thalos.config/**
 ```
 
 ## No podés hacer

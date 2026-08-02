@@ -1,6 +1,6 @@
 """Auditoria del registro de capacidades y de los adapters de referencia.
 
-Cubre los pasos 4 y 5 de la ruta de implementacion (talos-0.0.7.md seccion 51):
+Cubre los pasos 4 y 5 de la ruta de implementacion (thalos-0.0.7.md seccion 51):
 el registry y el DryRunAdapter.
 
 Verifica RECHAZO, no solo aceptacion: un registry que acepta cero
@@ -78,9 +78,9 @@ def run_adapter(directory, op, args=None, env=None, project_root=None):
     if args is not None:
         cmd.append(json.dumps(args))
     e = dict(os.environ)
-    e["TALOS_PROJECT_ROOT"] = project_root or tempfile.mkdtemp()
-    e.setdefault("TALOS_RUN_ID", "r-test-0001")
-    e.setdefault("TALOS_FEATURE_ID", "F001")
+    e["THALOS_PROJECT_ROOT"] = project_root or tempfile.mkdtemp()
+    e.setdefault("THALOS_RUN_ID", "r-test-0001")
+    e.setdefault("THALOS_FEATURE_ID", "F001")
     if env:
         e.update(env)
     return subprocess.run(cmd, capture_output=True, text=True, env=e)
@@ -238,7 +238,7 @@ def main():
             if not path.is_file() or "generated" in path.parts:
                 continue
             try:
-                if "talos.adapter." in path.read_text():
+                if "thalos.adapter." in path.read_text():
                     filtrados.append(str(path.relative_to(ROOT)))
             except (UnicodeDecodeError, PermissionError):
                 continue
@@ -284,7 +284,7 @@ def main():
     # Una implementacion inexistente debe fallar.
     box3 = sandbox()
     cfg3 = yaml.safe_load((box3 / "config" / "extensions.yaml").read_text())
-    cfg3["capabilities"]["CIAdapter"] = {"implementation": "talos.adapter.no_existe"}
+    cfg3["capabilities"]["CIAdapter"] = {"implementation": "thalos.adapter.no_existe"}
     (box3 / "config" / "extensions.yaml").write_text(yaml.safe_dump(cfg3))
     rc3, err3 = build_registry(box3)
     results.append(check(
@@ -308,10 +308,10 @@ def main():
     errors = validate("extension-registry", {
         "version": 1,
         "capabilities": {
-            "FileSystemAdapter": {}, "ModelProviderAdapter": {"implementation": "talos.adapter.a"},
-            "ExecutionAdapter": {"implementation": "talos.adapter.b"},
-            "CoordinationAdapter": {"implementation": "talos.adapter.c"},
-            "CIAdapter": {"implementation": "talos.adapter.d"},
+            "FileSystemAdapter": {}, "ModelProviderAdapter": {"implementation": "thalos.adapter.a"},
+            "ExecutionAdapter": {"implementation": "thalos.adapter.b"},
+            "CoordinationAdapter": {"implementation": "thalos.adapter.c"},
+            "CIAdapter": {"implementation": "thalos.adapter.d"},
         },
     })
     results.append(check(
@@ -324,21 +324,21 @@ def main():
         "version": 1,
         "capabilities": {
             "FileSystemAdapter": {"implementation": "mi-adapter"},
-            "ModelProviderAdapter": {"implementation": "talos.adapter.a"},
-            "ExecutionAdapter": {"implementation": "talos.adapter.b"},
-            "CoordinationAdapter": {"implementation": "talos.adapter.c"},
-            "CIAdapter": {"implementation": "talos.adapter.d"},
+            "ModelProviderAdapter": {"implementation": "thalos.adapter.a"},
+            "ExecutionAdapter": {"implementation": "thalos.adapter.b"},
+            "CoordinationAdapter": {"implementation": "thalos.adapter.c"},
+            "CIAdapter": {"implementation": "thalos.adapter.d"},
         },
     })
     results.append(check(
-        "el schema RECHAZA un id fuera del namespace talos.adapter.*",
+        "el schema RECHAZA un id fuera del namespace thalos.adapter.*",
         bool(errors),
     ))
 
     # doctor tiene que detectar que su tabla ya no coincide con su registry.
-    # Una proyeccion desincronizada hace que Talos resuelva contra una ligadura
+    # Una proyeccion desincronizada hace que Thalos resuelva contra una ligadura
     # que su propia configuracion ya no declara, y en silencio: reporta las
-    # capacidades sanas leyendo la tabla vieja. Es la clase de deriva que Talos
+    # capacidades sanas leyendo la tabla vieja. Es la clase de deriva que Thalos
     # existe para detectar, aplicada al propio sistema.
     doc = (ROOT / "cli" / "commands" / "doctor.sh").read_text()
     results.append(check(

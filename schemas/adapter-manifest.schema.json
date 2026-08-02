@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/adapter-manifest/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/adapter-manifest/0.0.6",
   "title": "AdapterManifest",
-  "description": "Manifiesto de un adapter. Ver talos-0.0.7.md secciones 37.4 y 38.",
+  "description": "Manifiesto de un adapter. Ver thalos-0.0.7.md secciones 37.4 y 38.",
   "type": "object",
   "required": ["id", "version", "api_version", "implements", "operations", "health_check", "supports_dry_run"],
   "properties": {
-    "id": { "type": "string", "pattern": "^talos\\.adapter\\.[a-z0-9_]+$" },
+    "id": { "type": "string", "pattern": "^thalos\\.adapter\\.[a-z0-9_]+$" },
     "package": { "type": "string" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "api_version": { "type": "string" },
@@ -23,7 +23,7 @@
         "name": { "type": "string" },
         "version_range": { "type": "string", "description": "Ej: >=0.7.0" },
         "env_override": { "type": "string", "description": "Variable de entorno que tiene prioridad en la cascada de resolucion (seccion 37.4.5)." },
-        "install_hint": { "type": "string", "description": "Comando exacto que Talos muestra cuando el binario falta. Talos nunca instala por su cuenta." },
+        "install_hint": { "type": "string", "description": "Comando exacto que Thalos muestra cuando el binario falta. Thalos nunca instala por su cuenta." },
         "machine_level": { "type": "boolean", "description": "true si gestiona estado de maquina o sesion y por lo tanto no debe vendorearse por proyecto." }
       },
       "additionalProperties": false

@@ -1,18 +1,18 @@
-id: talos.adapter.github_ci
-package: talos-adapter-ci
+id: thalos.adapter.github_ci
+package: thalos-adapter-ci
 version: 0.0.7
 api_version: "0.0.7"
 core_compatibility: ">=0.0.7"
 
 implements: CIAdapter
 
-# Con TALOS_DRY_RUN=1 registra la intencion y no dispara workflows.
+# Con THALOS_DRY_RUN=1 registra la intencion y no dispara workflows.
 supports_dry_run: true
 
 external_binary:
   name: gh
   version_range: ">=2.0.0"
-  env_override: TALOS_GH_BIN
+  env_override: THALOS_GH_BIN
   install_hint: "brew install gh && gh auth login"
   machine_level: false
 

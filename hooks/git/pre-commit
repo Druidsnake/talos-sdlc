@@ -1,13 +1,13 @@
 #!/bin/sh
 # Mecanismo 4: git hook.
-# Valida artefactos de Talos staged y detecta deriva entre fuente y generados.
+# Valida artefactos de Thalos staged y detecta deriva entre fuente y generados.
 
 set -eu
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
 . hooks/lib/resolve-validator.sh 2>/dev/null || {
-    echo "talos: no se encontro hooks/lib/resolve-validator.sh" >&2
+    echo "thalos: no se encontro hooks/lib/resolve-validator.sh" >&2
     exit 1
 }
 
@@ -29,22 +29,22 @@ if printf '%s\n' "$staged" | grep -qE '^(config/roles\.yaml|hooks/generated/writ
     fi
 
     if [ -z "$gen" ]; then
-        echo "talos: aviso, no se pudo verificar la deriva de write-scope.rules" >&2
-        echo "talos: falta un python con pyyaml para regenerar y comparar" >&2
+        echo "thalos: aviso, no se pudo verificar la deriva de write-scope.rules" >&2
+        echo "thalos: falta un python con pyyaml para regenerar y comparar" >&2
     else
         actual=$(mktemp)
         cp hooks/generated/write-scope.rules "$actual" 2>/dev/null || true
         "$gen" tools/build-rules.py >/dev/null 2>&1 || true
         if ! cmp -s "$actual" hooks/generated/write-scope.rules; then
-            echo "talos: hooks/generated/write-scope.rules no coincide con config/roles.yaml" >&2
-            echo "talos: se regenero. Revisa el diff y agregalo al commit." >&2
+            echo "thalos: hooks/generated/write-scope.rules no coincide con config/roles.yaml" >&2
+            echo "thalos: se regenero. Revisa el diff y agregalo al commit." >&2
             status=1
         fi
         rm -f "$actual"
     fi
 fi
 
-# 3. Valida configuracion de Talos contra su schema
+# 3. Valida configuracion de Thalos contra su schema
 for f in $staged; do
     schema=""
     case "$f" in
@@ -61,8 +61,8 @@ for f in $staged; do
     esac
     if [ -n "$schema" ]; then
         if ! ./hooks/validate-artifact.sh "$schema" "$f" >/dev/null 2>&1; then
-            echo "talos: $f no valida contra $schema.schema.json" >&2
-            ./hooks/validate-artifact.sh "$schema" "$f" 2>&1 | grep -v '^talos:' | head -5 >&2
+            echo "thalos: $f no valida contra $schema.schema.json" >&2
+            ./hooks/validate-artifact.sh "$schema" "$f" 2>&1 | grep -v '^thalos:' | head -5 >&2
             status=1
         fi
     fi
@@ -73,12 +73,12 @@ for f in $staged; do
     case "$f" in
         schemas/*.json)
             if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" 2>/dev/null; then
-                echo "talos: $f no es JSON valido" >&2
+                echo "thalos: $f no es JSON valido" >&2
                 status=1
             fi
             ;;
     esac
 done
 
-[ "$status" -ne 0 ] && echo "talos: commit RECHAZADO" >&2
+[ "$status" -ne 0 ] && echo "thalos: commit RECHAZADO" >&2
 exit $status

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PLAN_GATE: analiza un ProgramPlan. Ver talos-0.0.7.md seccion 29.
+"""PLAN_GATE: analiza un ProgramPlan. Ver thalos-0.0.7.md seccion 29.
 
 Es una funcion pura de (plan, spec aprobado, config). No invoca modelos: la
 regla 24.4.3 lo prohibe. Generar el plan es trabajo del Planner, que es un rol

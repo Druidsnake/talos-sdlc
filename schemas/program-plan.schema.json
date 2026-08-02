@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/program-plan/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/program-plan/0.0.5",
   "title": "ProgramPlan",
-  "description": "Plan de programa generado por Planner. Ver talos-0.0.7.md seccion 29.",
+  "description": "Plan de programa generado por Planner. Ver thalos-0.0.7.md seccion 29.",
   "type": "object",
   "required": ["schema_version", "project", "spec_digest", "created_at", "features"],
   "properties": {

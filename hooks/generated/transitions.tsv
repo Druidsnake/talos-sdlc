@@ -1,58 +1,58 @@
 # GENERADO por tools/build-transitions.py - NO EDITAR A MANO
-# fuente: talos-0.0.7.md secciones 22.4 y 22.5
+# fuente: thalos-0.0.7.md secciones 22.4 y 22.5
 # formato: <maquina>\t<id>\t<desde>\t<hacia>\t<gate>\t<condicion>\t<actor>\t<evidencia>\t<evento>
 # Regla 22.6.1: una transicion debe existir aca para ser permitida.
 # Regla 22.6.2: toda transicion no listada se rechaza.
 
-program	P1	INIT	PRECONDITION_CHECK	-	-	Orchestrator	-	talos.run.started
-program	P2	PRECONDITION_CHECK	PRECONDITION_FAILED	PRECONDITION_GATE	fail	Orchestrator	PreconditionReport	talos.precondition.failed
-program	P3	PRECONDITION_CHECK	SPEC_MISSING	PRECONDITION_GATE	pass	Orchestrator	PreconditionReport	talos.spec.missing
-program	P4	PRECONDITION_CHECK	SPEC_INVALID	SPEC_SCHEMA_GATE	fail	Orchestrator	PreconditionReport,SchemaValidationReport	talos.spec.invalid
-program	P5	PRECONDITION_CHECK	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	Orchestrator	PreconditionReport,SchemaValidationReport	talos.spec.validated
-program	P6	PRECONDITION_CHECK	SPEC_APPROVED	SPEC_SCHEMA_GATE	pass + status=approved	Orchestrator	SchemaValidationReport,HumanApproval	talos.spec.approved
-program	P7	PRECONDITION_FAILED	PRECONDITION_CHECK	-	-	HumanApprover	HumanDecision	talos.precondition.recheck
-program	P8	PRECONDITION_FAILED	HALTED	-	-	HumanApprover	HumanDecision	talos.run.halted
-program	P9	SPEC_MISSING	SPEC_ASSIST_OFFERED	-	-	Orchestrator	-	talos.spec.assist_offered
-program	P10	SPEC_ASSIST_OFFERED	SPEC_GENERATING	HUMAN_GATE	accept	HumanApprover	HumanDecision	talos.spec.assist_requested
-program	P11	SPEC_ASSIST_OFFERED	HALTED	HUMAN_GATE	decline	HumanApprover	HumanDecision	talos.run.halted
-program	P12	SPEC_GENERATING	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	SpecAssistant	SpecDraft,SchemaValidationReport	talos.spec.draft_generated
-program	P13	SPEC_GENERATING	SPEC_INVALID	SPEC_SCHEMA_GATE	fail	SpecAssistant	SchemaValidationReport	talos.spec.invalid
-program	P14	SPEC_INVALID	SPEC_GENERATING	HUMAN_GATE	accept	HumanApprover	HumanDecision	talos.spec.assist_requested
-program	P15	SPEC_INVALID	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	HumanApprover	SchemaValidationReport	talos.spec.validated
-program	P16	SPEC_INVALID	HALTED	-	-	HumanApprover	HumanDecision	talos.run.halted
-program	P17	SPEC_REVIEW	SPEC_APPROVED	HUMAN_GATE	approve	HumanApprover	HumanApproval	talos.spec.approved
-program	P18	SPEC_REVIEW	SPEC_GENERATING	HUMAN_GATE	revise	HumanApprover	HumanDecision	talos.spec.revision_requested
-program	P19	SPEC_REVIEW	HALTED	HUMAN_GATE	reject	HumanApprover	HumanDecision	talos.run.halted
-program	P20	SPEC_APPROVED	PROGRAM_PLANNING	SPEC_GATE	-	Planner	ApprovedSpecRef	talos.program.planning_started
-program	P21	PROGRAM_PLANNING	PROGRAM_READY	PLAN_GATE	pass	Orchestrator	ProgramPlan,SchemaValidationReport	talos.program.planned
-program	P22	PROGRAM_PLANNING	PROGRAM_PLANNING	PLAN_GATE	fail, attempts<max	Planner	ErrorRecord	talos.program.planning_retried
-program	P23	PROGRAM_PLANNING	HALTED	PLAN_GATE	fail, attempts>=max	Orchestrator	ErrorRecord	talos.escalation.triggered
-program	P24	PROGRAM_READY	PROGRAM_DONE	-	-	Orchestrator	FeatureStateSet	talos.program.completed
-program	P25	PROGRAM_READY	HALTED	-	-	HumanApprover	HumanDecision	talos.run.halted
-feature	F1	-	FEATURE_READY	READY_GATE	-	Orchestrator	ProgramPlanEntry,DependencySet	talos.feature.ready
-feature	F2	FEATURE_READY	FEATURE_IN_PROGRESS	READY_GATE	lease otorgado	FeatureLead	LockLease,IssueRef,BranchRef	talos.feature.started
-feature	F3	FEATURE_READY	FEATURE_BLOCKED	READY_GATE	fail	Orchestrator	GateResult	talos.feature.blocked
-feature	F4	FEATURE_IN_PROGRESS	FEATURE_REVIEW	DEV_GATE	pass	Developer	TaskResultSet,LocalTestReport,CommitRef	talos.feature.dev_complete
-feature	F5	FEATURE_IN_PROGRESS	FEATURE_BLOCKED	DEV_GATE	fail	Orchestrator	ErrorRecord	talos.feature.blocked
-feature	F6	FEATURE_REVIEW	FEATURE_IN_PROGRESS	REVIEW_GATE	changes	Reviewer	Review	talos.review.changes_requested
-feature	F7	FEATURE_REVIEW	FEATURE_PR_OPEN	REVIEW_GATE	pass	FeatureLead	Review,PullRequestRef	talos.feature.pr_opened
-feature	F8	FEATURE_PR_OPEN	FEATURE_CHECKS_RUNNING	-	-	Orchestrator	CheckRunSet	talos.feature.checks_started
-feature	F9	FEATURE_CHECKS_RUNNING	FEATURE_CHECKS_PASS	CHECKS_GATE	pass	Orchestrator	CheckRunSet	talos.feature.checks_passed
-feature	F10	FEATURE_CHECKS_RUNNING	FEATURE_CHECKS_FAIL	CHECKS_GATE	fail	Orchestrator	CheckRunSet	talos.feature.checks_failed
-feature	F11	FEATURE_CHECKS_FAIL	FEATURE_FIXING	-	-	FeatureLead	IssueList	talos.feature.fixing
-feature	F12	FEATURE_CHECKS_FAIL	FEATURE_ESCALATED	-	attempts>=max	Orchestrator	ErrorRecord	talos.escalation.triggered
-feature	F13	FEATURE_FIXING	FEATURE_CHECKS_RUNNING	DEV_GATE	pass	Developer	TaskResultSet,CommitRef	talos.feature.checks_started
-feature	F14	FEATURE_CHECKS_PASS	FEATURE_HUMAN_REVIEW	POLICY_GATE	needs_human	Orchestrator	PolicyDecision	talos.feature.human_requested
-feature	F15	FEATURE_CHECKS_PASS	FEATURE_MERGING	POLICY_GATE	pass	Orchestrator	PolicyDecision	talos.feature.merge_requested
-feature	F16	FEATURE_HUMAN_REVIEW	FEATURE_MERGING	HUMAN_GATE	approve	HumanApprover	HumanApproval	talos.feature.merge_requested
-feature	F17	FEATURE_HUMAN_REVIEW	FEATURE_IN_PROGRESS	HUMAN_GATE	changes	HumanApprover	HumanDecision	talos.review.changes_requested
-feature	F18	FEATURE_HUMAN_REVIEW	FEATURE_ABANDONED	HUMAN_GATE	reject	HumanApprover	HumanDecision	talos.feature.abandoned
-feature	F19	FEATURE_MERGING	FEATURE_MERGED	MERGE_GATE	pass	MergeGate	CheckRunSet,PolicyDecision,MergeResult	talos.feature.merged
-feature	F20	FEATURE_MERGING	FEATURE_BLOCKED	MERGE_GATE	fail	MergeGate	MergeGateReport	talos.feature.blocked
-feature	F21	FEATURE_MERGED	FEATURE_DONE	POST_MERGE_GATE	pass	Orchestrator	PostMergeReport,LockRelease	talos.feature.done
-feature	F22	FEATURE_MERGED	FEATURE_ESCALATED	POST_MERGE_GATE	fail	Orchestrator	PostMergeReport	talos.escalation.triggered
-feature	F23	FEATURE_BLOCKED	FEATURE_IN_PROGRESS	-	-	FeatureLead	BlockerResolution	talos.feature.unblocked
-feature	F24	FEATURE_BLOCKED	FEATURE_ESCALATED	-	timeout o attempts>=max	Orchestrator	ErrorRecord	talos.escalation.triggered
-feature	F25	FEATURE_ESCALATED	FEATURE_IN_PROGRESS	HUMAN_GATE	resume	HumanApprover	HumanDecision	talos.feature.unblocked
-feature	F26	FEATURE_ESCALATED	FEATURE_FAILED	HUMAN_GATE	abort	HumanApprover	HumanDecision	talos.feature.failed
-feature	F27	*	FEATURE_ABANDONED	HUMAN_GATE	abandon	HumanApprover	HumanDecision,LockRelease	talos.feature.abandoned
+program	P1	INIT	PRECONDITION_CHECK	-	-	Orchestrator	-	thalos.run.started
+program	P2	PRECONDITION_CHECK	PRECONDITION_FAILED	PRECONDITION_GATE	fail	Orchestrator	PreconditionReport	thalos.precondition.failed
+program	P3	PRECONDITION_CHECK	SPEC_MISSING	PRECONDITION_GATE	pass	Orchestrator	PreconditionReport	thalos.spec.missing
+program	P4	PRECONDITION_CHECK	SPEC_INVALID	SPEC_SCHEMA_GATE	fail	Orchestrator	PreconditionReport,SchemaValidationReport	thalos.spec.invalid
+program	P5	PRECONDITION_CHECK	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	Orchestrator	PreconditionReport,SchemaValidationReport	thalos.spec.validated
+program	P6	PRECONDITION_CHECK	SPEC_APPROVED	SPEC_SCHEMA_GATE	pass + status=approved	Orchestrator	SchemaValidationReport,HumanApproval	thalos.spec.approved
+program	P7	PRECONDITION_FAILED	PRECONDITION_CHECK	-	-	HumanApprover	HumanDecision	thalos.precondition.recheck
+program	P8	PRECONDITION_FAILED	HALTED	-	-	HumanApprover	HumanDecision	thalos.run.halted
+program	P9	SPEC_MISSING	SPEC_ASSIST_OFFERED	-	-	Orchestrator	-	thalos.spec.assist_offered
+program	P10	SPEC_ASSIST_OFFERED	SPEC_GENERATING	HUMAN_GATE	accept	HumanApprover	HumanDecision	thalos.spec.assist_requested
+program	P11	SPEC_ASSIST_OFFERED	HALTED	HUMAN_GATE	decline	HumanApprover	HumanDecision	thalos.run.halted
+program	P12	SPEC_GENERATING	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	SpecAssistant	SpecDraft,SchemaValidationReport	thalos.spec.draft_generated
+program	P13	SPEC_GENERATING	SPEC_INVALID	SPEC_SCHEMA_GATE	fail	SpecAssistant	SchemaValidationReport	thalos.spec.invalid
+program	P14	SPEC_INVALID	SPEC_GENERATING	HUMAN_GATE	accept	HumanApprover	HumanDecision	thalos.spec.assist_requested
+program	P15	SPEC_INVALID	SPEC_REVIEW	SPEC_SCHEMA_GATE	pass	HumanApprover	SchemaValidationReport	thalos.spec.validated
+program	P16	SPEC_INVALID	HALTED	-	-	HumanApprover	HumanDecision	thalos.run.halted
+program	P17	SPEC_REVIEW	SPEC_APPROVED	HUMAN_GATE	approve	HumanApprover	HumanApproval	thalos.spec.approved
+program	P18	SPEC_REVIEW	SPEC_GENERATING	HUMAN_GATE	revise	HumanApprover	HumanDecision	thalos.spec.revision_requested
+program	P19	SPEC_REVIEW	HALTED	HUMAN_GATE	reject	HumanApprover	HumanDecision	thalos.run.halted
+program	P20	SPEC_APPROVED	PROGRAM_PLANNING	SPEC_GATE	-	Planner	ApprovedSpecRef	thalos.program.planning_started
+program	P21	PROGRAM_PLANNING	PROGRAM_READY	PLAN_GATE	pass	Orchestrator	ProgramPlan,SchemaValidationReport	thalos.program.planned
+program	P22	PROGRAM_PLANNING	PROGRAM_PLANNING	PLAN_GATE	fail, attempts<max	Planner	ErrorRecord	thalos.program.planning_retried
+program	P23	PROGRAM_PLANNING	HALTED	PLAN_GATE	fail, attempts>=max	Orchestrator	ErrorRecord	thalos.escalation.triggered
+program	P24	PROGRAM_READY	PROGRAM_DONE	-	-	Orchestrator	FeatureStateSet	thalos.program.completed
+program	P25	PROGRAM_READY	HALTED	-	-	HumanApprover	HumanDecision	thalos.run.halted
+feature	F1	-	FEATURE_READY	READY_GATE	-	Orchestrator	ProgramPlanEntry,DependencySet	thalos.feature.ready
+feature	F2	FEATURE_READY	FEATURE_IN_PROGRESS	READY_GATE	lease otorgado	FeatureLead	LockLease,IssueRef,BranchRef	thalos.feature.started
+feature	F3	FEATURE_READY	FEATURE_BLOCKED	READY_GATE	fail	Orchestrator	GateResult	thalos.feature.blocked
+feature	F4	FEATURE_IN_PROGRESS	FEATURE_REVIEW	DEV_GATE	pass	Developer	TaskResultSet,LocalTestReport,CommitRef	thalos.feature.dev_complete
+feature	F5	FEATURE_IN_PROGRESS	FEATURE_BLOCKED	DEV_GATE	fail	Orchestrator	ErrorRecord	thalos.feature.blocked
+feature	F6	FEATURE_REVIEW	FEATURE_IN_PROGRESS	REVIEW_GATE	changes	Reviewer	Review	thalos.review.changes_requested
+feature	F7	FEATURE_REVIEW	FEATURE_PR_OPEN	REVIEW_GATE	pass	FeatureLead	Review,PullRequestRef	thalos.feature.pr_opened
+feature	F8	FEATURE_PR_OPEN	FEATURE_CHECKS_RUNNING	-	-	Orchestrator	CheckRunSet	thalos.feature.checks_started
+feature	F9	FEATURE_CHECKS_RUNNING	FEATURE_CHECKS_PASS	CHECKS_GATE	pass	Orchestrator	CheckRunSet	thalos.feature.checks_passed
+feature	F10	FEATURE_CHECKS_RUNNING	FEATURE_CHECKS_FAIL	CHECKS_GATE	fail	Orchestrator	CheckRunSet	thalos.feature.checks_failed
+feature	F11	FEATURE_CHECKS_FAIL	FEATURE_FIXING	-	-	FeatureLead	IssueList	thalos.feature.fixing
+feature	F12	FEATURE_CHECKS_FAIL	FEATURE_ESCALATED	-	attempts>=max	Orchestrator	ErrorRecord	thalos.escalation.triggered
+feature	F13	FEATURE_FIXING	FEATURE_CHECKS_RUNNING	DEV_GATE	pass	Developer	TaskResultSet,CommitRef	thalos.feature.checks_started
+feature	F14	FEATURE_CHECKS_PASS	FEATURE_HUMAN_REVIEW	POLICY_GATE	needs_human	Orchestrator	PolicyDecision	thalos.feature.human_requested
+feature	F15	FEATURE_CHECKS_PASS	FEATURE_MERGING	POLICY_GATE	pass	Orchestrator	PolicyDecision	thalos.feature.merge_requested
+feature	F16	FEATURE_HUMAN_REVIEW	FEATURE_MERGING	HUMAN_GATE	approve	HumanApprover	HumanApproval	thalos.feature.merge_requested
+feature	F17	FEATURE_HUMAN_REVIEW	FEATURE_IN_PROGRESS	HUMAN_GATE	changes	HumanApprover	HumanDecision	thalos.review.changes_requested
+feature	F18	FEATURE_HUMAN_REVIEW	FEATURE_ABANDONED	HUMAN_GATE	reject	HumanApprover	HumanDecision	thalos.feature.abandoned
+feature	F19	FEATURE_MERGING	FEATURE_MERGED	MERGE_GATE	pass	MergeGate	CheckRunSet,PolicyDecision,MergeResult	thalos.feature.merged
+feature	F20	FEATURE_MERGING	FEATURE_BLOCKED	MERGE_GATE	fail	MergeGate	MergeGateReport	thalos.feature.blocked
+feature	F21	FEATURE_MERGED	FEATURE_DONE	POST_MERGE_GATE	pass	Orchestrator	PostMergeReport,LockRelease	thalos.feature.done
+feature	F22	FEATURE_MERGED	FEATURE_ESCALATED	POST_MERGE_GATE	fail	Orchestrator	PostMergeReport	thalos.escalation.triggered
+feature	F23	FEATURE_BLOCKED	FEATURE_IN_PROGRESS	-	-	FeatureLead	BlockerResolution	thalos.feature.unblocked
+feature	F24	FEATURE_BLOCKED	FEATURE_ESCALATED	-	timeout o attempts>=max	Orchestrator	ErrorRecord	thalos.escalation.triggered
+feature	F25	FEATURE_ESCALATED	FEATURE_IN_PROGRESS	HUMAN_GATE	resume	HumanApprover	HumanDecision	thalos.feature.unblocked
+feature	F26	FEATURE_ESCALATED	FEATURE_FAILED	HUMAN_GATE	abort	HumanApprover	HumanDecision	thalos.feature.failed
+feature	F27	*	FEATURE_ABANDONED	HUMAN_GATE	abandon	HumanApprover	HumanDecision,LockRelease	thalos.feature.abandoned

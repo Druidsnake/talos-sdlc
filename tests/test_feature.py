@@ -1,8 +1,8 @@
-"""Auditoria del ejecutor de transiciones y de talos feature start.
+"""Auditoria del ejecutor de transiciones y de thalos feature start.
 
 Paso 8 de la ruta de implementacion (seccion 51).
 
-Es la primera pieza que hace AVANZAR el estado. Hasta el paso 7 Talos sabia
+Es la primera pieza que hace AVANZAR el estado. Hasta el paso 7 Thalos sabia
 evaluar una transicion y nada la ejecutaba. Estos checks verifican que el
 avance solo ocurra cuando el gate autoriza, que quede registrado en el event
 log y que un fallo no deje el sistema en un estado peor que antes.
@@ -40,19 +40,19 @@ def feature(fid, risk="low", tier="fast", human=False, deps=None):
 
 
 def project():
-    """Proyecto desechable con Talos vendoreado y un plan valido."""
+    """Proyecto desechable con Thalos vendoreado y un plan valido."""
     d = pathlib.Path(tempfile.mkdtemp())
-    (d / ".talos").mkdir()
+    (d / ".thalos").mkdir()
     for sub in ("cli", "hooks", "schemas", "system", "config", "adapters", "roles"):
-        shutil.copytree(ROOT / sub, d / ".talos" / sub)
-    shutil.copy(ROOT / "VERSION", d / ".talos" / "VERSION")
+        shutil.copytree(ROOT / sub, d / ".thalos" / sub)
+    shutil.copy(ROOT / "VERSION", d / ".thalos" / "VERSION")
     if (ROOT / ".venv").is_dir():
         (d / ".venv").symlink_to(ROOT / ".venv")
 
     subprocess.run(["git", "init", "-q"], cwd=d, capture_output=True)
     subprocess.run(["git", "config", "user.name", "t"], cwd=d, capture_output=True)
     subprocess.run(["git", "config", "user.email", "t@t.t"], cwd=d, capture_output=True)
-    talos(d, "init")
+    thalos(d, "init")
 
     digest = "sha256:" + "c" * 64
     plan = {"schema_version": 1, "project": "prueba", "spec_digest": digest,
@@ -64,13 +64,13 @@ def project():
     return d
 
 
-def talos(root, *args):
+def thalos(root, *args):
     p = subprocess.run(
-        [str(root / ".talos" / "cli" / "talos"), *args],
+        [str(root / ".thalos" / "cli" / "thalos"), *args],
         capture_output=True, text=True, cwd=root,
         env={"PATH": "/usr/bin:/bin:/usr/local/bin",
              "HOME": str(pathlib.Path.home()),
-             "TALOS_PROJECT_ROOT": str(root)})
+             "THALOS_PROJECT_ROOT": str(root)})
     return p.returncode, p.stdout + p.stderr
 
 
@@ -83,7 +83,7 @@ def state_of(root, fid):
 
 SPY = """#!/bin/sh
 # Adapter espia: registra que le pidieron y responde lo minimo viable.
-printf '%s\\t%s\\n' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"
+printf '%s\\t%s\\n' "$1" "${2:-}" >> "${THALOS_PROJECT_ROOT:-.}/spy.log"
 case "$1" in
     create_session)
         echo '{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}' ;;
@@ -95,19 +95,19 @@ esac
 """
 
 
-def espia(root, impl="talos.adapter.spy"):
+def espia(root, impl="thalos.adapter.spy"):
     """Liga ExecutionAdapter a un adapter que anota lo que le piden.
 
     Se toca la tabla generada, que es la fuente que usa el resolvedor del
     nucleo: cambiar la ligadura es exactamente lo que hace una instalacion al
     pasar de simulacion a produccion.
     """
-    d = root / ".talos" / "adapters" / "spy"
+    d = root / ".thalos" / "adapters" / "spy"
     if not d.is_dir():
         d.mkdir(parents=True)
         (d / "run.sh").write_text(SPY)
         (d / "run.sh").chmod(0o755)
-    tabla = root / ".talos" / "hooks" / "generated" / "capabilities.tsv"
+    tabla = root / ".thalos" / "hooks" / "generated" / "capabilities.tsv"
     filas = []
     for linea in tabla.read_text().splitlines():
         campos = linea.split("\t")
@@ -213,7 +213,7 @@ def main():
 
     proj = project()
 
-    code, out = talos(proj, "feature", "start", "F001")
+    code, out = thalos(proj, "feature", "start", "F001")
     results.append(check("feature start lleva a FEATURE_IN_PROGRESS",
                          code == 0, f"exit={code} {out[-300:]}"))
 
@@ -239,14 +239,14 @@ def main():
     evs = events(proj)
     tipos = [e["type"] for e in evs]
     results.append(check(
-        "emite talos.feature.ready y talos.feature.started, en ese orden",
-        tipos == ["talos.feature.ready", "talos.feature.started"], f"{tipos}"))
+        "emite thalos.feature.ready y thalos.feature.started, en ese orden",
+        tipos == ["thalos.feature.ready", "thalos.feature.started"], f"{tipos}"))
 
     # Un log vacio haria pasar este check sin probar nada: se exige que haya
     # eventos antes de afirmar que ninguno es un rechazo.
     results.append(check(
-        "no emite ningun talos.transition.rejected en el camino feliz",
-        tipos and "talos.transition.rejected" not in tipos, f"{tipos}"))
+        "no emite ningun thalos.transition.rejected en el camino feliz",
+        tipos and "thalos.transition.rejected" not in tipos, f"{tipos}"))
 
     # Regla 22.6.7: la transicion se reconstruye desde el event log.
     results.append(check(
@@ -266,7 +266,7 @@ def main():
         "queda persistido el GateResult que autorizo la transicion (22.6.6)",
         len(gate_evs) >= 1, f"{len(gate_evs)}"))
 
-    feature_evs = [e for e in evs if e["type"].startswith("talos.feature")]
+    feature_evs = [e for e in evs if e["type"].startswith("thalos.feature")]
     results.append(check(
         "el evento referencia la evidencia que lo justifica",
         feature_evs and all(e.get("evidence_refs") for e in feature_evs),
@@ -275,7 +275,7 @@ def main():
     # ---------- rechazo ----------
 
     # Una dependencia que no termino bloquea: transicion F3.
-    code, out = talos(proj, "feature", "start", "F002")
+    code, out = thalos(proj, "feature", "start", "F002")
     results.append(check(
         "RECHAZA arrancar con una dependencia sin FEATURE_DONE",
         code == 3 and "F001" in out, f"exit={code}"))
@@ -285,7 +285,7 @@ def main():
         state_of(proj, "F002") is None))
 
     # Reejecutar start sobre una feature ya arrancada no puede retrocederla.
-    code, out = talos(proj, "feature", "start", "F001")
+    code, out = thalos(proj, "feature", "start", "F001")
     st2 = state_of(proj, "F001")
     results.append(check(
         "reejecutar start NO retrocede el estado a FEATURE_READY",
@@ -294,14 +294,14 @@ def main():
 
     # Un start fallido no puede dejar leases huerfanos.
     proj2 = project()
-    talos(proj2, "feature", "start", "F001")
+    thalos(proj2, "feature", "start", "F001")
     doc = lock_lib.load(str(proj2 / "orchestration" / "locks.json"))
     recursos = [x["resource"] for x in doc["leases"]]
     results.append(check(
         "el lease de la feature arrancada queda tomado",
         "branch:feature/F001" in recursos, f"{recursos}"))
 
-    talos(proj2, "feature", "start", "F003")
+    thalos(proj2, "feature", "start", "F003")
     doc = lock_lib.load(str(proj2 / "orchestration" / "locks.json"))
     results.append(check(
         "un start rechazado no deja lease huerfano",
@@ -310,16 +310,16 @@ def main():
     # ---------- despacho con rol (secciones 18 a 21) ----------
     #
     # Hasta ahora roles/ y config/roles.yaml eran declaraciones que nunca
-    # llegaban al agente: Talos lanzaba un agente pelado, con permisos
+    # llegaban al agente: Thalos lanzaba un agente pelado, con permisos
     # completos. El enforcement existia del lado del sistema y no del lado del
     # trabajo, que es donde tiene que estar.
 
     prol = project()
-    talos(prol, "feature", "start", "F001")
+    thalos(prol, "feature", "start", "F001")
 
     # Fail-closed: un rol que no esta en el registro de scope no se despacha.
     # Sin scope, el bloqueo dejaria pasar todo.
-    code, out = talos(prol, "feature", "dispatch", "F001",
+    code, out = thalos(prol, "feature", "dispatch", "F001",
                       "--role", "Intruso", "--pane", "w1:p1")
     results.append(check(
         "RECHAZA despachar un rol que no existe en el registro de scope",
@@ -335,7 +335,7 @@ def main():
     # concreto: exigir FEATURE_IN_PROGRESS estaba escrito para un solo rol, y
     # el Reviewer trabaja con la feature en FEATURE_REVIEW. El loop proponia
     # despacharlo y el despacho lo mandaba a arrancar algo ya arrancado.
-    code, out = talos(prol, "feature", "dispatch", "F002",
+    code, out = thalos(prol, "feature", "dispatch", "F002",
                       "--role", "Developer", "--pane", "w1:p1")
     results.append(check(
         "RECHAZA despachar sobre una feature que no arranco",
@@ -343,10 +343,10 @@ def main():
 
     # El brief lleva instrucciones Y alcance: las instrucciones solas no dicen
     # que rutas puede tocar en esta corrida.
-    script = (f'. "{ROOT}/hooks/lib/role.sh"; talos_role_brief Developer F001')
+    script = (f'. "{ROOT}/hooks/lib/role.sh"; thalos_role_brief Developer F001')
     brief = subprocess.run(["sh", "-c", script], capture_output=True, text=True,
                            env={"PATH": "/usr/bin:/bin",
-                                "TALOS_SYSTEM_ROOT": str(ROOT),
+                                "THALOS_SYSTEM_ROOT": str(ROOT),
                                 "HOME": str(pathlib.Path.home())}).stdout
     results.append(check(
         "el brief declara el alcance concreto de escritura",
@@ -372,10 +372,10 @@ def main():
     results.append(check("Developer NO puede tocar los workflows de CI",
                          scope("Developer", ".github/workflows/ci.yml") != 0))
 
-    # EL BLOQUEO CON TALOS VENDOREADO.
+    # EL BLOQUEO CON THALOS VENDOREADO.
     #
-    # check-tool-call.sh calculaba la raiz como dirname(hooks/), que con Talos
-    # en .talos/ da .talos/ y no el proyecto. Ahi no hay
+    # check-tool-call.sh calculaba la raiz como dirname(hooks/), que con Thalos
+    # en .thalos/ da .thalos/ y no el proyecto. Ahi no hay
     # orchestration/.current-role, el rol quedaba vacio, y la regla "sin rol la
     # llamada pasa" dejaba pasar TODO. El mecanismo 2 estaba inerte justo en la
     # instalacion normal, y sin decirlo.
@@ -387,17 +387,17 @@ def main():
         payload = json.dumps({"tool_name": "Write",
                               "tool_input": {"file_path": path_rel}})
         p = subprocess.run(
-            [str(root / ".talos" / "hooks" / "agent" / "claude-code" / "pre-tool-use.sh")],
+            [str(root / ".thalos" / "hooks" / "agent" / "claude-code" / "pre-tool-use.sh")],
             input=payload, capture_output=True, text=True, cwd=root,
             env={"PATH": "/usr/bin:/bin:/usr/local/bin",
                  "HOME": str(pathlib.Path.home())})
         return p.returncode
 
     results.append(check(
-        "con Talos vendoreado, el bloqueo PERMITE lo que el rol permite",
+        "con Thalos vendoreado, el bloqueo PERMITE lo que el rol permite",
         hook("src/a.py", vend) == 0))
     results.append(check(
-        "y DENIEGA lo que el rol prohibe (mecanismo 2 vivo con .talos/)",
+        "y DENIEGA lo que el rol prohibe (mecanismo 2 vivo con .thalos/)",
         hook("spec/x.md", vend) != 0,
         "sin esto el bloqueo queda inerte en toda instalacion normal"))
     results.append(check(
@@ -421,9 +421,9 @@ def main():
     # comandos de distancia de su causa.
 
     pa = project()
-    talos(pa, "feature", "start", "F001")
+    thalos(pa, "feature", "start", "F001")
     log = espia(pa)
-    code, out = talos(pa, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = thalos(pa, "feature", "dispatch", "F001", "--role", "Developer")
     ref_p = pa / "orchestration" / "features" / "F001" / ".agent"
     results.append(check(
         "dispatch registra la referencia del agente",
@@ -431,7 +431,7 @@ def main():
     ref = json.loads(ref_p.read_text()) if ref_p.is_file() else {}
     results.append(check(
         "la referencia dice QUE adapter la produjo (regla 37.4.3.5 del lado del dato)",
-        ref.get("adapter") == "talos.adapter.spy", f"{ref}"))
+        ref.get("adapter") == "thalos.adapter.spy", f"{ref}"))
     # El nombre lleva el PROYECTO adentro: el espacio de nombres del runtime
     # de ejecucion es de la maquina, y dos proyectos con una F001 pedian el
     # mismo agente. El segundo se quedaba sin agente propio y le mandaba su
@@ -444,7 +444,7 @@ def main():
     nombre = ref.get("name") or ""
     results.append(check(
         "el nombre del agente distingue proyecto y rol, no solo la feature",
-        nombre.startswith("talos_") and nombre.endswith("_f001_deve")
+        nombre.startswith("thalos_") and nombre.endswith("_f001_deve")
         and pa.name.lower().replace("-", "_")[:8] in nombre,
         f"{nombre} para el proyecto {pa.name}"))
     # El runtime acota el nombre y lo rechaza si se pasa: minusculas, digitos,
@@ -463,8 +463,8 @@ def main():
 
     # El target de una operacion de agente es el NOMBRE, no el pane. Un pane
     # puede quedar vacio, reciclado o con el shell de una persona; el nombre lo
-    # controla Talos.
-    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
+    # controla Thalos.
+    code, out = thalos(pa, "feature", "work", "F001", "--timeout", "3")
     agente = ref.get("name")
     prompts = spy_lines(log, "prompt_agent")
     results.append(check(
@@ -484,14 +484,14 @@ def main():
         code == 3 and "sin dejar entregable" in out, f"exit={code} {out[-200:]}"))
 
     # LA REGRESION: cambiar la ligadura invalida la referencia vieja.
-    espia(pa, impl="talos.adapter.otro")
-    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
+    espia(pa, impl="thalos.adapter.otro")
+    code, out = thalos(pa, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "RECHAZA usar una referencia que produjo otro ExecutionAdapter",
         code == 2 and "otro adapter" in out, f"exit={code} {out[-300:]}"))
     results.append(check(
         "y dice cual quedo registrada y cual esta ligada hoy",
-        "talos.adapter.spy" in out and "talos.adapter.otro" in out, out[-300:]))
+        "thalos.adapter.spy" in out and "thalos.adapter.otro" in out, out[-300:]))
     results.append(check(
         "no se le entrego trabajo a nadie con la referencia invalida",
         len(spy_lines(log, "prompt_agent")) == 1,
@@ -503,18 +503,18 @@ def main():
     # Se vuelve a ligar el adapter que abrio la sesion: cerrar un panel cuyo id
     # es de otro adapter seria cerrarle el panel a cualquiera.
     espia(pa)
-    code, out = talos(pa, "feature", "release", "F001")
+    code, out = thalos(pa, "feature", "release", "F001")
     results.append(check(
         "release suelta tambien la referencia del agente",
         not ref_p.exists()))
     # Instalar es reversible o no es instalar. Lo que el shim dejo en el
     # proyecto se retira entero: el brief Y el bloqueo. Un bloqueo que
-    # sobrevive al rol queda apuntando a una ruta de .talos/ y gobernando una
-    # sesion que Talos ya solto.
+    # sobrevive al rol queda apuntando a una ruta de .thalos/ y gobernando una
+    # sesion que Thalos ya solto.
     results.append(check(
         "release no deja briefs ni bloqueos en el proyecto",
         not (pa / "AGENTS.md").exists() and not (pa / "CLAUDE.md").exists()
-        and not (pa / ".opencode" / "plugin" / "talos-scope.js").exists(),
+        and not (pa / ".opencode" / "plugin" / "thalos-scope.js").exists(),
         f"{[str(x) for x in (pa / '.opencode').rglob('*') if x.is_file()]}"))
     _cs = pa / ".claude" / "settings.json"
     results.append(check(
@@ -524,13 +524,13 @@ def main():
 
     cierres = spy_lines(log, "close_session")
     results.append(check(
-        "y cierra la sesion que Talos abrio (seccion 38.5)",
+        "y cierra la sesion que Thalos abrio (seccion 38.5)",
         cierres and '"pane":"spy:pane"' in cierres[0],
         f"{cierres[:1]} {out[-200:]}"))
     results.append(check(
         "el cierre se reporta a quien libera",
         "spy:pane" in out and "cerrada" in out, out[-300:]))
-    code, out = talos(pa, "feature", "work", "F001", "--timeout", "3")
+    code, out = thalos(pa, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "sin referencia, work manda a despachar en vez de adivinar un target",
         code == 2 and "dispatch" in out, f"exit={code} {out[-300:]}"))
@@ -543,14 +543,14 @@ def main():
     # que entiende su agente. Cablear un runtime por defecto haria que cambiar
     # de proveedor en la config despachara igual el agente de antes.
     pm = project()
-    talos(pm, "feature", "start", "F001")
+    thalos(pm, "feature", "start", "F001")
     logm = espia(pm)
-    (pm / ".talos" / "config" / "models.yaml").write_text(
+    (pm / ".thalos" / "config" / "models.yaml").write_text(
         "version: 1\ntiers:\n"
         "  fast:\n    model: proveedor-x/modelo-y\n    provider: opencode\n"
         "  balanced:\n    model: b\n    provider: opencode\n"
         "  deep:\n    model: d\n    provider: opencode\n")
-    code, out = talos(pm, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = thalos(pm, "feature", "dispatch", "F001", "--role", "Developer")
     results.append(check(
         "dispatch elige el runtime que declara el proveedor del tier",
         code == 0 and (pm / "orchestration" / "features" / "F001" / ".runtime").is_file()
@@ -580,12 +580,12 @@ def main():
     # pidiendo permiso" y "termino" eran indistinguibles: se reportaba que el
     # agente no dejo entregable cuando en realidad no habia llegado a empezar.
     pblock = project()
-    talos(pblock, "feature", "start", "F001")
-    esp = pblock / ".talos" / "adapters" / "spy"
+    thalos(pblock, "feature", "start", "F001")
+    esp = pblock / ".thalos" / "adapters" / "spy"
     espia(pblock)
     (esp / "run.sh").write_text(
         '#!/bin/sh\n'
-        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"\n'
+        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${THALOS_PROJECT_ROOT:-.}/spy.log"\n'
         'case "$1" in\n'
         '  create_session) echo \'{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}\' ;;\n'
         '  start_agent) echo \'{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}\' ;;\n'
@@ -593,8 +593,8 @@ def main():
         '  *) echo \'{"status":"ok","dry_run":false,"result":{}}\' ;;\n'
         'esac\n')
     (esp / "run.sh").chmod(0o755)
-    talos(pblock, "feature", "dispatch", "F001", "--role", "Developer")
-    code, out = talos(pblock, "feature", "work", "F001", "--timeout", "3")
+    thalos(pblock, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = thalos(pblock, "feature", "work", "F001", "--timeout", "3")
     results.append(check(
         "un agente bloqueado sale needs_human (4), no exito silencioso",
         code == 4, f"exit={code} {out[-300:]}"))
@@ -619,17 +619,17 @@ def main():
     # ---------- la comunicacion no se pierde ----------
     #
     # Un agente que no puede seguir contesta como sabe: en prosa, con una
-    # pregunta, a veces con ruido de su interfaz. Talos esperaba un archivo con
+    # pregunta, a veces con ruido de su interfaz. Thalos esperaba un archivo con
     # un formato y descartaba todo lo demas: el motivo existia y no llegaba a
     # nadie. La seccion 25 ya definia el canal entero -tipos, estados, hilos- y
     # no lo implementaba nadie.
     pmsg = project()
-    talos(pmsg, "feature", "start", "F001")
-    esp2 = pmsg / ".talos" / "adapters" / "spy"
+    thalos(pmsg, "feature", "start", "F001")
+    esp2 = pmsg / ".thalos" / "adapters" / "spy"
     espia(pmsg)
     (esp2 / "run.sh").write_text(
         '#!/bin/sh\n'
-        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${TALOS_PROJECT_ROOT:-.}/spy.log"\n'
+        'printf \'%s\\t%s\\n\' "$1" "${2:-}" >> "${THALOS_PROJECT_ROOT:-.}/spy.log"\n'
         'case "$1" in\n'
         '  create_session) echo \'{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}\' ;;\n'
         '  start_agent) echo \'{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}\' ;;\n'
@@ -637,8 +637,8 @@ def main():
         '  *) echo \'{"status":"ok","dry_run":false,"result":{}}\' ;;\n'
         'esac\n')
     (esp2 / "run.sh").chmod(0o755)
-    talos(pmsg, "feature", "dispatch", "F001", "--role", "Developer")
-    code, out = talos(pmsg, "feature", "work", "F001", "--timeout", "3")
+    thalos(pmsg, "feature", "dispatch", "F001", "--role", "Developer")
+    code, out = thalos(pmsg, "feature", "work", "F001", "--timeout", "3")
 
     msgs = list((pmsg / "orchestration" / "messages").glob("msg-*.json"))
     results.append(check(
@@ -657,13 +657,13 @@ def main():
         f"{m.get('from')} -> {m.get('to')} {m.get('type')} {m.get('state')}"))
     results.append(check(
         "el paso le dice a quien mira como leerlo y como contestar",
-        "talos message show" in out and "talos message answer" in out,
+        "thalos message show" in out and "thalos message answer" in out,
         out[-300:]))
 
     # Contestar cierra el circuito: se registra Y se entrega.
     logm2 = pmsg / "spy.log"
     prev = len(spy_lines(logm2, "prompt_agent"))
-    code, out = talos(pmsg, "message", "answer", m.get("id", "x"),
+    code, out = thalos(pmsg, "message", "answer", m.get("id", "x"),
                       "--text", "Si, el workspace se reinicio a proposito. Segui.")
     results.append(check(
         "responder entrega la respuesta al agente, no solo la escribe",
@@ -689,13 +689,13 @@ def main():
     # ledger le devuelve al segundo el panel del primero, y dos agentes no
     # entran en un panel. Ademas soltar al anterior DESPUES de pedir la sesion
     # cerraba el panel recien resuelto -son el mismo- y el arranque fallaba con
-    # "pane not found" sobre algo que Talos habia cerrado un segundo antes.
+    # "pane not found" sobre algo que Thalos habia cerrado un segundo antes.
     pdos = project()
-    talos(pdos, "feature", "start", "F001")
+    thalos(pdos, "feature", "start", "F001")
     logd = espia(pdos)
-    talos(pdos, "feature", "dispatch", "F001", "--role", "Developer")
+    thalos(pdos, "feature", "dispatch", "F001", "--role", "Developer")
     ref_dev = json.loads((pdos / "orchestration" / "features" / "F001" / ".agent").read_text())
-    code, out = talos(pdos, "feature", "dispatch", "F001", "--role", "Reviewer")
+    code, out = thalos(pdos, "feature", "dispatch", "F001", "--role", "Reviewer")
     ref_rev = json.loads((pdos / "orchestration" / "features" / "F001" / ".agent").read_text())
     results.append(check(
         "despachar otro rol sobre la misma feature funciona",
@@ -719,11 +719,11 @@ def main():
     # ---------- lo que un shim instala, lo retira ----------
     #
     # Retirar solo el brief dejaba el bloqueo registrado en el runtime de una
-    # sesion que Talos ya no gobierna: apuntando a una ruta de .talos/ que
+    # sesion que Thalos ya no gobierna: apuntando a una ruta de .thalos/ que
     # puede no existir, y aplicando un rol que nadie activo.
     ps = pathlib.Path(tempfile.mkdtemp())
     (ps / ".claude").mkdir()
-    # Configuracion ajena que Talos NO puede pisar al instalar ni al retirar.
+    # Configuracion ajena que Thalos NO puede pisar al instalar ni al retirar.
     (ps / ".claude" / "settings.json").write_text(json.dumps({
         "model": "el-que-la-persona-eligio",
         "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
@@ -755,21 +755,21 @@ def main():
                 for h in e.get("hooks", [])),
         json.dumps(cfg2)[:200]))
 
-    # ---------- la chispa: talos boot ----------
+    # ---------- la chispa: thalos boot ----------
     #
-    # Talos no es inteligente y no tiene por que serlo: abre la sesion, impone
+    # Thalos no es inteligente y no tiene por que serlo: abre la sesion, impone
     # el alcance, valida y evalua gates. Decidir el proximo paso SI requiere un
     # modelo, y para eso existe el coordinador. boot lo enciende y se retira.
 
     pb = project()
-    talos(pb, "feature", "start", "F001")
+    thalos(pb, "feature", "start", "F001")
     logb = espia(pb)
-    (pb / ".talos" / "config" / "models.yaml").write_text(
+    (pb / ".thalos" / "config" / "models.yaml").write_text(
         "version: 1\ntiers:\n"
         "  fast:\n    model: barato\n    provider: opencode\n"
         "  balanced:\n    model: medio\n    provider: opencode\n"
         "  deep:\n    model: caro\n    provider: opencode\n")
-    code, out = talos(pb, "boot", "F001")
+    code, out = thalos(pb, "boot", "F001")
     results.append(check(
         "boot enciende al coordinador de la feature",
         code == 0, f"exit={code} {out[-400:]}"))
@@ -792,11 +792,11 @@ def main():
         pr and "coordinador de F001" in pr[0], f"{pr[:1][:1]}"))
     results.append(check(
         "el encargo incluye la superficie de comandos: la chispa muestra el camino",
-        pr and "talos feature dispatch F001" in pr[0]
-        and "talos feature advance F001" in pr[0],
+        pr and "thalos feature dispatch F001" in pr[0]
+        and "thalos feature advance F001" in pr[0],
         "sin los comandos, la chispa muestra una intencion y no un camino"))
     results.append(check(
-        "y le dice explicitamente que Talos deja de conducir",
+        "y le dice explicitamente que Thalos deja de conducir",
         "deja de proponer pasos" in out, out[-300:]))
 
     # El brief del rol tiene que traer la superficie completa, no solo el
@@ -804,13 +804,13 @@ def main():
     fl = (ROOT / "roles" / "feature-lead.md").read_text()
     results.append(check(
         "el brief del coordinador declara por donde se pasa",
-        "talos feature release" in fl and "El gate decide, no vos" in fl))
+        "thalos feature release" in fl and "El gate decide, no vos" in fl))
 
     # ---------- el ejecutor no fuerza ----------
 
     # Sin evidencia, el ejecutor no avanza aunque se lo pida directo.
     proj3 = project()
-    code, out = talos(proj3, "gate", "feature", "FEATURE_READY",
+    code, out = thalos(proj3, "gate", "feature", "FEATURE_READY",
                       "FEATURE_IN_PROGRESS", "--no-persist")
     results.append(check(
         "sin evidencia el gate niega, y el ejecutor depende del gate",

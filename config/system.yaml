@@ -1,6 +1,6 @@
 version: 1
 
-# Ver talos-0.0.7.md secciones 37.4.4, 47 y 51.
+# Ver thalos-0.0.7.md secciones 37.4.4, 47 y 51.
 #
 # dry-run-only es el modo objetivo actual (README.md "Estado de madurez").
 # En este modo ExecutionAdapter, CoordinationAdapter y CIAdapter DEBEN poder

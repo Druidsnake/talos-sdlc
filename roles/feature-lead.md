@@ -53,23 +53,23 @@ Tampoco force push ni tocar ramas protegidas. El merge lo evalúa `MergeGate`, q
 
 ## Por dónde se pasa
 
-Talos no te vigila: te abre la puerta. Cada cambio de estado ocurre porque vos
+Thalos no te vigila: te abre la puerta. Cada cambio de estado ocurre porque vos
 llamás a un comando, y ese comando decide si está permitido y lo deja
-registrado. Talos no interpreta lo que le contás — valida artefactos y evalúa
+registrado. Thalos no interpreta lo que le contás — valida artefactos y evalúa
 gates contra evidencia sellada.
 
 | Querés | Comando |
 |---|---|
-| saber qué sigue | `talos next` |
-| despachar a un Developer | `talos feature dispatch <F> --role Developer` |
-| entregarle el trabajo | `talos feature work <F>` |
-| cerrar su panel cuando ya no hace falta | `talos feature release <F>` |
-| sellar lo que produjo | `talos feature collect <F>` |
-| observar git y sellar `CommitRef` | `talos feature commit <F>` |
-| correr una verificación | `talos feature test <F> --command "<CMD>"` |
-| ver qué falta para avanzar | `talos feature next <F>` |
-| avanzar el estado | `talos feature advance <F> --to <ESTADO>` |
-| ver el presupuesto | `talos budget <F>` |
+| saber qué sigue | `thalos next` |
+| despachar a un Developer | `thalos feature dispatch <F> --role Developer` |
+| entregarle el trabajo | `thalos feature work <F>` |
+| cerrar su panel cuando ya no hace falta | `thalos feature release <F>` |
+| sellar lo que produjo | `thalos feature collect <F>` |
+| observar git y sellar `CommitRef` | `thalos feature commit <F>` |
+| correr una verificación | `thalos feature test <F> --command "<CMD>"` |
+| ver qué falta para avanzar | `thalos feature next <F>` |
+| avanzar el estado | `thalos feature advance <F> --to <ESTADO>` |
+| ver el presupuesto | `thalos budget <F>` |
 
 Dos cosas que no cambian por ser vos quien coordina:
 

@@ -1,16 +1,16 @@
 #!/bin/sh
-# talos status - estado del proyecto.
+# thalos status - estado del proyecto.
 set -eu
 # Este comando solo lee el runtime del proyecto; no necesita $SYS.
-PROJ="${TALOS_PROJECT_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos status - estado del proyecto
+thalos status - estado del proyecto
 
 USO
-    talos status [--format json]
+    thalos status [--format json]
 
 MUESTRA
     run_id, fecha de creacion, eventos registrados,
@@ -18,7 +18,7 @@ MUESTRA
 
 SALIDA
     0  el proyecto esta inicializado
-    2  falta talos init
+    2  falta thalos init
 USAGE
 }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
@@ -35,7 +35,7 @@ if [ ! -f orchestration/.meta.json ]; then
     if [ "$FORMAT" = json ]; then
         echo '{"initialized": false}'
     else
-        echo "sin inicializar. Ejecuta talos init"
+        echo "sin inicializar. Ejecuta thalos init"
     fi
     exit 2
 fi
@@ -54,7 +54,7 @@ if [ "$FORMAT" = json ]; then
     printf '{"initialized": true, "run_id": "%s", "last_event_seq": %s, "spec_status": "%s", "features": %s}\n' \
         "$run_id" "${seq:-0}" "$spec_status" "$n_features"
 else
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  run_id          %s\n' "$run_id"
     printf '  creado          %s\n' "$created"

@@ -31,10 +31,10 @@ Crea symlinks en `.git/hooks/`. Si ya tenés un hook propio ahí, no lo pisa: te
 
 ## El validador se resuelve, no se instala
 
-Talos necesita un validador de JSON Schema y **no lo instala por vos**. Aplica la misma cascada que [`talos-0.0.7.md` §37.4.5](../talos-0.0.7.md) define para binarios externos:
+Thalos necesita un validador de JSON Schema y **no lo instala por vos**. Aplica la misma cascada que [`thalos-0.0.7.md` §37.4.5](../thalos-0.0.7.md) define para binarios externos:
 
 ```txt
-$TALOS_VALIDATOR      ->  comando propio, si querés otro
+$THALOS_VALIDATOR      ->  comando propio, si querés otro
 .venv/bin/python      ->  entorno local del proyecto
 check-jsonschema      ->  del PATH
 ajv                   ->  del PATH
@@ -47,7 +47,7 @@ Sin ninguno, el hook sale con código 3 y te muestra los comandos de instalació
 python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml
 ```
 
-Esta decisión mantiene el sistema honesto: cualquiera puede reemplazar el validador sin tocar los hooks, igual que cualquiera puede reemplazar `talos-adapter-herdr` sin tocar el núcleo.
+Esta decisión mantiene el sistema honesto: cualquiera puede reemplazar el validador sin tocar los hooks, igual que cualquiera puede reemplazar `thalos-adapter-herdr` sin tocar el núcleo.
 
 ---
 
@@ -57,8 +57,8 @@ Esta decisión mantiene el sistema honesto: cualquiera puede reemplazar el valid
 
 ```bash
 $ hooks/check-write-scope.sh Developer package.json
-talos: DENEGADO Developer no tiene write_paths que cubra package.json
-talos: sin regla allow que matchee, se deniega (fail-closed)
+thalos: DENEGADO Developer no tiene write_paths que cubra package.json
+thalos: sin regla allow que matchee, se deniega (fail-closed)
 ```
 
 `package.json` no está en ninguna lista de prohibiciones. Se bloquea igual. Un sistema que permite lo no contemplado deja de gobernar en cuanto aparece un caso nuevo — y con agentes, los casos nuevos aparecen todo el tiempo.

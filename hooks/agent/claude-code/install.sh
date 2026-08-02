@@ -1,5 +1,5 @@
 #!/bin/sh
-# Instala el enforcement de Talos en el runtime de Claude Code.
+# Instala el enforcement de Thalos en el runtime de Claude Code.
 #
 # Un shim por runtime, igual que pre-tool-use.sh. El nucleo no conoce
 # .claude/settings.json ni CLAUDE.md: son detalles de ESTE agente. Cambiar de
@@ -9,13 +9,13 @@
 #
 #   1. Registra el hook PreToolUse. Sin esto el alcance esta DECLARADO y no
 #      IMPUESTO: el agente lo respeta por criterio propio, que es exactamente
-#      lo que Talos existe para no depender.
+#      lo que Thalos existe para no depender.
 #
 #   2. Deja el brief donde el agente lo lee. Pasarlo por linea de comandos es
 #      fragil -son cien lineas con saltos y comillas- y se rompe en silencio:
 #      el agente arranca igual, sin instrucciones y sin saber que le faltan.
 #
-# Uso:   install.sh <raiz-del-proyecto> <raiz-de-talos> <archivo-de-brief>
+# Uso:   install.sh <raiz-del-proyecto> <raiz-de-thalos> <archivo-de-brief>
 #        install.sh <raiz-del-proyecto> --uninstall
 # Sale:  0 instalado / 1 no se pudo
 
@@ -27,13 +27,13 @@ PROJ="${1:?falta la raiz del proyecto}"
 # existe CLAUDE.md, asi que tampoco puede borrarlo.
 if [ "${2:-}" = "--uninstall" ]; then
     cd "$PROJ"
-    if [ -f CLAUDE.md ] && head -1 CLAUDE.md | grep -q "GENERADO por Talos"; then
+    if [ -f CLAUDE.md ] && head -1 CLAUDE.md | grep -q "GENERADO por Thalos"; then
         rm -f CLAUDE.md
         echo "brief retirado (CLAUDE.md)"
     fi
     # El hook TAMBIEN se retira. Retirar solo el brief dejaba el bloqueo
-    # registrado en .claude/settings.json de una sesion que Talos ya no
-    # gobierna: apuntando a una ruta de .talos/ que puede no existir, y
+    # registrado en .claude/settings.json de una sesion que Thalos ya no
+    # gobierna: apuntando a una ruta de .thalos/ que puede no existir, y
     # bloqueando escrituras segun un rol que ya nadie activo. Instalar es
     # reversible o no es instalar.
     if [ -f .claude/settings.json ]; then
@@ -52,8 +52,8 @@ try:
 except (json.JSONDecodeError, OSError):
     raise SystemExit(0)
 
-# Se saca SOLO lo que puso Talos, reconocido por la ruta del shim. Lo que la
-# persona haya configurado no es de Talos y no se toca.
+# Se saca SOLO lo que puso Thalos, reconocido por la ruta del shim. Lo que la
+# persona haya configurado no es de Thalos y no se toca.
 def es_de_talos(h):
     return "hooks/agent/claude-code/pre-tool-use.sh" in str(h.get("command", ""))
 
@@ -80,7 +80,7 @@ else:
         cfg.pop("hooks", None)
 
 # Un settings.json que queda vacio por retirar lo unico que tenia es un
-# archivo que Talos creo: se lleva lo suyo entero.
+# archivo que Thalos creo: se lleva lo suyo entero.
 if cfg:
     p.write_text(json.dumps(cfg, indent=2) + "\n")
 else:
@@ -92,14 +92,14 @@ PYEOF
     exit 0
 fi
 
-SYS="${2:?falta la raiz de Talos}"
+SYS="${2:?falta la raiz de Thalos}"
 BRIEF="${3:-}"
 
 cd "$PROJ"
 mkdir -p .claude
 
 SHIM="$SYS/hooks/agent/claude-code/pre-tool-use.sh"
-[ -x "$SHIM" ] || { echo "talos: falta el shim $SHIM" >&2; exit 1; }
+[ -x "$SHIM" ] || { echo "thalos: falta el shim $SHIM" >&2; exit 1; }
 
 # ---------- 1. el hook que bloquea ----------
 #
@@ -110,7 +110,7 @@ for c in "$PROJ/.venv/bin/python" "$SYS/.venv/bin/python"; do
     [ -x "$c" ] && { PY="$c"; break; }
 done
 [ -n "$PY" ] || PY=$(command -v python3 2>/dev/null) || {
-    echo "talos: no hay python3 para editar .claude/settings.json" >&2; exit 1; }
+    echo "thalos: no hay python3 para editar .claude/settings.json" >&2; exit 1; }
 
 "$PY" - "$SHIM" <<'PYEOF' || exit 1
 import json, pathlib, sys
@@ -120,7 +120,7 @@ p = pathlib.Path(".claude/settings.json")
 try:
     cfg = json.loads(p.read_text()) if p.is_file() else {}
 except json.JSONDecodeError:
-    print("talos: .claude/settings.json no es JSON valido; no se toca",
+    print("thalos: .claude/settings.json no es JSON valido; no se toca",
           file=sys.stderr)
     raise SystemExit(1)
 
@@ -151,7 +151,7 @@ PYEOF
 # ---------- 2. el brief donde el agente lo lee ----------
 if [ -n "$BRIEF" ] && [ -f "$BRIEF" ]; then
     {
-        echo "<!-- GENERADO por Talos al despachar un agente. Se borra al liberar el rol. -->"
+        echo "<!-- GENERADO por Thalos al despachar un agente. Se borra al liberar el rol. -->"
         echo ""
         cat "$BRIEF"
     } > CLAUDE.md

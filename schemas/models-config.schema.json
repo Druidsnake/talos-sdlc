@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/models-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/models-config/0.0.6",
   "title": "ModelsConfig",
-  "description": "config/models.yaml. Mapeo capability_tier -> modelo concreto. Ver talos-0.0.7.md seccion 20.3. El nucleo no conoce identificadores de modelo: solo tiers.",
+  "description": "config/models.yaml. Mapeo capability_tier -> modelo concreto. Ver thalos-0.0.7.md seccion 20.3. El nucleo no conoce identificadores de modelo: solo tiers.",
   "type": "object",
   "required": ["version", "tiers"],
   "properties": {

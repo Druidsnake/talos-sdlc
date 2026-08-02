@@ -10,7 +10,7 @@ set -eu
 
 HOOKS_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(dirname "$HOOKS_DIR")
-SCHEMAS="${TALOS_SCHEMAS_DIR:-$ROOT/schemas}"
+SCHEMAS="${THALOS_SCHEMAS_DIR:-$ROOT/schemas}"
 
 . "$HOOKS_DIR/lib/resolve-validator.sh"
 
@@ -23,19 +23,19 @@ schema_file="$SCHEMAS/$1.schema.json"
 doc="$2"
 
 if [ ! -f "$schema_file" ]; then
-    echo "talos: no existe el schema $1 en $SCHEMAS" >&2
+    echo "thalos: no existe el schema $1 en $SCHEMAS" >&2
     exit 2
 fi
 if [ ! -f "$doc" ]; then
-    echo "talos: no existe el artefacto $doc" >&2
+    echo "thalos: no existe el artefacto $doc" >&2
     exit 2
 fi
 
-if talos_validate "$schema_file" "$doc"; then
+if thalos_validate "$schema_file" "$doc"; then
     exit 0
 else
     status=$?
     [ "$status" -eq 3 ] && exit 3
-    echo "talos: RECHAZADO $doc no valida contra $1.schema.json" >&2
+    echo "thalos: RECHAZADO $doc no valida contra $1.schema.json" >&2
     exit 1
 fi

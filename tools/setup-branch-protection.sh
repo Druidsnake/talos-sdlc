@@ -13,7 +13,7 @@ set -eu
 
 REPO="${1:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 BRANCH="${2:-main}"
-REVIEWS="${TALOS_REQUIRED_REVIEWS:-0}"
+REVIEWS="${THALOS_REQUIRED_REVIEWS:-0}"
 
 echo "Repositorio: $REPO"
 echo "Rama:        $BRANCH"
@@ -65,7 +65,7 @@ echo ""
 echo "Notas:"
 echo "  - enforce_admins queda en false: podes destrabar en una emergencia."
 echo "    Ponelo en true cuando el flujo este asentado."
-echo "  - TALOS_REQUIRED_REVIEWS=1 exige aprobacion de otra persona."
+echo "  - THALOS_REQUIRED_REVIEWS=1 exige aprobacion de otra persona."
 echo "    En un repo de una sola persona, dejalo en 0 o te bloqueas a vos mismo."
 echo "  - Para quitar la proteccion:"
 echo "      gh api -X DELETE repos/$REPO/branches/$BRANCH/protection"

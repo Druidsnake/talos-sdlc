@@ -1,6 +1,6 @@
 # system/
 
-Las reglas normativas de Talos, en la forma en que el agente las consume.
+Las reglas normativas de Thalos, en la forma en que el agente las consume.
 
 | Archivo | Qué es |
 |---|---|
@@ -11,7 +11,7 @@ Las reglas normativas de Talos, en la forma en que el agente las consume.
 
 ## El registro es el que manda
 
-`talos-0.0.7.md` son 3000 líneas para una persona. `rules.yaml` es el mismo contenido en la forma que importa para gobernar: **cada requisito atado al mecanismo concreto que lo hace cumplir**.
+`thalos-0.0.7.md` son 3000 líneas para una persona. `rules.yaml` es el mismo contenido en la forma que importa para gobernar: **cada requisito atado al mecanismo concreto que lo hace cumplir**.
 
 ```yaml
 - id: R-EVID-002
@@ -20,7 +20,7 @@ Las reglas normativas de Talos, en la forma en que el agente las consume.
   mecanismo: 1
   implementacion:
     - schemas/task-result.schema.json
-  spec_ref: talos-0.0.7.md#30-4-verificacion-de-pruebas
+  spec_ref: thalos-0.0.7.md#30-4-verificacion-de-pruebas
 ```
 
 Sin el campo `mecanismo`, esa línea sería una aspiración. Con él, se puede verificar que la promesa tiene respaldo.
@@ -54,7 +54,7 @@ RECHAZA  RECOMENDADO blando sin estrategia de guía
 RECHAZA  mecanismo ejecutable sin nombrar quién lo ejecuta
 ```
 
-Escribir `DEBE` sobre algo que solo está respaldado por un archivo de instrucciones **no es una mala práctica: es un documento inválido**. Talos se aplica a sí mismo el mecanismo que le exige a los demás.
+Escribir `DEBE` sobre algo que solo está respaldado por un archivo de instrucciones **no es una mala práctica: es un documento inválido**. Thalos se aplica a sí mismo el mecanismo que le exige a los demás.
 
 ---
 
@@ -81,7 +81,7 @@ Escribir `DEBE` sobre algo que solo está respaldado por un archivo de instrucci
 
 Las tres reglas no duras están declaradas como tales, con su estrategia de guía asociada. Son las que dependen de juicio: que una revisión sea buena, que un criterio de aceptación sea testeable, que el Developer no amplíe el alcance. No se pueden forzar, y el registro no finge que sí.
 
-Las tres de mecanismo 5 dependen de que alguien corra `tools/setup-branch-protection.sh`. Hasta entonces, están declaradas pero no activas — ver `00-enforcement.md` §5, regla 4: **Talos no debe afirmar que un requisito se cumple cuando su mecanismo no está disponible**.
+Las tres de mecanismo 5 dependen de que alguien corra `tools/setup-branch-protection.sh`. Hasta entonces, están declaradas pero no activas — ver `00-enforcement.md` §5, regla 4: **Thalos no debe afirmar que un requisito se cumple cuando su mecanismo no está disponible**.
 
 ---
 

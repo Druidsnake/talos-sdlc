@@ -10,7 +10,7 @@
 
 set -eu
 
-RULES="${TALOS_SCOPE_RULES:-$(dirname "$0")/generated/write-scope.rules}"
+RULES="${THALOS_SCOPE_RULES:-$(dirname "$0")/generated/write-scope.rules}"
 
 if [ $# -ne 2 ]; then
     echo "uso: check-write-scope.sh <rol> <ruta>" >&2
@@ -21,12 +21,12 @@ role="$1"
 path="$2"
 
 if [ ! -f "$RULES" ]; then
-    echo "talos: no existe $RULES" >&2
-    echo "talos: ejecuta tools/build-rules.py para generarlo" >&2
+    echo "thalos: no existe $RULES" >&2
+    echo "thalos: ejecuta tools/build-rules.py para generarlo" >&2
     exit 2
 fi
 
-# Normaliza el glob de Talos a un patron de case:
+# Normaliza el glob de Thalos a un patron de case:
 #   src/**  -> src/*    (case de POSIX hace que * cruce /)
 #   *.md    -> *.md
 to_pattern() {
@@ -44,8 +44,8 @@ while IFS='	' read -r r mode glob; do
     # shellcheck disable=SC2254  # el glob es deliberado: es el matcher de rutas
     case "$path" in
         $pattern)
-            echo "talos: DENEGADO $role no puede escribir en $path" >&2
-            echo "talos: regla: deny $glob" >&2
+            echo "thalos: DENEGADO $role no puede escribir en $path" >&2
+            echo "thalos: regla: deny $glob" >&2
             exit 1
             ;;
     esac
@@ -67,6 +67,6 @@ if [ "$matched_allow" -eq 1 ]; then
     exit 0
 fi
 
-echo "talos: DENEGADO $role no tiene write_paths que cubra $path" >&2
-echo "talos: sin regla allow que matchee, se deniega (fail-closed)" >&2
+echo "thalos: DENEGADO $role no tiene write_paths que cubra $path" >&2
+echo "thalos: sin regla allow que matchee, se deniega (fail-closed)" >&2
 exit 1

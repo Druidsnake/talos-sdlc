@@ -1,5 +1,5 @@
 #!/bin/sh
-# Corre todas las verificaciones de Talos.
+# Corre todas las verificaciones de Thalos.
 # Lo usan por igual una persona y el CI: una sola definicion de "esta bien".
 
 set -eu
@@ -12,8 +12,8 @@ if [ -x .venv/bin/python ]; then
 elif command -v python3 >/dev/null 2>&1 && python3 -c "import jsonschema, yaml" 2>/dev/null; then
     PY="python3"
 else
-    echo "talos: falta un python con jsonschema y pyyaml" >&2
-    echo "talos: python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml" >&2
+    echo "thalos: falta un python con jsonschema y pyyaml" >&2
+    echo "thalos: python3 -m venv .venv && .venv/bin/pip install jsonschema pyyaml" >&2
     exit 3
 fi
 
@@ -44,7 +44,7 @@ printf '\n=== sintaxis y estilo de shell ===\n'
 # para el CI. Si no corre shellcheck y el CI si, son dos definiciones y una se
 # entera tarde. Cubre tambien cli/ y adapters/, que son shell como el resto.
 SH_FILES=$(find hooks tools tests cli adapters -name '*.sh' 2>/dev/null)
-SH_FILES="$SH_FILES cli/talos hooks/git/commit-msg hooks/git/pre-commit"
+SH_FILES="$SH_FILES cli/thalos hooks/git/commit-msg hooks/git/pre-commit"
 
 bad=0
 for f in $SH_FILES; do

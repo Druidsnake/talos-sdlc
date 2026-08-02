@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Comunicacion entre roles. Ver talos-0.0.7.md seccion 25.
+"""Comunicacion entre roles. Ver thalos-0.0.7.md seccion 25.
 
 La seccion 25 estaba especificada entera -tipos, estados, canales, expiracion,
 escalacion- y no la implementaba nadie: lo unico que la mencionaba era el
 init.sh que creaba orchestration/messages/ vacio. La consecuencia se veia
-corriendo: un agente contestaba "no puedo por X", Talos esperaba un archivo que
+corriendo: un agente contestaba "no puedo por X", Thalos esperaba un archivo que
 no llegaba, agotaba el plazo y reportaba "termino sin dejar entregable". El
 motivo existia y se perdia.
 
-LA ESTRUCTURA LA PONE TALOS, EL CONTENIDO PUEDE SER RUIDO.
+LA ESTRUCTURA LA PONE THALOS, EL CONTENIDO PUEDE SER RUIDO.
 
 La regla 25.1.1 pide comunicacion estructurada. Exigirle esa estructura al
 agente es lo que rompe la comunicacion: si contesta distinto, se pierde. Aca la
@@ -52,7 +52,7 @@ def dir_mensajes(root):
 def enviar(root, tipo, de, para, run, feature, task, cuerpo, hilo=None,
            en_respuesta_a=None, refs=None):
     if tipo not in TIPOS:
-        raise SystemExit(f"talos: tipo de mensaje desconocido: {tipo}")
+        raise SystemExit(f"thalos: tipo de mensaje desconocido: {tipo}")
     d = dir_mensajes(root)
     seq = len(list(d.glob("msg-*.json"))) + 1
     mid = f"msg-{seq:04d}-{tipo.lower()}"
@@ -116,17 +116,17 @@ def mostrar(root, mid):
         if m["id"] == mid:
             print(json.dumps(m, indent=2, ensure_ascii=False))
             return 0
-    print(f"talos: no existe el mensaje {mid}", file=sys.stderr)
+    print(f"thalos: no existe el mensaje {mid}", file=sys.stderr)
     return 2
 
 
 def cerrar(root, mid, estado):
     if estado not in ESTADOS:
-        raise SystemExit(f"talos: estado desconocido: {estado}")
+        raise SystemExit(f"thalos: estado desconocido: {estado}")
     d = pathlib.Path(root)
     f = d / f"{mid}.json"
     if not f.is_file():
-        print(f"talos: no existe el mensaje {mid}", file=sys.stderr)
+        print(f"thalos: no existe el mensaje {mid}", file=sys.stderr)
         return 2
     m = json.loads(f.read_text())
     m["state"] = estado
@@ -153,7 +153,7 @@ def main(argv):
         return mostrar(root, argv[3])
     if cmd == "close":
         return cerrar(root, argv[3], argv[4])
-    print(f"talos: subcomando desconocido: {cmd}", file=sys.stderr)
+    print(f"thalos: subcomando desconocido: {cmd}", file=sys.stderr)
     return 2
 
 

@@ -1,6 +1,6 @@
 version: 1
 
-# Ver talos-0.0.7.md secciones 18, 19 y 20.4
+# Ver thalos-0.0.7.md secciones 18, 19 y 20.4
 # write_paths y forbidden_tools son la base del mecanismo 2 (hook bloqueante)
 # y del mecanismo 8 (aislamiento de permisos).
 # Ver system/00-enforcement.md seccion 3.
@@ -19,8 +19,8 @@ roles:
       - "orchestration/**"
       - "src/**"
       - "tests/**"
-      - ".talos/**"
-      - "talos.config/**"
+      - ".thalos/**"
+      - "thalos.config/**"
     forbidden_tools:
       - git_commit
       - git_push
@@ -39,7 +39,7 @@ roles:
       - "spec/**"
       - "src/**"
       - "tests/**"
-      - ".talos/**"
+      - ".thalos/**"
     forbidden_tools:
       - git_commit
       - git_push
@@ -64,7 +64,7 @@ roles:
       - "spec/**"
       - "src/**"
       - "tests/**"
-      - ".talos/**"
+      - ".thalos/**"
       - "orchestration/program-plan.json"
     forbidden_tools:
       - pr_merge
@@ -102,8 +102,8 @@ roles:
       - "orchestration/reports/**"
       - "orchestration/messages/**"
       - "orchestration/features/*/feature-state.json"
-      - ".talos/**"
-      - "talos.config/**"
+      - ".thalos/**"
+      - "thalos.config/**"
       - ".github/workflows/**"
     forbidden_tools:
       - pr_create
@@ -123,7 +123,7 @@ roles:
       - "spec/**"
       - "src/**"
       - "tests/**"
-      - ".talos/**"
+      - ".thalos/**"
     forbidden_tools:
       - file_write_src
       - pr_merge

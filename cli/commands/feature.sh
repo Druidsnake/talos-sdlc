@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos feature - ejecucion de features. Ver talos-0.0.7.md secciones 30 y 22.5.
+# thalos feature - ejecucion de features. Ver thalos-0.0.7.md secciones 30 y 22.5.
 #
 # start recorre las transiciones F1 y F2 de la tabla 22.5:
 #   F1  ->  FEATURE_READY          READY_GATE, evidencia ProgramPlanEntry + DependencySet
@@ -12,8 +12,8 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 PLAN=orchestration/program-plan.json
@@ -22,29 +22,29 @@ EVDIR=orchestration/evidence
 
 usage() {
     cat <<'USAGE'
-talos feature - ejecucion de features
+thalos feature - ejecucion de features
 
 USO
-    talos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
-    talos feature dispatch <ID> --role <ROL> [--pane <PANE>] [--kind KIND]
+    thalos feature start <ID>      lleva la feature a FEATURE_IN_PROGRESS
+    thalos feature dispatch <ID> --role <ROL> [--pane <PANE>] [--kind KIND]
                                   despacha un agente con rol y alcance activos
-                                  sin --pane, Talos crea uno
-    talos feature advance <ID> --to <ESTADO>
+                                  sin --pane, Thalos crea uno
+    thalos feature advance <ID> --to <ESTADO>
                                   ejecuta la transicion si el gate autoriza
-    talos feature next <ID>       que transiciones salen del estado actual
-    talos feature work <ID> [--agent <NOMBRE>] [--timeout <SEG>]
+    thalos feature next <ID>       que transiciones salen del estado actual
+    thalos feature work <ID> [--agent <NOMBRE>] [--timeout <SEG>]
                                   le da al agente despachado el trabajo de la
                                   feature. Sin --agent usa el que registro
                                   dispatch, si lo produjo el adapter ligado
-    talos feature commit <ID>     observa git y sella CommitRef
-    talos feature pr <ID>         abre el PR y sella PullRequestRef
-    talos feature checks <ID>     pide los checks al CI y sella CheckRunSet
-    talos feature collect <ID>    recoge el entregable del rol como evidencia
-    talos feature test <ID> --pane <PANE> --command "<CMD>"
+    thalos feature commit <ID>     observa git y sella CommitRef
+    thalos feature pr <ID>         abre el PR y sella PullRequestRef
+    thalos feature checks <ID>     pide los checks al CI y sella CheckRunSet
+    thalos feature collect <ID>    recoge el entregable del rol como evidencia
+    thalos feature test <ID> --pane <PANE> --command "<CMD>"
                                   corre una verificacion y sella LocalTestReport
-    talos feature list            estado de todas las features del plan
-    talos feature show <ID>       detalle de una feature
-    talos feature release <ID>    suelta el rol activo
+    thalos feature list            estado de todas las features del plan
+    thalos feature show <ID>       detalle de una feature
+    thalos feature release <ID>    suelta el rol activo
 
 QUE HACE start
     1. verifica que la feature exista en el plan y que sus dependencias esten
@@ -56,7 +56,7 @@ QUE HACE start
     5. transiciona a FEATURE_IN_PROGRESS si el gate lo autoriza       (F2)
 
     Cada paso emite su evento y persiste el GateResult que lo autorizo. Si un
-    gate rechaza, se emite talos.transition.rejected y no se avanza.
+    gate rechaza, se emite thalos.transition.rejected y no se avanza.
 
     El adapter que crea issue y rama sale del registry, no esta cableado.
     En dry-run-only las operaciones se simulan y quedan en el ledger.
@@ -69,7 +69,7 @@ QUE HACE dispatch
     4. compone el brief -instrucciones del rol + alcance concreto- y arranca
        el agente por el ExecutionAdapter
 
-    El rol lo fija Talos, no lo elige el agente. Un rol desconocido no se
+    El rol lo fija Thalos, no lo elige el agente. Un rol desconocido no se
     despacha: sin scope, el bloqueo dejaria pasar todo.
 
 SALIDA
@@ -93,22 +93,22 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 # shellcheck source=../../hooks/lib/model.sh
 . "$SYS/hooks/lib/model.sh"
 
-PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
+PY=$(thalos_python) || { echo "thalos: no hay python3" >&2; exit 2; }
 
 sub="${1:-list}"
 [ $# -gt 0 ] && shift
 FEAT="${1:-}"
 
 need_plan() {
-    [ -f "$PLAN" ] || { echo "talos: no existe $PLAN" >&2
-                        echo "talos: talos plan init" >&2; exit 2; }
+    [ -f "$PLAN" ] || { echo "thalos: no existe $PLAN" >&2
+                        echo "thalos: thalos plan init" >&2; exit 2; }
 }
 
 # ---------- list ----------
 
 if [ "$sub" = list ]; then
     need_plan
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  %-6s %-38s %-22s %s\n' ID TITULO ESTADO RIESGO
     "$PY" - "$PLAN" <<'PYEOF' | while IFS='	' read -r fid title risk; do
@@ -116,7 +116,7 @@ import json, sys
 for f in json.loads(open(sys.argv[1]).read())["features"]:
     print(f"{f['id']}\t{f['title'][:36]}\t{f['risk']}")
 PYEOF
-        st=$(talos_feature_state "$fid" 2>/dev/null || echo "-")
+        st=$(thalos_feature_state "$fid" 2>/dev/null || echo "-")
         printf '  %-6s %-38s %-22s %s\n' "$fid" "$title" "$st" "$risk"
     done
     echo ""
@@ -127,9 +127,9 @@ fi
 # ---------- show ----------
 
 if [ "$sub" = show ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
     sf="orchestration/features/$FEAT/state.json"
-    [ -f "$sf" ] || { echo "talos: $FEAT no arranco todavia" >&2; exit 2; }
+    [ -f "$sf" ] || { echo "thalos: $FEAT no arranco todavia" >&2; exit 2; }
     "$PY" -m json.tool "$sf"
     exit 0
 fi
@@ -137,23 +137,23 @@ fi
 # ---------- next ----------
 
 if [ "$sub" = next ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
-    [ -n "$est" ] || { echo "talos: $FEAT no arranco todavia" >&2; exit 2; }
-    echo "talos ${TALOS_VERSION:-?}"
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
+    est=$(thalos_feature_state "$FEAT" 2>/dev/null || echo "")
+    [ -n "$est" ] || { echo "thalos: $FEAT no arranco todavia" >&2; exit 2; }
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  %s esta en %s\n\n' "$FEAT" "$est"
-    if talos_is_terminal feature "$est"; then
+    if thalos_is_terminal feature "$est"; then
         echo "  Estado terminal: no tiene transiciones de salida (regla 22.6.9)."
         exit 0
     fi
     printf '  %-4s %-24s %-18s %-14s %s\n' ID HACIA GATE ACTOR EVIDENCIA
     # shellcheck disable=SC2034
-    talos_transitions_from feature "$est" | while IFS='	' read -r mm id from to gate cond actor req event; do
+    thalos_transitions_from feature "$est" | while IFS='	' read -r mm id from to gate cond actor req event; do
         printf '  %-4s %-24s %-18s %-14s %s\n' "$id" "$to" "$gate" "$actor" "$req"
     done
     echo ""
-    echo "  talos feature advance $FEAT --to <ESTADO>"
+    echo "  thalos feature advance $FEAT --to <ESTADO>"
     exit 0
 fi
 
@@ -170,24 +170,24 @@ if [ "$sub" = advance ]; then
             *) shift ;;
         esac
     done
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    [ -n "$TO" ]   || { echo "talos: falta --to" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$TO" ]   || { echo "thalos: falta --to" >&2; exit 1; }
 
-    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
-    [ -n "$est" ] || { echo "talos: $FEAT no arranco todavia" >&2
-                       echo "talos: talos feature start $FEAT" >&2; exit 2; }
+    est=$(thalos_feature_state "$FEAT" 2>/dev/null || echo "")
+    [ -n "$est" ] || { echo "thalos: $FEAT no arranco todavia" >&2
+                       echo "thalos: thalos feature start $FEAT" >&2; exit 2; }
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  feature  %s\n  desde    %s\n  hacia    %s\n' "$FEAT" "$est" "$TO"
 
-    tid=$(talos_transition_id feature "$est" "$TO" 2>/dev/null || echo "")
+    tid=$(thalos_transition_id feature "$est" "$TO" 2>/dev/null || echo "")
     if [ -z "$tid" ]; then
         echo ""
         printf '  FALL no existe la transicion %s -> %s en la tabla 22.5\n' "$est" "$TO"
         echo ""
         echo "  Regla 22.6.2: toda transicion no listada se rechaza."
-        echo "  Ver las disponibles con  talos feature next $FEAT"
+        echo "  Ver las disponibles con  thalos feature next $FEAT"
         exit 3
     fi
     printf '  %-8s %s\n\n' "id" "$tid"
@@ -196,17 +196,17 @@ if [ "$sub" = advance ]; then
     # transicion exige LockRelease, soltar los leases no puede ser consecuencia
     # de haber transicionado: seria pedir como requisito algo que solo existe
     # despues. Se sueltan primero y se acuña la evidencia.
-    req=$(talos_transition_requires feature "$est" "$TO" 2>/dev/null || echo "-")
+    req=$(thalos_transition_requires feature "$est" "$TO" 2>/dev/null || echo "-")
     case "$req" in
         *LockRelease*)
-            talos_release_feature_leases "$FEAT" | while read -r l; do
+            thalos_release_feature_leases "$FEAT" | while read -r l; do
                 [ -n "$l" ] && printf '  ok   lease liberado %s\n' "$l"
             done
             ;;
     esac
 
     set +e
-    out=$(talos_transition_exec feature "$est" "$TO" "$EVDIR" "$FEAT")
+    out=$(thalos_transition_exec feature "$est" "$TO" "$EVDIR" "$FEAT")
     rc=$?
     set -e
     printf '%s\n' "$out" | while IFS='=' read -r k v; do
@@ -221,11 +221,11 @@ if [ "$sub" = advance ]; then
     echo ""
     case "$rc" in
         0) printf '  %s quedo en %s\n' "$FEAT" "$TO"
-           talos_is_terminal feature "$TO" && \
+           thalos_is_terminal feature "$TO" && \
              echo "  Estado terminal: los leases de la feature quedaron liberados (regla 22.6.8)." ;;
-        4) echo "  needs_human: registra la decision con  talos human decide $FEAT --decision <D>" ;;
+        4) echo "  needs_human: registra la decision con  thalos human decide $FEAT --decision <D>" ;;
         *) echo "  el gate rechazo la transicion: la feature no avanzo"
-           echo "  Se emitio talos.transition.rejected (regla 22.6.2)." ;;
+           echo "  Se emitio thalos.transition.rejected (regla 22.6.2)." ;;
     esac
     exit "$rc"
 fi
@@ -249,33 +249,33 @@ if [ "$sub" = work ]; then
             *) shift ;;
         esac
     done
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
     need_plan
     # La referencia la dejo dispatch: no hace falta repetirla en cada paso.
     #
     # Se apunta al NOMBRE del agente, no al pane donde quedo. El nombre lo puso
-    # Talos al despachar y no cambia; el pane es del runtime, puede quedar
+    # Thalos al despachar y no cambia; el pane es del runtime, puede quedar
     # vacio, reciclado o con el shell de una persona. Es la misma leccion que
     # ya aplica la reconciliacion de start_agent en la capa de adapters.
     if [ -z "$TARGET" ]; then
         set +e
-        talos_agent_ref_check "$FEAT"; _arc=$?
+        thalos_agent_ref_check "$FEAT"; _arc=$?
         set -e
         if [ "$_arc" -ne 0 ]; then
-            echo "talos ${TALOS_VERSION:-?}"
+            echo "thalos ${THALOS_VERSION:-?}"
             echo ""
-            talos_agent_ref_explain "$FEAT" "$_arc"
+            thalos_agent_ref_explain "$FEAT" "$_arc"
             exit 2
         fi
-        TARGET=$(talos_agent_ref_field "$FEAT" name)
+        TARGET=$(thalos_agent_ref_field "$FEAT" name)
     fi
 
-    ROLE=$(talos_role_current 2>/dev/null || echo "")
-    [ -n "$ROLE" ] || { echo "talos: no hay rol activo; despacha primero" >&2
-                        echo "talos: talos feature dispatch $FEAT --role Developer" >&2
+    ROLE=$(thalos_role_current 2>/dev/null || echo "")
+    [ -n "$ROLE" ] || { echo "thalos: no hay rol activo; despacha primero" >&2
+                        echo "thalos: thalos feature dispatch $FEAT --role Developer" >&2
                         exit 2; }
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  feature  %s\n  rol      %s\n  agente   %s\n\n' "$FEAT" "$ROLE" "$TARGET"
 
@@ -293,14 +293,14 @@ if [ "$sub" = work ]; then
     # de la feature: es lo unico que puede hacer sin criterio propio.
     TAREA="orchestration/features/$FEAT/tasks/T01"
     mkdir -p "$TAREA"
-    ALCANCE=$(talos_role_scope "$ROLE" | awk -F'\t' '$1 == "allow" {print $2}')
+    ALCANCE=$(thalos_role_scope "$ROLE" | awk -F'\t' '$1 == "allow" {print $2}')
     # El entregable sale del CONTRATO DEL ROL, no de una ruta cableada. Fijar
     # aca el task-result del Developer hacia que a un Reviewer despachado se le
     # pidiera el artefacto de otro rol: escribia -o no escribia- en el lugar
     # equivocado, y el gate seguia sin ver su Review.
     BLOQUEO="orchestration/features/$FEAT/tasks/T01/blocker.json"
-    ESQUEMA=$(talos_role_output_schema "$ROLE" 2>/dev/null || echo "")
-    SALIDA=$(talos_role_output_path "$ROLE" "$FEAT" T01 2>/dev/null || echo "")
+    ESQUEMA=$(thalos_role_output_schema "$ROLE" 2>/dev/null || echo "")
+    SALIDA=$(thalos_role_output_path "$ROLE" "$FEAT" T01 2>/dev/null || echo "")
     if [ -z "$ESQUEMA" ] || [ -z "$SALIDA" ]; then
         echo "  FALL el rol $ROLE no declara entregable en el registro de salida" >&2
         echo "  Sin contrato de salida no hay como saber si trabajo." >&2
@@ -333,7 +333,7 @@ task = {
     "acceptance_refs": [f"spec/{r}" for r in (f.get("acceptance_refs") or [])],
     "output": {"schema": esquema, "path": salida},
     # La otra salida. Un encargo con una sola forma de terminar obliga al rol
-    # a contestar en prosa cuando no puede, y la prosa Talos no la lee: espera
+    # a contestar en prosa cuando no puede, y la prosa Thalos no la lee: espera
     # un archivo que no llega y pierde el motivo.
     "blocked": {
         "schema": "blocker",
@@ -343,14 +343,14 @@ task = {
 open(destino, "w").write(json.dumps(task, indent=2) + "\n")
 PYEOF
     then
-        echo "talos: $FEAT no esta en el plan" >&2
+        echo "thalos: $FEAT no esta en el plan" >&2
         exit 2
     fi
 
-    # Mecanismo 1: si Talos produce un artefacto invalido, falla aca y no
+    # Mecanismo 1: si Thalos produce un artefacto invalido, falla aca y no
     # despues, en el gate, con el agente ya trabajando sobre un encargo roto.
     if ! "$SYS/hooks/validate-artifact.sh" task "$TAREA/task.json" >/dev/null 2>&1; then
-        echo "  FALL la task que compuso Talos no valida contra su schema"
+        echo "  FALL la task que compuso Thalos no valida contra su schema"
         "$SYS/hooks/validate-artifact.sh" task "$TAREA/task.json" 2>&1 | sed 's/^/    /' | head -5
         exit 2
     fi
@@ -382,17 +382,17 @@ partes = [
     f"que tiene que validar contra el schema {t['output']['schema']}.",
     "Sin ese archivo tu trabajo no existe para el sistema.",
     "",
-    "SI NO PODES TERMINAR, no contestes en prosa: Talos no la lee.",
+    "SI NO PODES TERMINAR, no contestes en prosa: Thalos no la lee.",
     "Escribi este archivo y detenete:",
     f"  {t['blocked']['path']}",
     "con reason (por que), needs (que haria falta) y tried (que intentaste).",
     "Un bloqueo dicho asi lo lee el sistema; dicho en un mensaje se pierde.",
     "",
-    # El CommitRef es evidencia que Talos OBSERVA de git, no una mutacion que
+    # El CommitRef es evidencia que Thalos OBSERVA de git, no una mutacion que
     # ordene. Si nadie commitea, no hay nada que observar y la feature se
     # planta con "el agente todavia no commiteo su trabajo". Pedirlo aca es la
     # unica forma de que el hecho exista.
-    "Y commitea lo que hiciste. Talos no commitea por vos: lee git para",
+    "Y commitea lo que hiciste. Thalos no commitea por vos: lee git para",
     "sellar el CommitRef, y sin commit no hay nada que leer.",
     "Un solo commit, conventional commits, sin agregar co-autores.",
 ]
@@ -408,7 +408,7 @@ PYEOF
     # ExecutionAdapter, y el nucleo no sabe con que agente esta hablando.
     esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
     set +e
-    out=$(talos_capability_run ExecutionAdapter prompt_agent \
+    out=$(thalos_capability_run ExecutionAdapter prompt_agent \
           "{\"target\":\"$TARGET\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
     rc=$?
     set -e
@@ -418,7 +418,7 @@ PYEOF
         # vivo. Si el backend no lo encuentra, la referencia esta obsoleta y
         # el paso que corresponde es despachar de nuevo, no reintentar este.
         echo "  Si el agente $TARGET ya no existe, la referencia quedo vieja:"
-        printf '    talos feature release %s\n    talos feature dispatch %s --role %s\n' \
+        printf '    thalos feature release %s\n    thalos feature dispatch %s --role %s\n' \
             "$FEAT" "$FEAT" "$ROLE"
         echo ""
         # El motivo del backend va ULTIMO, no primero: quien mira esto en la
@@ -435,7 +435,7 @@ PYEOF
     # en adelante devuelve already_exists sin hacer nada, asi que la condicion
     # "no hay entregable" nunca cambia. El limite de iteraciones del
     # presupuesto ES el limite de reintentos; no hace falta inventar otro.
-    "$SYS/cli/talos" budget consume "$FEAT" 0 1 0 >/dev/null 2>&1 || true
+    "$SYS/cli/thalos" budget consume "$FEAT" 0 1 0 >/dev/null 2>&1 || true
 
     # Esperar a que el agente se asiente. Devolver apenas se entrega el prompt
     # deja a quien llama sin forma de saber si hubo trabajo.
@@ -475,7 +475,7 @@ PYWALL
     _limite=$(( $(date +%s) + ESPERA_S ))
     while :; do
         set +e
-        espera=$(talos_capability_run ExecutionAdapter wait_agent \
+        espera=$(thalos_capability_run ExecutionAdapter wait_agent \
                  "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
         set -e
         [ -f "$SALIDA" ] && break
@@ -498,7 +498,7 @@ PYWALL
                 echo ""
                 echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
                 echo "  para algo y no puede seguir hasta que alguien conteste."
-                printf '  Mira su pane:  %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+                printf '  Mira su pane:  %s\n' "$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
                 exit 4
                 ;;
         esac
@@ -538,14 +538,14 @@ PYBLOQ
     if [ -f "$SALIDA" ] && [ -n "$_base" ] && [ "$ROLE" = Developer ] \
        && [ "$(git rev-parse HEAD 2>/dev/null || echo "$_base")" = "$_base" ]; then
         printf '  ..   dejo el entregable y no commiteo: se lo recuerdo\n'
-        _rec="Dejaste tu entregable pero no commiteaste. Talos lee git para sellar el CommitRef y sin commit no hay nada que leer. Commitea ahora lo que hiciste: un solo commit, conventional commits, sin co-autores."
+        _rec="Dejaste tu entregable pero no commiteaste. Thalos lee git para sellar el CommitRef y sin commit no hay nada que leer. Commitea ahora lo que hiciste: un solo commit, conventional commits, sin co-autores."
         _rec_esc=$(printf '%s' "$_rec" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
         set +e
-        talos_capability_run ExecutionAdapter prompt_agent \
+        thalos_capability_run ExecutionAdapter prompt_agent \
             "{\"target\":\"$TARGET\",\"text\":\"$_rec_esc\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
         _lim2=$(( $(date +%s) + 300 ))
         while [ "$(git rev-parse HEAD 2>/dev/null || echo "$_base")" = "$_base" ]; do
-            talos_capability_run ExecutionAdapter wait_agent \
+            thalos_capability_run ExecutionAdapter wait_agent \
                 "{\"target\":\"$TARGET\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
             [ "$(date +%s)" -ge "$_lim2" ] && break
             sleep 5
@@ -565,15 +565,15 @@ PYBLOQ
     # LO QUE HAYA DICHO NO SE PIERDE.
     #
     # Un agente que no puede seguir contesta como sabe: en prosa, con una
-    # pregunta, a veces con ruido de su interfaz. Talos esperaba un archivo
+    # pregunta, a veces con ruido de su interfaz. Thalos esperaba un archivo
     # con un formato y descartaba todo lo demas, asi que el motivo -que
     # existia- no llegaba a nadie. La seccion 25 ya definia el canal; lo que
     # faltaba era usarlo.
     #
-    # La estructura la pone Talos: el sobre dice quien, a quien y sobre que.
+    # La estructura la pone Thalos: el sobre dice quien, a quien y sobre que.
     # El cuerpo es lo que se leyo, tal cual, sin exigirle forma.
     set +e
-    _dicho=$(talos_capability_run ExecutionAdapter read_agent \
+    _dicho=$(thalos_capability_run ExecutionAdapter read_agent \
              "{\"target\":\"$TARGET\",\"lines\":\"120\"}" 2>&1)
     set -e
     _cuerpo=$(printf '%s' "$_dicho" | "$PY" -c '
@@ -589,7 +589,7 @@ except Exception:
     _tmpm=$(mktemp)
     printf '%s' "$_cuerpo" > "$_tmpm"
     _msg=$("$PY" "$SYS/hooks/lib/message.py" send orchestration/messages \
-           QUESTION "role:$ROLE" "human:operator" "${TALOS_RUN_ID:-r-unknown}" \
+           QUESTION "role:$ROLE" "human:operator" "${THALOS_RUN_ID:-r-unknown}" \
            "$FEAT" T01 "$_tmpm" 2>/dev/null || echo "")
     rm -f "$_tmpm"
 
@@ -598,10 +598,10 @@ except Exception:
     if [ -n "$_msg" ]; then
         echo ""
         printf '  Lo que dijo quedo registrado como %s\n' "$_msg"
-        printf '  Leelo:      talos message show %s\n' "$_msg"
-        printf '  Contestale: talos message answer %s --text "..."\n' "$_msg"
+        printf '  Leelo:      thalos message show %s\n' "$_msg"
+        printf '  Contestale: thalos message answer %s --text "..."\n' "$_msg"
     fi
-    printf '  Su pane:      %s\n' "$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+    printf '  Su pane:      %s\n' "$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
     # Sale 3, no 0. Reportar exito sin haber producido el entregable hacia que
     # el loop lo contara como avance: reencargaba lo mismo hasta agotar las
     # iteraciones, y recien ahi decia que nada habia pasado. Un paso que no
@@ -613,19 +613,19 @@ fi
 #
 # El catalogo de la seccion 23.4 dice que CommitRef lo produce el
 # CoordinationAdapter, pero la seccion 38.4 no define ninguna operacion de
-# commit para ese adapter. Un commit no es una mutacion que Talos ordene: es un
-# hecho de git que Talos OBSERVA. Por eso sale verifiable:true, y de la unica
+# commit para ese adapter. Un commit no es una mutacion que Thalos ordene: es un
+# hecho de git que Thalos OBSERVA. Por eso sale verifiable:true, y de la unica
 # forma en que eso es cierto: el sha se puede revalidar contra el repo
 # (regla 23.3.4).
 
 if [ "$sub" = commit ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
     rama="feature/$FEAT"
     if ! git rev-parse --verify --quiet "$rama" >/dev/null 2>&1; then
         rama=$(git rev-parse --abbrev-ref HEAD)
     fi
     sha=$(git rev-parse "$rama" 2>/dev/null || echo "")
-    [ -n "$sha" ] || { echo "talos: no se pudo leer el estado de git" >&2; exit 2; }
+    [ -n "$sha" ] || { echo "thalos: no se pudo leer el estado de git" >&2; exit 2; }
 
     # Un commit que no existe no se inventa: si no aparecio nada desde que la
     # feature arranco, no hay trabajo que referenciar.
@@ -640,13 +640,13 @@ if [ "$sub" = commit ]; then
         base=$(git merge-base "$rama" main 2>/dev/null || echo "")
     fi
     if [ -n "$base" ] && [ "$base" = "$sha" ]; then
-        echo "talos: no hay commits nuevos desde que $FEAT arranco" >&2
-        echo "talos: el agente todavia no commiteo su trabajo" >&2
+        echo "thalos: no hay commits nuevos desde que $FEAT arranco" >&2
+        echo "thalos: el agente todavia no commiteo su trabajo" >&2
         exit 3
     fi
     if [ -z "$base" ]; then
-        echo "talos: no se sabe desde donde contar los commits de $FEAT" >&2
-        echo "talos: falta orchestration/features/$FEAT/.base-sha, que escribe  talos feature start" >&2
+        echo "thalos: no se sabe desde donde contar los commits de $FEAT" >&2
+        echo "thalos: falta orchestration/features/$FEAT/.base-sha, que escribe  thalos feature start" >&2
         exit 2
     fi
 
@@ -655,14 +655,14 @@ if [ "$sub" = commit ]; then
     evid="ev-$FEAT-commit-$(date -u +%Y%m%d%H%M%S)"
     cat > "$EVDIR/$evid.json" <<EOF2
 {"id":"$evid","kind":"CommitRef","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"core:Orchestrator","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "digest":"pendiente","verifiable":true,
  "payload":{"sha":"$sha","branch":"$rama","message":"$(printf '%s' "$msg" | sed 's/"/\\"/g')"}}
 EOF2
     "$PY" "$SYS/hooks/lib/evidence.py" seal "$EVDIR/$evid.json" >/dev/null
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  rama     %s\n  sha      %s\n  mensaje  %s\n' "$rama" "$sha" "$msg"
     printf '  sellada  CommitRef (verifiable: true, revalidable contra el repo)\n'
@@ -678,10 +678,10 @@ fi
 # catalogo de la seccion 23.4 la asigna al CoordinationAdapter.
 
 if [ "$sub" = pr ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
     need_plan
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  feature  %s\n\n' "$FEAT"
 
@@ -705,7 +705,7 @@ print(f"{sys.argv[2]}: {f['title']}" if f else sys.argv[2])
 PYEOF
 )
     set +e
-    out=$(talos_capability_run CoordinationAdapter open_pr \
+    out=$(thalos_capability_run CoordinationAdapter open_pr \
           "{\"title\":\"$_titulo\",\"head\":\"feature/$FEAT\",\"base\":\"main\",\"feature\":\"$FEAT\"}" 2>&1)
     rc=$?
     set -e
@@ -724,7 +724,7 @@ PYEOF
     # proveedor, no que nosotros hayamos pedido abrirlo (regla 23.3.6).
     cat > "$EVDIR/$evid.json" <<EOF3
 {"id":"$evid","kind":"PullRequestRef","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"adapter:CoordinationAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "artifact_refs":[],"digest":"pendiente","verifiable":false,
  "payload":{"id":"$PR","url":"${URL:-null}","head":"feature/$FEAT","base":"main"}}
@@ -739,15 +739,15 @@ fi
 # ---------- checks ----------
 #
 # Con el PR abierto, la transicion a FEATURE_CHECKS_RUNNING pide un CheckRunSet
-# y ningun comando lo producia. Talos NO decide si las pruebas pasan: pide que
+# y ningun comando lo producia. Thalos NO decide si las pruebas pasan: pide que
 # corran y observa lo que el CIAdapter contesta. Por eso verifiable sale de la
 # respuesta del adapter y no de aca: en dry-run no es verificable, y decir lo
 # contrario haria que MERGE_GATE aprobara sobre una simulacion (regla 31).
 
 if [ "$sub" = checks ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  feature  %s\n\n' "$FEAT"
 
@@ -767,13 +767,13 @@ PYEOF
 )
     if [ -z "$_pr" ]; then
         echo "  FALL no hay PullRequestRef sellado: no hay PR sobre el que correr checks"
-        printf '  Abrilo con  talos feature pr %s\n' "$FEAT"
+        printf '  Abrilo con  thalos feature pr %s\n' "$FEAT"
         exit 2
     fi
 
     set +e
-    talos_capability_run CIAdapter run_checks "{\"pr\":\"$_pr\",\"feature\":\"$FEAT\"}" >/dev/null 2>&1
-    out=$(talos_capability_run CIAdapter get_check_status "{\"pr\":\"$_pr\"}" 2>&1)
+    thalos_capability_run CIAdapter run_checks "{\"pr\":\"$_pr\",\"feature\":\"$FEAT\"}" >/dev/null 2>&1
+    out=$(thalos_capability_run CIAdapter get_check_status "{\"pr\":\"$_pr\"}" 2>&1)
     rc=$?
     set -e
     if [ "$rc" -ne 0 ]; then
@@ -782,7 +782,7 @@ PYEOF
         exit 5
     fi
 
-    # verifiable lo dice el adapter, no Talos. Un CheckRunSet simulado marcado
+    # verifiable lo dice el adapter, no Thalos. Un CheckRunSet simulado marcado
     # verificable dejaria pasar MERGE_GATE sobre nada.
     _verif=$(printf '%s' "$out" | sed -n 's/.*"verifiable"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' | head -1)
     [ -n "$_verif" ] || _verif=false
@@ -792,7 +792,7 @@ PYEOF
     evid="ev-$FEAT-checks-$(date -u +%Y%m%d%H%M%S)"
     cat > "$EVDIR/$evid.json" <<EOF4
 {"id":"$evid","kind":"CheckRunSet","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"adapter:CIAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "artifact_refs":[],"digest":"pendiente","verifiable":$_verif,
  "payload":{"pr":"$_pr","conclusion":"${_concl:-unknown}"}}
@@ -812,17 +812,17 @@ fi
 # config/roles.yaml y hasta ahora nadie lo recogia.
 
 if [ "$sub" = collect ]; then
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    ROLE=$(talos_role_current 2>/dev/null || echo "")
-    [ -n "$ROLE" ] || { echo "talos: no hay rol activo; nada que recoger" >&2
-                        echo "talos: talos feature dispatch $FEAT --role <ROL> --pane <PANE>" >&2
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
+    ROLE=$(thalos_role_current 2>/dev/null || echo "")
+    [ -n "$ROLE" ] || { echo "thalos: no hay rol activo; nada que recoger" >&2
+                        echo "thalos: thalos feature dispatch $FEAT --role <ROL> --pane <PANE>" >&2
                         exit 2; }
 
-    schema=$(talos_role_output_schema "$ROLE") || {
-        echo "talos: el rol $ROLE no declara entregable" >&2; exit 2; }
-    patron=$(talos_role_output_path "$ROLE" "$FEAT")
+    schema=$(thalos_role_output_schema "$ROLE") || {
+        echo "thalos: el rol $ROLE no declara entregable" >&2; exit 2; }
+    patron=$(thalos_role_output_path "$ROLE" "$FEAT")
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  rol       %s\n  entregable %s\n  schema    %s\n\n' "$ROLE" "$patron" "$schema"
 
@@ -847,7 +847,7 @@ if [ "$sub" = collect ]; then
         fi
         printf '    ok   valida contra %s.schema.json\n' "$schema"
 
-        kind=$(talos_role_evidence_kind "$schema") || kind=TaskResultSet
+        kind=$(thalos_role_evidence_kind "$schema") || kind=TaskResultSet
         dg=$(shasum -a 256 "$art" 2>/dev/null | awk '{print $1}')
         evid="ev-$FEAT-$(basename "$art" .json)-$(date -u +%Y%m%d%H%M%S)-$n"
         # Regla 23.3.6: la evidencia producida por un agente NO es verificable
@@ -855,7 +855,7 @@ if [ "$sub" = collect ]; then
         # que el agente escribio es su palabra, no una medicion.
         cat > "$EVDIR/$evid.json" <<EOF2
 {"id":"$evid","kind":"$kind","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"role:$ROLE","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "artifact_refs":["$art"],"digest":"pendiente","verifiable":false,
  "payload":{"schema":"$schema","artifact_sha256":"$dg"}}
@@ -890,7 +890,7 @@ if [ "$sub" = test ]; then
             *) shift ;;
         esac
     done
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
     # El comando necesita una terminal PROPIA.
     #
     # Antes se reusaba el pane del agente, que es justo el unico que no sirve:
@@ -900,12 +900,12 @@ if [ "$sub" = test ]; then
     PROPIO=0
     if [ -z "$PANE" ]; then
         set +e
-        _ses=$(talos_capability_run ExecutionAdapter create_session \
-               "{\"cwd\":\"$PROJ\",\"direction\":\"down\",\"label\":\"talos-test-$FEAT\"}" 2>&1)
+        _ses=$(thalos_capability_run ExecutionAdapter create_session \
+               "{\"cwd\":\"$PROJ\",\"direction\":\"down\",\"label\":\"thalos-test-$FEAT\"}" 2>&1)
         _src=$?
         set -e
         if [ "$_src" -ne 0 ]; then
-            echo "talos ${TALOS_VERSION:-?}"
+            echo "thalos ${THALOS_VERSION:-?}"
             echo ""
             echo "  FALL no se pudo abrir una terminal para correr la verificacion"
             printf '%s\n' "$_ses" | sed 's/^/    /' | tail -3
@@ -914,19 +914,19 @@ if [ "$sub" = test ]; then
         PANE=$(printf '%s' "$_ses" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
         PROPIO=1
     fi
-    [ -n "$PANE" ] || { echo "talos: falta --pane y no hay uno registrado" >&2; exit 1; }
+    [ -n "$PANE" ] || { echo "thalos: falta --pane y no hay uno registrado" >&2; exit 1; }
     if [ -z "$CMD" ]; then
-        # Talos no adivina como se prueba un proyecto: el stack lo decide.
+        # Thalos no adivina como se prueba un proyecto: el stack lo decide.
         CMD=$(sed -n 's/^test_command:[[:space:]]*//p' "$SYS/config/system.yaml" 2>/dev/null | head -1)
         CMD=$(printf '%s' "$CMD" | sed 's/^"//;s/"$//')
     fi
     if [ -z "$CMD" ]; then
-        echo "talos: falta --command y el proyecto no declara test_command" >&2
-        echo "talos: agregalo a config/system.yaml; sin comando no hay medicion" >&2
+        echo "thalos: falta --command y el proyecto no declara test_command" >&2
+        echo "thalos: agregalo a config/system.yaml; sin comando no hay medicion" >&2
         exit 2
     fi
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  feature  %s\n  comando  %s\n\n' "$FEAT" "$CMD"
 
@@ -942,7 +942,7 @@ if [ "$sub" = test ]; then
     # Si el adapter no pudo lanzar el comando, no tiene sentido esperar dos
     # minutos por un codigo de salida que nunca va a llegar.
     set +e
-    disp=$(talos_capability_run ExecutionAdapter run_command \
+    disp=$(thalos_capability_run ExecutionAdapter run_command \
            "{\"pane\":\"$PANE\",\"command\":\"$wrapped\"}" 2>&1)
     drc=$?
     set -e
@@ -966,7 +966,7 @@ if [ "$sub" = test ]; then
     rc=$(cat "$rcfile")
     # La terminal que abrio este paso la cierra este paso.
     if [ "$PROPIO" = 1 ]; then
-        talos_capability_run ExecutionAdapter close_session \
+        thalos_capability_run ExecutionAdapter close_session \
             "{\"pane\":\"$PANE\"}" >/dev/null 2>&1 || true
     fi
     printf '  exit     %s\n' "$rc"
@@ -979,7 +979,7 @@ if [ "$sub" = test ]; then
     # de salida, no la afirmacion de un agente (regla 23.3.6).
     cat > "$EVDIR/$evid.json" <<EOF2
 {"id":"$evid","kind":"LocalTestReport","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"adapter:ExecutionAdapter","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "artifact_refs":["$log"],"digest":"pendiente","verifiable":true,
  "payload":{"command":"$(printf '%s' "$CMD" | sed 's/"/\\"/g')","exit_code":$rc,"log_sha256":"$dg"}}
@@ -997,8 +997,8 @@ fi
 # ---------- release ----------
 
 if [ "$sub" = release ]; then
-    actual=$(talos_role_current 2>/dev/null || echo "")
-    talos_role_deactivate
+    actual=$(thalos_role_current 2>/dev/null || echo "")
+    thalos_role_deactivate
     # Lo que instalo el shim lo retira el shim. El nucleo no sabe que dejo:
     # eso es especifico del runtime.
     for _fd in orchestration/features/*; do
@@ -1020,16 +1020,16 @@ if [ "$sub" = release ]; then
             [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall 2>/dev/null | sed 's/^/  /'
         done
         _fid=$(basename "$_fd")
-        # Talos abrio la sesion: Talos la cierra. Dejarla abierta acumula
+        # Thalos abrio la sesion: Thalos la cierra. Dejarla abierta acumula
         # paneles muertos ocupando pantalla, y quien mira la maquina no puede
         # distinguir un agente trabajando de uno que ya nadie gobierna.
         #
         # Un cierre fallido NO impide soltar el rol: el rol es lo que gobierna
         # la sesion, y quedarse con el rol tomado por un panel que no se pudo
         # cerrar es peor que un panel de mas.
-        if _pane=$(talos_agent_ref_field "$_fid" pane 2>/dev/null); then
-            if [ -n "$_pane" ] && talos_agent_ref_check "$_fid" 2>/dev/null; then
-                if talos_capability_run ExecutionAdapter close_session \
+        if _pane=$(thalos_agent_ref_field "$_fid" pane 2>/dev/null); then
+            if [ -n "$_pane" ] && thalos_agent_ref_check "$_fid" 2>/dev/null; then
+                if thalos_capability_run ExecutionAdapter close_session \
                        "{\"pane\":\"$_pane\"}" >/dev/null 2>&1; then
                     printf '  sesion %s cerrada\n' "$_pane"
                 else
@@ -1040,10 +1040,10 @@ if [ "$sub" = release ]; then
         # La referencia al agente se suelta con el rol. Sobrevivirla la deja
         # apuntando a un agente que ya nadie gobierna, y el paso siguiente le
         # manda trabajo igual.
-        talos_agent_ref_clear "$_fid"
+        thalos_agent_ref_clear "$_fid"
     done
     if [ -n "$actual" ]; then
-        echo "rol $actual liberado: Talos ya no gobierna esta sesion"
+        echo "rol $actual liberado: Thalos ya no gobierna esta sesion"
     else
         echo "no habia rol activo"
     fi
@@ -1062,8 +1062,8 @@ if [ "$sub" = dispatch ]; then
             *) shift ;;
         esac
     done
-    [ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-    [ -n "$ROLE" ] || { echo "talos: falta --role" >&2; exit 1; }
+    [ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
+    [ -n "$ROLE" ] || { echo "thalos: falta --role" >&2; exit 1; }
 
     # El tier sale de max(tier de la feature, minimo del rol), que es el
     # algoritmo de la seccion 20.5. Mirar solo la feature dejaba a un rol que
@@ -1071,8 +1071,8 @@ if [ "$sub" = dispatch ]; then
     # feature era de riesgo bajo: el minimo del rol quedaba declarado y sin
     # efecto. El nucleo no nombra modelos: traduce por config/models.yaml (20.3).
     MODELO=""; PROVEEDOR=""
-    if TIER=$(talos_tier_resolve "$FEAT" "$ROLE" 2>/dev/null); then
-        if _mp=$(talos_model_for_tier "$TIER" 2>/dev/null); then
+    if TIER=$(thalos_tier_resolve "$FEAT" "$ROLE" 2>/dev/null); then
+        if _mp=$(thalos_model_for_tier "$TIER" 2>/dev/null); then
             MODELO=$(printf '%s' "$_mp" | cut -f1)
             PROVEEDOR=$(printf '%s' "$_mp" | cut -f2)
         fi
@@ -1081,10 +1081,10 @@ if [ "$sub" = dispatch ]; then
     # por defecto haria que cambiar de proveedor en la config despachara igual
     # el agente de antes, con el modelo de otro.
     [ -n "$KIND" ] || KIND="$PROVEEDOR"
-    [ -n "$KIND" ] || { echo "talos: no hay runtime: pasa --kind o declara provider en config/models.yaml" >&2
+    [ -n "$KIND" ] || { echo "thalos: no hay runtime: pasa --kind o declara provider en config/models.yaml" >&2
                         exit 2; }
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
 
     # Un agente no se despacha sobre una feature que no arranco, ni sobre una
@@ -1098,15 +1098,15 @@ if [ "$sub" = dispatch ]; then
     # La condicion real es que la feature siga viva. Un estado terminal no
     # tiene transiciones de salida: eso lo dice la tabla, no una lista de
     # estados escrita a mano que habria que actualizar con cada rol nuevo.
-    est=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
+    est=$(thalos_feature_state "$FEAT" 2>/dev/null || echo "")
     if [ -z "$est" ]; then
         printf '  FALL %s no arranco\n' "$FEAT"
         echo ""
         echo "  Un rol se despacha sobre una feature en curso. Arranca con:"
-        echo "    talos feature start $FEAT"
+        echo "    thalos feature start $FEAT"
         exit 2
     fi
-    if [ -z "$(talos_transitions_from feature "$est" 2>/dev/null)" ]; then
+    if [ -z "$(thalos_transitions_from feature "$est" 2>/dev/null)" ]; then
         printf '  FALL %s esta en %s, que es terminal\n' "$FEAT" "$est"
         echo ""
         echo "  No hay nada que despachar sobre una feature que ya cerro."
@@ -1115,33 +1115,33 @@ if [ "$sub" = dispatch ]; then
 
     # Fail-closed: sin rol conocido no hay scope, y sin scope el bloqueo deja
     # pasar todo. Es preferible no despachar.
-    if ! talos_role_activate "$ROLE" "$FEAT"; then
+    if ! thalos_role_activate "$ROLE" "$FEAT"; then
         exit 2
     fi
 
     # Cambiar de rol suelta al agente anterior, y se hace ANTES de pedir la
     # sesion nueva. Haciendolo despues se cerraba el panel que la sesion recien
     # resuelta acababa de devolver -son el mismo- y start_agent fallaba con
-    # "pane not found" sobre un panel que Talos habia cerrado un segundo antes.
+    # "pane not found" sobre un panel que Thalos habia cerrado un segundo antes.
     _rolp=$(printf '%s' "$ROLE" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-4)
-    _previo=$(talos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
+    _previo=$(thalos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
     case "$_previo" in
         ""|*_"$_rolp") ;;
         *)
-            if talos_agent_ref_check "$FEAT" 2>/dev/null; then
-                _ppane=$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
-                if [ -n "$_ppane" ] && talos_capability_run ExecutionAdapter close_session \
+            if thalos_agent_ref_check "$FEAT" 2>/dev/null; then
+                _ppane=$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
+                if [ -n "$_ppane" ] && thalos_capability_run ExecutionAdapter close_session \
                        "{\"pane\":\"$_ppane\"}" >/dev/null 2>&1; then
                     printf '  previo   %s soltado y su sesion %s cerrada\n' "$_previo" "$_ppane"
                 fi
-                talos_agent_ref_clear "$FEAT"
+                thalos_agent_ref_clear "$FEAT"
             fi
             ;;
     esac
-    # Sin pane, Talos crea el suyo. Pedirle a una persona que elija uno la
+    # Sin pane, Thalos crea el suyo. Pedirle a una persona que elija uno la
     # obliga a saber cual esta libre, y el candidato obvio -donde esta
     # tipeando- es justo el que no sirve: ahi vive su shell.
-    # Talos se arma la ventana que necesita. El pane donde corre el
+    # Thalos se arma la ventana que necesita. El pane donde corre el
     # orquestador es su CONSOLA: ahi va el log, no un agente. Pedirle a una
     # persona que elija un pane la obliga a saber cual esta libre, y el
     # candidato obvio -donde esta tipeando- es justo el que no sirve.
@@ -1151,26 +1151,26 @@ if [ "$sub" = dispatch ]; then
         # idempotency key de dos despachos sobre la misma feature es la misma:
         # el ledger le devolvia al Reviewer el panel del Developer, y dos
         # agentes no entran en un panel.
-        _ses=$(talos_capability_run ExecutionAdapter create_session \
+        _ses=$(thalos_capability_run ExecutionAdapter create_session \
                "{\"cwd\":\"$PROJ\",\"direction\":\"right\",\"role\":\"$ROLE\"}" 2>&1)
         _src=$?
         set -e
         if [ "$_src" -ne 0 ]; then
             echo "  FALL no se pudo abrir un pane para el agente"
             printf '%s\n' "$_ses" | sed 's/^/    /' | head -3
-            talos_role_deactivate
+            thalos_role_deactivate
             exit 5
         fi
         PANE=$(printf '%s' "$_ses" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
-        [ -n "$PANE" ] || { echo "  FALL el adapter no devolvio un pane"; talos_role_deactivate; exit 5; }
-        printf '  pane     %s (abierto por Talos, al lado de la consola)\n' "$PANE"
+        [ -n "$PANE" ] || { echo "  FALL el adapter no devolvio un pane"; thalos_role_deactivate; exit 5; }
+        printf '  pane     %s (abierto por Thalos, al lado de la consola)\n' "$PANE"
     fi
     printf '  rol      %s (activo)\n' "$ROLE"
     printf '  feature  %s\n' "$FEAT"
     printf '  pane     %s\n\n' "$PANE"
 
     printf '  alcance de escritura que se le impone:\n'
-    talos_role_scope "$ROLE" | while IFS='	' read -r v g; do
+    thalos_role_scope "$ROLE" | while IFS='	' read -r v g; do
         [ -z "$v" ] && continue
         printf '    %-9s %s\n' "$v" "$g"
     done
@@ -1178,7 +1178,7 @@ if [ "$sub" = dispatch ]; then
 
     brief_file="orchestration/features/$FEAT/brief.md"
     mkdir -p "$(dirname "$brief_file")"
-    talos_role_brief "$ROLE" "$FEAT" > "$brief_file"
+    thalos_role_brief "$ROLE" "$FEAT" > "$brief_file"
     printf '  brief    %s (%s lineas)\n' "$brief_file" "$(wc -l < "$brief_file" | tr -d ' ')"
 
     # El nucleo compone la identidad. COMO se la entrega a un agente concreto
@@ -1201,14 +1201,14 @@ if [ "$sub" = dispatch ]; then
         else
             echo "  FALL no se pudo instalar el enforcement en el runtime"
             echo "  Sin el hook, el alcance queda declarado y no impuesto."
-            talos_role_deactivate
+            thalos_role_deactivate
             exit 5
         fi
     else
         echo "  FALL no hay shim de enforcement para el runtime $KIND"
         echo "  Despachar sin bloqueo seria despachar sin alcance."
         echo "  Ver hooks/agent/README.md: un shim por runtime."
-        talos_role_deactivate
+        thalos_role_deactivate
         exit 2
     fi
     # agent_args son argumentos NATIVOS del agente: como se le pide un modelo
@@ -1227,11 +1227,11 @@ if [ "$sub" = dispatch ]; then
         printf '  modelo   el del runtime: el tier %s no se pudo traducir\n' "${TIER:-?}"
     fi
     # El nombre es la identidad del agente para todo lo que venga despues. Lo
-    # elige Talos, no el runtime: por eso se calcula una vez y se guarda.
+    # elige Thalos, no el runtime: por eso se calcula una vez y se guarda.
     #
     # LLEVA EL PROYECTO ADENTRO. El espacio de nombres del runtime de ejecucion
     # es de la MAQUINA, no del proyecto: dos proyectos con una F001 pedian el
-    # mismo talos_f001. El adapter reconcilia por nombre -encuentra uno vivo y
+    # mismo thalos_f001. El adapter reconcilia por nombre -encuentra uno vivo y
     # no arranca otro-, asi que el segundo proyecto se quedaba sin agente y le
     # mandaba su trabajo al agente del primero, que corre en otro repo.
     #
@@ -1250,30 +1250,30 @@ if [ "$sub" = dispatch ]; then
     # nombre y no del despacho, y cuesta encontrarlo.
     _proy=$(basename "$PROJ" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-12 | sed 's/_*$//')
     _rol=$(printf '%s' "$ROLE" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | cut -c1-4)
-    AGENTE="talos_${_proy}_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z' | cut -c1-6)_${_rol}"
+    AGENTE="thalos_${_proy}_$(printf '%s' "$FEAT" | tr 'A-Z' 'a-z' | cut -c1-6)_${_rol}"
 
     # Cambiar de rol suelta al agente anterior. La referencia se sobreescribe
     # unas lineas mas abajo, asi que sin esto el agente del rol viejo queda
     # corriendo con su panel abierto y sin nadie que lo gobierne ni lo pueda
-    # cerrar despues: Talos pierde el hilo de algo que abrio.
-    _previo=$(talos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
+    # cerrar despues: Thalos pierde el hilo de algo que abrio.
+    _previo=$(thalos_agent_ref_field "$FEAT" name 2>/dev/null || echo "")
     if [ -n "$_previo" ] && [ "$_previo" != "$AGENTE" ] \
-       && talos_agent_ref_check "$FEAT" 2>/dev/null; then
-        _ppane=$(talos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
-        if [ -n "$_ppane" ] && talos_capability_run ExecutionAdapter close_session \
+       && thalos_agent_ref_check "$FEAT" 2>/dev/null; then
+        _ppane=$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo "")
+        if [ -n "$_ppane" ] && thalos_capability_run ExecutionAdapter close_session \
                "{\"pane\":\"$_ppane\"}" >/dev/null 2>&1; then
             printf '  previo   %s soltado y su sesion %s cerrada\n' "$_previo" "$_ppane"
         fi
     fi
     set +e
-    out=$(talos_capability_run ExecutionAdapter start_agent \
+    out=$(thalos_capability_run ExecutionAdapter start_agent \
           "{\"name\":\"$AGENTE\",\"kind\":\"$KIND\",\"pane\":\"$PANE\",\"agent_args\":\"$aargs\"}" 2>&1)
     rc=$?
     set -e
     if [ "$rc" -ne 0 ]; then
         printf '  FALL el ExecutionAdapter no pudo arrancar el agente\n'
         printf '%s\n' "$out" | sed 's/^/    /' | head -4
-        talos_role_deactivate
+        thalos_role_deactivate
         echo ""
         echo "  Rol liberado: no queda gobernando una sesion que no arranco."
         exit 5
@@ -1283,37 +1283,37 @@ if [ "$sub" = dispatch ]; then
     # id del adapter que lo produjo: un id de un ExecutionAdapter no significa
     # nada en otro, y sin procedencia el paso siguiente no puede darse cuenta.
     _ref=$(printf '%s' "$out" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
-    talos_agent_ref_write "$FEAT" \
-        "$(talos_capability_impl ExecutionAdapter)" "$AGENTE" "$PANE" "$_ref"
+    thalos_agent_ref_write "$FEAT" \
+        "$(thalos_capability_impl ExecutionAdapter)" "$AGENTE" "$PANE" "$_ref"
     # Quien libere el rol necesita saber a que shim pedirle que se retire.
     printf '%s\n' "$_shim" > "orchestration/features/$FEAT/.runtime"
     echo ""
-    echo "  El rol queda activo hasta  talos feature release $FEAT"
+    echo "  El rol queda activo hasta  thalos feature release $FEAT"
     exit 0
 fi
 
-[ "$sub" = start ] || { echo "talos: subcomando desconocido: $sub" >&2
-                        echo "talos: disponibles: start, dispatch, list, show, release" >&2; exit 1; }
-[ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
+[ "$sub" = start ] || { echo "thalos: subcomando desconocido: $sub" >&2
+                        echo "thalos: disponibles: start, dispatch, list, show, release" >&2; exit 1; }
+[ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
 
 # ---------- start ----------
 
 need_plan
 mkdir -p "$EVDIR" orchestration/features
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  feature  %s\n\n' "$FEAT"
 
 # start no es idempotente: reejecutarlo sobre una feature ya arrancada la haria
 # retroceder a FEATURE_READY, y un estado no retrocede por reintentar un
 # comando. La tabla 22.5 no tiene ninguna transicion de vuelta a FEATURE_READY.
-actual=$(talos_feature_state "$FEAT" 2>/dev/null || echo "")
+actual=$(thalos_feature_state "$FEAT" 2>/dev/null || echo "")
 if [ -n "$actual" ] && [ "$actual" != FEATURE_READY ]; then
     printf '  FALL %s ya esta en %s\n' "$FEAT" "$actual"
     echo ""
     echo "  start solo entra a la maquina. Para avanzar desde aca hace falta la"
-    echo "  transicion que corresponda; ver  talos gate --from feature $actual"
+    echo "  transicion que corresponda; ver  thalos gate --from feature $actual"
     exit 2
 fi
 
@@ -1342,7 +1342,7 @@ deps=$(printf '%s' "$info" | "$PY" -c 'import json,sys; print(" ".join(json.load
 dep_ok=1
 dep_detail=""
 for d in $deps; do
-    dst=$(talos_feature_state "$d" 2>/dev/null || echo "-")
+    dst=$(thalos_feature_state "$d" 2>/dev/null || echo "-")
     if [ "$dst" != FEATURE_DONE ]; then
         dep_ok=0
         dep_detail="$dep_detail $d=$dst"
@@ -1365,7 +1365,7 @@ mkev() {
     _id="$1"; _kind="$2"; _ver="$3"; _payload="$4"
     cat >"$EVDIR/$_id.json" <<EOF
 {"id":"$_id","kind":"$_kind","schema_version":1,
- "run_id":"${TALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
+ "run_id":"${THALOS_RUN_ID:-r-unknown}","feature_id":"$FEAT",
  "produced_by":"core:Orchestrator","produced_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)",
  "digest":"pendiente","verifiable":true,"payload":$_payload}
 EOF
@@ -1382,7 +1382,7 @@ mkev "ev-$FEAT-deps-$stamp" DependencySet true \
 # tabla figura con "-". Se ejecuta como cualquier otra transicion.
 printf '  F1  -> FEATURE_READY\n'
 set +e
-out=$(talos_transition_exec feature - FEATURE_READY "$EVDIR" "$FEAT")
+out=$(thalos_transition_exec feature - FEATURE_READY "$EVDIR" "$FEAT")
 rc=$?
 set -e
 printf '%s\n' "$out" | while IFS='=' read -r k v; do
@@ -1404,13 +1404,13 @@ printf '\n  F2  -> FEATURE_IN_PROGRESS\n'
 # Lease sobre la rama: regla 32.4.1, dos features no comparten el recurso.
 set +e
 lease=$("$PY" "$SYS/hooks/lib/lock.py" acquire "$LOCKS" \
-        "branch:feature/$FEAT" "$FEAT" "${TALOS_RUN_ID:-r-unknown}" \
-        "feature start" 300 2>/tmp/talos-lock-err)
+        "branch:feature/$FEAT" "$FEAT" "${THALOS_RUN_ID:-r-unknown}" \
+        "feature start" 300 2>/tmp/thalos-lock-err)
 lrc=$?
 set -e
 if [ "$lrc" -ne 0 ]; then
     printf '      FALL no se pudo tomar el lease\n'
-    sed 's/^/      /' /tmp/talos-lock-err
+    sed 's/^/      /' /tmp/thalos-lock-err
     echo ""
     echo "  Regla 32.4.1: si dos features quieren el mismo recurso, se serializa."
     exit 3
@@ -1423,9 +1423,9 @@ printf '      ok   lease %s (generation %s)\n' "$LEASE_ID" "$GEN"
 # cual es: lo resuelve el registry.
 sem="{\"feature\":\"$FEAT\",\"generation\":$GEN}"
 set +e
-issue_out=$(talos_capability_run CoordinationAdapter create_issue "$sem" 2>&1)
+issue_out=$(thalos_capability_run CoordinationAdapter create_issue "$sem" 2>&1)
 irc=$?
-talos_capability_run CoordinationAdapter create_branch "$sem" >/dev/null 2>&1
+thalos_capability_run CoordinationAdapter create_branch "$sem" >/dev/null 2>&1
 brc=$?
 set -e
 if [ "$irc" -ne 0 ] || [ "$brc" -ne 0 ]; then
@@ -1441,13 +1441,13 @@ mkev "ev-$FEAT-lease-$stamp" LockLease true "$lease"
 mkev "ev-$FEAT-issue-$stamp" IssueRef true "{\"id\":\"$ISSUE\",\"adapter_status\":\"simulado\"}"
 mkev "ev-$FEAT-branch-$stamp" BranchRef true "{\"name\":\"$BRANCH\",\"sha\":null}"
 
-TALOS_LEASE_ID="$LEASE_ID"
-TALOS_ISSUE_REF="$ISSUE"
-TALOS_BRANCH_REF="$BRANCH"
-export TALOS_LEASE_ID TALOS_ISSUE_REF TALOS_BRANCH_REF
+THALOS_LEASE_ID="$LEASE_ID"
+THALOS_ISSUE_REF="$ISSUE"
+THALOS_BRANCH_REF="$BRANCH"
+export THALOS_LEASE_ID THALOS_ISSUE_REF THALOS_BRANCH_REF
 
 set +e
-out=$(talos_transition_exec feature FEATURE_READY FEATURE_IN_PROGRESS "$EVDIR" "$FEAT")
+out=$(thalos_transition_exec feature FEATURE_READY FEATURE_IN_PROGRESS "$EVDIR" "$FEAT")
 rc=$?
 set -e
 printf '%s\n' "$out" | while IFS='=' read -r k v; do

@@ -22,12 +22,12 @@ Un shim por runtime, un checker para todos. Cambiar de agente es escribir un shi
 ## Cómo se resuelve el rol
 
 ```txt
-1. $TALOS_ROLE
+1. $THALOS_ROLE
 2. orchestration/.current-role
 3. sin rol -> la llamada pasa
 ```
 
-El paso 3 es deliberado. **Sin rol activo, Talos no está gobernando esa sesión** y no tiene por qué opinar sobre lo que escribís. El rol lo fija Talos al despachar un agente, no lo elige el agente.
+El paso 3 es deliberado. **Sin rol activo, Thalos no está gobernando esa sesión** y no tiene por qué opinar sobre lo que escribís. El rol lo fija Thalos al despachar un agente, no lo elige el agente.
 
 ---
 
@@ -98,12 +98,12 @@ Al denegar emite la decisión estructurada **y** sale con código 2, para cubrir
 
 ```bash
 echo '{"tool_name":"Write","tool_input":{"file_path":"spec/SPEC.md"}}' \
-  | TALOS_ROLE=Developer hooks/agent/claude-code/pre-tool-use.sh
+  | THALOS_ROLE=Developer hooks/agent/claude-code/pre-tool-use.sh
 ```
 
 ```txt
-talos: DENEGADO Developer no puede escribir en spec/SPEC.md
-talos: regla: deny spec/**
+thalos: DENEGADO Developer no puede escribir en spec/SPEC.md
+thalos: regla: deny spec/**
 ```
 
 Los casos automatizados están en `tests/test_hooks.sh`.

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/feature-state/0.0.5",
+  "$id": "https://thalos-sdlc/schemas/feature-state/0.0.5",
   "title": "FeatureState",
-  "description": "Estado runtime de una feature. Ver talos-0.0.7.md secciones 22.2 y 30.",
+  "description": "Estado runtime de una feature. Ver thalos-0.0.7.md secciones 22.2 y 30.",
   "type": "object",
   "required": ["schema_version", "feature_id", "state", "updated_at", "last_event_seq"],
   "properties": {

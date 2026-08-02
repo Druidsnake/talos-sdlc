@@ -1,14 +1,14 @@
 # Adapters
 
-Toda integración externa de Talos entra por acá. El núcleo define **puertos**; los adapters los implementan.
+Toda integración externa de Thalos entra por acá. El núcleo define **puertos**; los adapters los implementan.
 
 ## La distinción que gobierna todo
 
-Talos separa dos ejes que se confunden fácil:
+Thalos separa dos ejes que se confunden fácil:
 
 | | Qué es | Quién decide |
 |---|---|---|
-| **Capacidad** | un extension point que el sistema necesita | la spec (`talos-0.0.7.md` 37.4.2) |
+| **Capacidad** | un extension point que el sistema necesita | la spec (`thalos-0.0.7.md` 37.4.2) |
 | **Implementación** | un adapter concreto que la satisface | vos, en `config/extensions.yaml` |
 
 Una capacidad puede ser **requerida** y su implementación seguir siendo **reemplazable**. Marcar un adapter como "opcional" porque es intercambiable era arquitectónicamente cierto y operacionalmente engañoso: por eso 0.0.6 separó los dos ejes.
@@ -19,7 +19,7 @@ Una capacidad puede ser **requerida** y su implementación seguir siendo **reemp
 Verificá el estado actual con:
 
 ```bash
-talos adapters
+thalos adapters
 ```
 
 ## Qué hay acá
@@ -52,7 +52,7 @@ Un manifiesto sin ejecutable es una declaración, no un adapter.
 Declara qué capacidad implementa, qué operaciones expone y cómo se comporta cada una:
 
 ```yaml
-id: talos.adapter.mi_impl        # namespace obligatorio: talos.adapter.*
+id: thalos.adapter.mi_impl        # namespace obligatorio: thalos.adapter.*
 implements: CoordinationAdapter  # una sola capacidad por adapter
 supports_dry_run: true           # regla 38.1.5, no negociable
 
@@ -102,14 +102,14 @@ python3 tools/build-registry.py
 5. Verificá:
 
 ```bash
-talos adapters && ./tools/check-all.sh
+thalos adapters && ./tools/check-all.sh
 ```
 
 Reemplazar una implementación **no toca el núcleo**: se cambia una línea en `config/extensions.yaml`. Si escribiendo un adapter necesitás modificar algo bajo `cli/`, `hooks/` o `system/`, algo está mal en el diseño.
 
 ## Por qué el núcleo nunca nombra un adapter
 
-La regla 37.4.3.5 dice que el núcleo no puede nombrar implementaciones concretas fuera del extension registry. `config/extensions.yaml` y estos manifiestos son los únicos lugares donde aparece un id `talos.adapter.*`.
+La regla 37.4.3.5 dice que el núcleo no puede nombrar implementaciones concretas fuera del extension registry. `config/extensions.yaml` y estos manifiestos son los únicos lugares donde aparece un id `thalos.adapter.*`.
 
 `hooks/lib/resolve-capability.sh` resuelve capacidad → implementación leyendo `hooks/generated/capabilities.tsv`, que `tools/build-registry.py` compila desde el registry. Ese archivo generado contiene ids concretos y no viola la regla: es una **proyección** del registry, igual que `state.json` es una proyección del event log.
 
@@ -123,7 +123,7 @@ Un adapter que dependa de un binario lo declara en su manifiesto:
 external_binary:
   name: herdr
   version_range: ">=0.7.0"
-  env_override: TALOS_HERDR_BIN
+  env_override: THALOS_HERDR_BIN
   install_hint: "brew install herdr"
   machine_level: true
 ```
@@ -131,10 +131,10 @@ external_binary:
 La resolución baja por cascada, primera coincidencia gana:
 
 ```txt
-$TALOS_HERDR_BIN  ->  .talos/bin/herdr  ->  PATH
+$THALOS_HERDR_BIN  ->  .thalos/bin/herdr  ->  PATH
 ```
 
-Talos **nunca instala nada**: detecta, te dice la versión requerida y te da el comando exacto.
+Thalos **nunca instala nada**: detecta, te dice la versión requerida y te da el comando exacto.
 
 `machine_level: true` marca herramientas que gestionan estado de máquina o de sesión de terminal. Esas **no se vendorean por proyecto**: dos copias pelearían por el mismo recurso, igual que pasaría vendoreando `tmux`.
 
@@ -161,7 +161,7 @@ Subir de modo es reemplazar ligaduras en `config/extensions.yaml`, no reescribir
 ```yaml
 # config/extensions.yaml
 ExecutionAdapter:
-  implementation: talos.adapter.herdr    # antes: talos.adapter.exec_dryrun
+  implementation: thalos.adapter.herdr    # antes: thalos.adapter.exec_dryrun
 ```
 
 ```yaml
@@ -173,7 +173,7 @@ Recompilá la tabla y verificá:
 
 ```bash
 python3 tools/build-registry.py
-talos doctor
+thalos doctor
 ```
 
 `doctor` reporta qué paso de la cascada resolvió el binario:
@@ -186,6 +186,6 @@ Si la versión no satisface el rango, el health check falla y la capacidad queda
 
 ### Por qué el repo se queda en `dry-run-only`
 
-La regla 37.4.4.1 dice que `dry-run-only` tiene que correr sin ninguna herramienta externa instalada. La suite del propio Talos corre en ese modo, y por eso ninguno de sus tests necesita Herdr — incluidos los del adapter de Herdr, que usan un binario de mentira.
+La regla 37.4.4.1 dice que `dry-run-only` tiene que correr sin ninguna herramienta externa instalada. La suite del propio Thalos corre en ese modo, y por eso ninguno de sus tests necesita Herdr — incluidos los del adapter de Herdr, que usan un binario de mentira.
 
-Un proyecto que use Talos sí cambia el modo. El repo de Talos no.
+Un proyecto que use Thalos sí cambia el modo. El repo de Thalos no.

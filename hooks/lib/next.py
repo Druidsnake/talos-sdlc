@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proyeccion de "que sigue". Ver talos-0.0.7.md secciones 22, 29 y 43.5.
+"""Proyeccion de "que sigue". Ver thalos-0.0.7.md secciones 22, 29 y 43.5.
 
 Esto NO es una fuente de intencion. La cadena de autoridad de la seccion 43.5
 pone el spec aprobado por encima de todo lo que no sea policy o aprobacion
@@ -78,7 +78,7 @@ def evidencia_presente(root):
 
 
 def render(d):
-    print("talos")
+    print("thalos")
     print()
     print(f"  programa   {d['programa']}")
     if d.get("spec"):
@@ -168,7 +168,7 @@ def agente_despachado(root, fid, adapter):
     """Si hay un agente al que este paso le pueda hablar, y por que no.
 
     Un rol activo NO prueba que haya agente: el rol es un archivo local que
-    Talos escribe, el agente es un proceso que puede no haber arrancado, haber
+    Thalos escribe, el agente es un proceso que puede no haber arrancado, haber
     muerto, o pertenecer a otro ExecutionAdapter. Tratar lo primero como
     evidencia de lo segundo es lo que hacia que el loop le mandara trabajo a un
     id fabricado por otro adapter y fallara dos comandos despues de la causa.
@@ -246,7 +246,7 @@ def paso_con_agente(root, fid, pane, adapter, rol_necesario):
     hay_agente, motivo = agente_despachado(root, fid, adapter)
     if rol.is_file() and hay_agente and activo == rol_necesario:
         return None
-    orden = f"talos feature dispatch {fid} --role {rol_necesario}"
+    orden = f"thalos feature dispatch {fid} --role {rol_necesario}"
     if pane and pane != "<PANE>":
         orden += f" --pane {pane}"
     if not rol.is_file():
@@ -285,12 +285,12 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
         despacho = paso_con_agente(root, fid, pane, adapter, "Developer")
         if despacho:
             return despacho
-        return {"feature": fid, "orden": f"talos feature work {fid}",
+        return {"feature": fid, "orden": f"thalos feature work {fid}",
                 "porque": "el agente esta despachado y no dejo su entregable"}
 
     # 2. Con entregable pero sin CommitRef, falta observar git.
     if "CommitRef" not in presentes:
-        return {"feature": fid, "orden": f"talos feature commit {fid}",
+        return {"feature": fid, "orden": f"thalos feature commit {fid}",
                 "porque": "hay entregable y falta sellar el commit"}
 
     # 3. Sin medicion propia no hay evidencia verificable de avance.
@@ -300,12 +300,12 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
         # despedazado y el adapter recibia basura. El comando de pruebas lo
         # declara el proyecto en config/system.yaml, que es donde vive lo que
         # depende del stack.
-        return {"feature": fid, "orden": f"talos feature test {fid}",
+        return {"feature": fid, "orden": f"thalos feature test {fid}",
                 "porque": "falta la unica evidencia verificable que se puede producir"}
 
     # 4. El entregable existe en disco pero nadie lo valido ni lo sello.
     if "TaskResultSet" not in presentes:
-        return {"feature": fid, "orden": f"talos feature collect {fid}",
+        return {"feature": fid, "orden": f"thalos feature collect {fid}",
                 "porque": "el entregable esta y falta validarlo y sellarlo"}
 
     # 5. Con el trabajo sellado, lo que falta lo produce el Reviewer. Despachar
@@ -316,9 +316,9 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
             despacho = paso_con_agente(root, fid, pane, adapter, "Reviewer")
             if despacho:
                 return despacho
-            return {"feature": fid, "orden": f"talos feature work {fid}",
+            return {"feature": fid, "orden": f"thalos feature work {fid}",
                     "porque": "la feature esta en revision y no hay Review"}
-        return {"feature": fid, "orden": f"talos feature collect {fid}",
+        return {"feature": fid, "orden": f"thalos feature collect {fid}",
                 "porque": "el Reviewer dejo su revision y falta sellarla"}
 
     # 6. Revision sellada: falta publicar el trabajo. Sin este paso el ciclo se
@@ -327,13 +327,13 @@ def trabajo_pendiente(root, fid, presentes, pane, adapter=None):
     if "PullRequestRef" not in presentes:
         review = cargar(root / "orchestration" / "reports" / fid / "review.json", {}) or {}
         if review.get("verdict") == "approve":
-            return {"feature": fid, "orden": f"talos feature pr {fid}",
+            return {"feature": fid, "orden": f"thalos feature pr {fid}",
                     "porque": "la revision aprobo y falta abrir el PR"}
 
-    # 7. Con el PR abierto falta que corran los checks. Talos no decide si
+    # 7. Con el PR abierto falta que corran los checks. Thalos no decide si
     #    pasan: le pide al CIAdapter que corra y observa lo que contesta.
     if "PullRequestRef" in presentes and "CheckRunSet" not in presentes:
-        return {"feature": fid, "orden": f"talos feature checks {fid}",
+        return {"feature": fid, "orden": f"thalos feature checks {fid}",
                 "porque": "el PR esta abierto y falta el resultado de los checks"}
 
     return None
@@ -363,26 +363,26 @@ def main(argv):
         if estado != "approved":
             out["programa"] = "SPEC_REVIEW"
             out["acciones"].append({
-                "orden": "talos spec check",
-                "porque": f"el spec esta en {estado}; Talos no planifica hasta approved",
+                "orden": "thalos spec check",
+                "porque": f"el spec esta en {estado}; Thalos no planifica hasta approved",
             })
             return emitir(out, formato)
     else:
-        out["acciones"].append({"orden": "talos init --with-spec",
+        out["acciones"].append({"orden": "thalos init --with-spec",
                                 "porque": "no hay spec del producto"})
         return emitir(out, formato)
 
     plan_p = root / "orchestration" / "program-plan.json"
     if not plan_p.is_file():
         out["programa"] = "SPEC_APPROVED"
-        out["acciones"].append({"orden": "talos plan init",
+        out["acciones"].append({"orden": "thalos plan init",
                                 "porque": "el spec esta aprobado y no hay plan"})
         return emitir(out, formato)
 
     try:
         plan = json.loads(plan_p.read_text())
     except json.JSONDecodeError:
-        out["acciones"].append({"orden": "talos plan check",
+        out["acciones"].append({"orden": "thalos plan check",
                                 "porque": "el plan no es JSON valido"})
         return emitir(out, formato)
 
@@ -410,7 +410,7 @@ def main(argv):
             else:
                 info["motivo"] = "lista para arrancar"
                 out["acciones"].append({
-                    "feature": fid, "orden": f"talos feature start {fid}",
+                    "feature": fid, "orden": f"thalos feature start {fid}",
                     "porque": "sin dependencias pendientes",
                 })
         elif est in TERMINAL:
@@ -445,7 +445,7 @@ def main(argv):
                 if not faltan and cond_ok and t["hacia"] not in CAMINOS_DE_FRACASO:
                     out["acciones"].append({
                         "feature": fid,
-                        "orden": f"talos feature advance {fid} --to {t['hacia']}",
+                        "orden": f"thalos feature advance {fid} --to {t['hacia']}",
                         "porque": f"{t['id']}: toda la evidencia esta presente",
                     })
             sin_falta = [s for s in info["salidas"]
@@ -457,7 +457,7 @@ def main(argv):
                 # lo que convierte al loop en algo que llega a un producto y no
                 # solo en algo que mueve estados.
                 info["motivo"] = "espera evidencia"
-                # Ya no hace falta que nadie elija un pane: Talos abre el
+                # Ya no hace falta que nadie elija un pane: Thalos abre el
                 # suyo. La proyeccion propone el trabajo sin condiciones.
                 paso = trabajo_pendiente(root, fid, presentes, pane, ejecutor)
                 if paso and paso.get("orden"):

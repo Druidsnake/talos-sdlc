@@ -1,10 +1,10 @@
 #!/bin/sh
-# talos.adapter.herdr - implementacion productiva de ExecutionAdapter.
+# thalos.adapter.herdr - implementacion productiva de ExecutionAdapter.
 #
 # Uso:   run.sh <operacion> [semantic_args_json]
-# Env:   TALOS_RUN_ID, TALOS_FEATURE_ID   contexto de la idempotency key
-#        TALOS_HERDR_BIN                  primer paso de la cascada (37.4.5)
-#        TALOS_DRY_RUN=1                  registra la intencion, no ejecuta
+# Env:   THALOS_RUN_ID, THALOS_FEATURE_ID   contexto de la idempotency key
+#        THALOS_HERDR_BIN                  primer paso de la cascada (37.4.5)
+#        THALOS_DRY_RUN=1                  registra la intencion, no ejecuta
 # Sale:  0 ok / 2 precondition fallida / 5 error de adapter
 #
 # Responsable del ciclo de vida de procesos y de nada mas (seccion 38.5): no
@@ -21,19 +21,19 @@ REQUIRED_RANGE=">=0.7.0"
 
 op="${1:-}"
 args="${2:-{\}}"
-run="${TALOS_RUN_ID:-r-unknown}"
-feat="${TALOS_FEATURE_ID:-none}"
+run="${THALOS_RUN_ID:-r-unknown}"
+feat="${THALOS_FEATURE_ID:-none}"
 
 # ---------- resolucion del binario (seccion 37.4.5) ----------
 #
-# Cascada: variable de entorno -> .talos/bin/herdr -> PATH.
-# La primera coincidencia gana. Talos NO instala nada (regla 37.4.5.4).
+# Cascada: variable de entorno -> .thalos/bin/herdr -> PATH.
+# La primera coincidencia gana. Thalos NO instala nada (regla 37.4.5.4).
 resolve_herdr() {
-    if [ -n "${TALOS_HERDR_BIN:-}" ] && [ -x "${TALOS_HERDR_BIN}" ]; then
-        printf '%s' "$TALOS_HERDR_BIN"
+    if [ -n "${THALOS_HERDR_BIN:-}" ] && [ -x "${THALOS_HERDR_BIN}" ]; then
+        printf '%s' "$THALOS_HERDR_BIN"
         return 0
     fi
-    _vendored="${TALOS_PROJECT_ROOT:-.}/.talos/bin/herdr"
+    _vendored="${THALOS_PROJECT_ROOT:-.}/.thalos/bin/herdr"
     if [ -x "$_vendored" ]; then
         printf '%s' "$_vendored"
         return 0
@@ -46,7 +46,7 @@ missing_binary() {
     printf '{"status":"error","error_class":"precondition",' >&2
     printf '"message":"herdr no esta instalado",' >&2
     printf '"required":"%s",' >&2 "$REQUIRED_RANGE"
-    printf '"resolution_order":["$TALOS_HERDR_BIN",".talos/bin/herdr","PATH"],' >&2
+    printf '"resolution_order":["$THALOS_HERDR_BIN",".thalos/bin/herdr","PATH"],' >&2
     printf '"install_hint":"curl -fsSL https://herdr.dev/install.sh | sh"}\n' >&2
     return 2
 }
@@ -62,10 +62,10 @@ herdr_version() {
 check_version() {
     _v=$(herdr_version)
     if [ -z "$_v" ]; then
-        talos_error precondition "no se pudo leer la version de $HERDR"
+        thalos_error precondition "no se pudo leer la version de $HERDR"
         return 2
     fi
-    if ! talos_semver_satisfies "$_v" "$REQUIRED_RANGE"; then
+    if ! thalos_semver_satisfies "$_v" "$REQUIRED_RANGE"; then
         printf '{"status":"error","error_class":"precondition",' >&2
         printf '"message":"herdr %s no satisface %s","path":"%s"}\n' >&2 \
             "$_v" "$REQUIRED_RANGE" "$HERDR"
@@ -78,17 +78,17 @@ check_version() {
 #
 # En dry-run el adapter registra la intencion y no toca el servidor. Es lo que
 # permite ensayar una corrida productiva sin crear workspaces reales.
-DRY="${TALOS_DRY_RUN:-0}"
+DRY="${THALOS_DRY_RUN:-0}"
 
 # Este adapter ejecuta de verdad salvo que se le pida lo contrario. Lo declara
 # antes de emitir cualquier resultado, para que dry_run no mienta.
-# La lee talos_ok, que viene de adapters/lib/adapter.sh.
+# La lee thalos_ok, que viene de adapters/lib/adapter.sh.
 # shellcheck disable=SC2034
-TALOS_ADAPTER_SIMULATED="$DRY"
+THALOS_ADAPTER_SIMULATED="$DRY"
 
 herdr_do() {
     if [ "$DRY" = 1 ]; then
-        talos_ledger_record "dryrun-$(date -u +%s)-$$" "herdr:$1" \
+        thalos_ledger_record "dryrun-$(date -u +%s)-$$" "herdr:$1" \
             "{\"intended\":\"$*\"}"
         printf '{"dry_run":true,"intended":"%s"}' "$*"
         return 0
@@ -96,16 +96,16 @@ herdr_do() {
     "$HERDR" "$@" 2>&1
 }
 
-# jq no es dependencia de Talos: el id sale del JSON de Herdr por sed.
+# jq no es dependencia de Thalos: el id sale del JSON de Herdr por sed.
 first_id() {
     sed -n 's/.*"\('"$1"'\)"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\2/p' | head -1
 }
 
 # Decodifica de verdad: un texto con saltos de linea o comillas llegaba
-# mutilado al agente y la operacion reportaba exito igual. Ver talos_json_get
+# mutilado al agente y la operacion reportaba exito igual. Ver thalos_json_get
 # en adapters/lib/adapter.sh.
 json_get() {
-    talos_json_get "$args" "$1"
+    thalos_json_get "$args" "$1"
 }
 
 case "$op" in
@@ -114,9 +114,9 @@ case "$op" in
         # Sano no es solo "el binario existe": tiene que haber servidor. Sin
         # servidor no hay donde ejecutar y la capacidad no esta satisfecha.
         if [ "$DRY" = 1 ]; then
-            talos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"dry_run\":true}"
+            thalos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"dry_run\":true}"
         elif "$HERDR" workspace list >/dev/null 2>&1; then
-            talos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\"}"
+            thalos_ok "{\"healthy\":true,\"capability\":\"ExecutionAdapter\",\"version\":\"$_v\",\"path\":\"$HERDR\"}"
         else
             printf '{"status":"error","error_class":"precondition",' >&2
             printf '"message":"herdr %s responde pero no hay servidor","path":"%s",' >&2 "$_v" "$HERDR"
@@ -131,11 +131,11 @@ case "$op" in
         # El cwd es parte del contrato: una feature se desarrolla en su propio
         # directorio o worktree, no donde haya quedado parado el orquestador.
         _cwd=$(json_get cwd)
-        # talos_mutate_run consulta el ledger ANTES de ejecutar. Con la forma
+        # thalos_mutate_run consulta el ledger ANTES de ejecutar. Con la forma
         # que recibe "$(comando)" ya evaluado, el workspace se creaba en cada
         # reintento aunque la respuesta dijera already_exists.
         # shellcheck disable=SC2086
-        talos_mutate_run "$op" "$run" "$feat" "$args" workspace_id \
+        thalos_mutate_run "$op" "$run" "$feat" "$args" workspace_id \
             herdr_do workspace create --no-focus \
                 ${_label:+--label} ${_label:+"$_label"} \
                 ${_cwd:+--cwd} ${_cwd:+"$_cwd"}
@@ -144,21 +144,21 @@ case "$op" in
     create_session)
         check_version >/dev/null || exit 2
         # Un panel puede cerrarse: lo cierra una persona, o lo cierra el propio
-        # Talos al soltar el rol. Sin esta verificacion, el ledger devolvia
+        # Thalos al soltar el rol. Sin esta verificacion, el ledger devolvia
         # already_exists sobre un panel muerto y el start_agent siguiente
         # fallaba con "pane not found" -a un comando de distancia de la causa,
-        # y sobre un id que Talos mismo habia cerrado.
+        # y sobre un id que Thalos mismo habia cerrado.
         #
         # Misma leccion que start_agent ya aplicaba para los agentes: para un
         # recurso que puede dejar de existir, la fuente de verdad es el
         # backend, no el registro local.
-        talos_pane_vive() {
+        thalos_pane_vive() {
             [ "$DRY" = 1 ] && return 0
             "$HERDR" pane list 2>/dev/null | grep -qF "\"pane_id\":\"$1\""
         }
-        # La lee talos_mutate_run, que viene de adapters/lib/adapter.sh.
+        # La lee thalos_mutate_run, que viene de adapters/lib/adapter.sh.
         # shellcheck disable=SC2034
-        TALOS_LEDGER_VERIFY=talos_pane_vive
+        THALOS_LEDGER_VERIFY=thalos_pane_vive
         # Una sesion de ejecucion se realiza como un pane HERMANO, no como un
         # tab. Con un tab hay que cambiar de pestaña para ver al agente; con un
         # pane queda al lado de la consola, que es el punto de mirarlo.
@@ -170,7 +170,7 @@ case "$op" in
         _cwd=$(json_get cwd)
         _dir=$(json_get direction); [ -n "$_dir" ] || _dir=right
         # shellcheck disable=SC2086
-        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+        thalos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
             herdr_do pane split ${_anchor:+"$_anchor"} --direction "$_dir" \
                 ${_cwd:+--cwd} ${_cwd:+"$_cwd"} --no-focus
         ;;
@@ -179,7 +179,7 @@ case "$op" in
         check_version >/dev/null || exit 2
         _name=$(json_get name); _kind=$(json_get kind); _pane=$(json_get pane)
         [ -n "$_name" ] && [ -n "$_kind" ] && [ -n "$_pane" ] || {
-            talos_error precondition "start_agent requiere name, kind y pane"
+            thalos_error precondition "start_agent requiere name, kind y pane"
             exit 5
         }
 
@@ -193,22 +193,22 @@ case "$op" in
         # Misma leccion que con GitHub: para un recurso que puede dejar de
         # existir, la fuente de verdad es el backend, no el registro local.
         if [ "$DRY" != 1 ]; then
-            # Se busca por NOMBRE, que es lo que Talos controla, y no por
+            # Se busca por NOMBRE, que es lo que Thalos controla, y no por
             # pane: un pane puede tener un agente muerto que herdr todavia
-            # lista, o el shell de una persona. El nombre lo puso Talos al
+            # lista, o el shell de una persona. El nombre lo puso Thalos al
             # despachar, asi que encontrarlo significa que ESTE agente vive.
             _vivo=$("$HERDR" agent list 2>/dev/null \
                     | tr '}' '\n' | grep -F "\"name\":\"$_name\"" | head -1)
             if [ -n "$_vivo" ]; then
                 _tid=$(printf '%s' "$_vivo" | first_id terminal_id)
-                _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+                _key=$(thalos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
                 printf '{"status":"already_exists","resource_ref":{"id":"%s","url":null},' "$_tid"
                 printf '"idempotency_key":"%s","dry_run":false}\n' "$_key"
                 exit 0
             fi
             # No hay agente vivo: si el ledger tiene una entrada vieja, esta
             # obsoleta. Se arranca igual.
-            _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+            _key=$(thalos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
 
             # Un pane recien abierto todavia no llego a su prompt: el shell
             # esta arrancando. herdr responde agent_pane_busy y quien pidio el
@@ -229,14 +229,14 @@ case "$op" in
                             printf '{"status":"error","error_class":"adapter","operation":"start_agent",' >&2
                             printf '"message":"el pane %s no quedo disponible tras %s intentos",' >&2 \
                                 "$_pane" "$_intentos"
-                            printf '"backend":%s}\n' >&2 "$(printf '%s' "$_out" | talos_json_string)"
+                            printf '"backend":%s}\n' >&2 "$(printf '%s' "$_out" | thalos_json_string)"
                             exit 5
                         fi
                         sleep 2
                         ;;
                     *)
                         printf '{"status":"error","error_class":"adapter","operation":"start_agent","message":%s}\n' \
-                            "$(printf '%s' "$_out" | talos_json_string)" >&2
+                            "$(printf '%s' "$_out" | thalos_json_string)" >&2
                         exit 5
                         ;;
                 esac
@@ -281,7 +281,7 @@ case "$op" in
                 exit 5
             fi
             _tid=$(printf '%s' "$_out" | first_id terminal_id)
-            talos_ledger_record "$_key" "$op" "{\"id\":\"$_tid\",\"url\":null}"
+            thalos_ledger_record "$_key" "$op" "{\"id\":\"$_tid\",\"url\":null}"
             printf '{"status":"created","resource_ref":{"id":"%s","url":null},' "$_tid"
             printf '"idempotency_key":"%s","dry_run":false}\n' "$_key"
             exit 0
@@ -292,11 +292,11 @@ case "$op" in
         _aargs=$(json_get agent_args)
         if [ -n "$_aargs" ]; then
             # shellcheck disable=SC2086
-            talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
+            thalos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
                 herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane" \
                     -- $_aargs
         else
-            talos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
+            thalos_mutate_run "$op" "$run" "$feat" "$args" terminal_id \
                 herdr_do agent start "$_name" --kind "$_kind" --pane "$_pane"
         fi
         ;;
@@ -305,7 +305,7 @@ case "$op" in
         check_version >/dev/null || exit 2
         _target=$(json_get target); _text=$(json_get text)
         [ -n "$_target" ] && [ -n "$_text" ] || {
-            talos_error precondition "prompt_agent requiere target y text"
+            thalos_error precondition "prompt_agent requiere target y text"
             exit 5
         }
         # --wait no es una comodidad: sin el, un prompt enviado justo despues
@@ -333,7 +333,7 @@ case "$op" in
 
         set +e
         # shellcheck disable=SC2086
-        _out=$(talos_mutate_run "$op" "$run" "$feat" "$args" agent \
+        _out=$(thalos_mutate_run "$op" "$run" "$feat" "$args" agent \
                    herdr_do agent prompt "$_target" "$_text" --wait \
                        ${_tmo:+--timeout} ${_tmo:+"$_tmo"} 2>&1)
         _prc=$?
@@ -350,8 +350,8 @@ case "$op" in
                     _ahora=$(_estado_seq)
                     if [ -n "$_ahora" ] && [ "$_ahora" != "$_antes" ]; then
                         # El agente se movio: el prompt habia llegado.
-                        _key=$(talos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
-                        talos_ledger_record "$_key" "$op" '{"id":"agent","url":null}'
+                        _key=$(thalos_idempotency_key "$run" "$feat" "$op" "$args") || exit 5
+                        thalos_ledger_record "$_key" "$op" '{"id":"agent","url":null}'
                         printf '{"status":"created","resource_ref":{"id":"agent","url":null},'
                         printf '"idempotency_key":"%s","dry_run":false,' "$_key"
                         printf '"note":"la confirmacion tardo mas que la ventana de --wait"}\n'
@@ -370,7 +370,7 @@ case "$op" in
         check_version >/dev/null || exit 2
         _pane=$(json_get pane)
         [ -n "$_pane" ] || {
-            talos_error precondition "close_session requiere pane"
+            thalos_error precondition "close_session requiere pane"
             exit 5
         }
         # Cerrar un panel que ya no existe NO es un error: el resultado que se
@@ -381,10 +381,10 @@ case "$op" in
         if [ "$DRY" != 1 ] && ! "$HERDR" pane list 2>/dev/null | grep -qF "\"pane_id\":\"$_pane\""; then
             printf '{"status":"already_exists","resource_ref":{"id":"%s","url":null},' "$_pane"
             printf '"idempotency_key":"%s","dry_run":false,"note":"el panel ya no existe"}\n' \
-                "$(talos_idempotency_key "$run" "$feat" "$op" "$args")"
+                "$(thalos_idempotency_key "$run" "$feat" "$op" "$args")"
             exit 0
         fi
-        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+        thalos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
             herdr_do pane close "$_pane"
         ;;
 
@@ -404,7 +404,7 @@ case "$op" in
                     ${_timeout:+--timeout} ${_timeout:+"$_timeout"})
         _st=$(printf '%s' "$_raw" | first_id agent_status)
         [ -n "$_st" ] || _st=unknown
-        talos_ok "{\"state\":\"$_st\",\"target\":\"$_target\"}"
+        thalos_ok "{\"state\":\"$_st\",\"target\":\"$_target\"}"
         ;;
 
     read_agent)
@@ -416,32 +416,32 @@ case "$op" in
         # shellcheck disable=SC2086
         _raw=$(herdr_do agent read "$_target" ${_lines:+--lines} ${_lines:+"$_lines"} \
                --source recent-unwrapped --format text)
-        talos_ok "{\"output\":$(printf '%s' "$_raw" | talos_json_string),\"target\":\"$_target\"}"
+        thalos_ok "{\"output\":$(printf '%s' "$_raw" | thalos_json_string),\"target\":\"$_target\"}"
         ;;
 
     run_command)
         check_version >/dev/null || exit 2
         _pane=$(json_get pane); _cmd=$(json_get command)
         [ -n "$_pane" ] && [ -n "$_cmd" ] || {
-            talos_error precondition "run_command requiere pane y command"
+            thalos_error precondition "run_command requiere pane y command"
             exit 5
         }
         # pane run manda el texto Y el Enter de forma atomica. Con send-text
         # el comando queda escrito en el prompt y nunca se ejecuta: la
         # operacion reportaba exito sin haber corrido nada.
-        talos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+        thalos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
             herdr_do pane run "$_pane" "$_cmd"
         ;;
 
     report_metadata)
         _v=$(check_version) || exit 2
-        talos_ok "{\"adapter\":\"herdr\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"supports_parallel\":true}"
+        thalos_ok "{\"adapter\":\"herdr\",\"version\":\"$_v\",\"path\":\"$HERDR\",\"supports_parallel\":true}"
         ;;
 
     "")
-        talos_error precondition "falta la operacion"
+        thalos_error precondition "falta la operacion"
         ;;
     *)
-        talos_unknown_op "$op"
+        thalos_unknown_op "$op"
         ;;
 esac

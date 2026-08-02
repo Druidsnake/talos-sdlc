@@ -67,7 +67,7 @@ if [ "$1" = issue ] && [ "$2" = list ]; then
   sep=""
   while read -r n k; do
     [ -z "$n" ] && continue
-    printf '%s{{"number":%s,"body":"<!-- talos-idempotency-key: %s -->"}}' "$sep" "$n" "$k"
+    printf '%s{{"number":%s,"body":"<!-- thalos-idempotency-key: %s -->"}}' "$sep" "$n" "$k"
     sep=","
   done < "$STORE"
   printf ']\\n'
@@ -81,7 +81,7 @@ if [ "$1" = issue ] && [ "$2" = create ]; then
     shift
   done
   n=$(( $(wc -l < "$STORE" 2>/dev/null || echo 0) + 1 ))
-  key=$(printf '%s' "$body" | sed -n 's/.*talos-idempotency-key: \\([a-f0-9]*\\).*/\\1/p')
+  key=$(printf '%s' "$body" | sed -n 's/.*thalos-idempotency-key: \\([a-f0-9]*\\).*/\\1/p')
   printf '%s %s\\n' "$n" "$key" >> "$STORE"
   echo "https://github.com/{repo}/issues/$n"
   exit 0
@@ -118,8 +118,8 @@ def path_sin_gh():
 
 def run_adapter(op, args=None, env=None):
     e = {"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home()),
-         "TALOS_PROJECT_ROOT": tempfile.mkdtemp(),
-         "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+         "THALOS_PROJECT_ROOT": tempfile.mkdtemp(),
+         "THALOS_RUN_ID": "r-1", "THALOS_FEATURE_ID": "F001"}
     if env:
         e.update(env)
     cmd = [str(ADAPTER / "run.sh"), op]
@@ -143,7 +143,7 @@ def main():
 
     results.append(check(
         "implementa CoordinationAdapter con el id de la seccion 38.3",
-        man["id"] == "talos.adapter.github" and man["implements"] == "CoordinationAdapter"))
+        man["id"] == "thalos.adapter.github" and man["implements"] == "CoordinationAdapter"))
 
     dry = yaml.safe_load((ROOT / "adapters" / "coord_dryrun" / "adapter.yaml").read_text())
     ops_g = {o["name"] for o in man["operations"]}
@@ -171,19 +171,19 @@ def main():
     store.write_text("")
     gh = fake_gh(str(store))
 
-    code, out, err = run_adapter("health", env={"TALOS_GH_BIN": str(gh)})
+    code, out, err = run_adapter("health", env={"THALOS_GH_BIN": str(gh)})
     results.append(check("health pasa con gh autenticado y repo resuelto",
                          code == 0 and '"healthy":true' in out, f"exit={code} {out[:120]}{err[:120]}"))
     results.append(check("un adapter productivo NO reporta dry_run:true",
                          '"dry_run":false' in out, out[:140]))
 
     viejo = fake_gh(str(store), version="1.14.0")
-    code, out, err = run_adapter("health", env={"TALOS_GH_BIN": str(viejo)})
+    code, out, err = run_adapter("health", env={"THALOS_GH_BIN": str(viejo)})
     results.append(check("RECHAZA una version de gh fuera de rango (37.4.5.3)",
                          code == 2 and "1.14.0" in err, f"exit={code} {err[:120]}"))
 
     sin_auth = fake_gh(str(store), authed=False)
-    code, out, err = run_adapter("health", env={"TALOS_GH_BIN": str(sin_auth)})
+    code, out, err = run_adapter("health", env={"THALOS_GH_BIN": str(sin_auth)})
     results.append(check("RECHAZA cuando gh no esta autenticado",
                          code == 2 and "autenticar" in err, f"exit={code} {err[:120]}"))
 
@@ -195,7 +195,7 @@ def main():
     results.append(check("sin gh en ningun paso de la cascada sale 2",
                          code == 2 and "no esta instalado" in err, f"exit={code} {err[:120]}"))
     results.append(check("el error nombra los tres pasos de la cascada",
-                         "TALOS_GH_BIN" in err and ".talos/bin/gh" in err and "PATH" in err,
+                         "THALOS_GH_BIN" in err and ".thalos/bin/gh" in err and "PATH" in err,
                          err[:200]))
 
     # ---------- reconciliacion (regla 38.2.6) ----------
@@ -209,8 +209,8 @@ def main():
     store2.write_text("")
     gh2 = fake_gh(str(store2))
     proj = tempfile.mkdtemp()
-    env2 = {"TALOS_GH_BIN": str(gh2), "TALOS_PROJECT_ROOT": proj,
-            "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+    env2 = {"THALOS_GH_BIN": str(gh2), "THALOS_PROJECT_ROOT": proj,
+            "THALOS_RUN_ID": "r-1", "THALOS_FEATURE_ID": "F001"}
 
     c1, o1, _ = run_adapter("create_issue", {"title": "F001: modelo", "body": "x"}, env=env2)
     results.append(check("create_issue crea el issue la primera vez",
@@ -284,7 +284,7 @@ def main():
     results.append(check(
         "CoordinationAdapter sigue ligado a la simulacion en este repo",
         reg["capabilities"]["CoordinationAdapter"]["implementation"]
-        == "talos.adapter.coord_dryrun",
+        == "thalos.adapter.coord_dryrun",
         reg["capabilities"]["CoordinationAdapter"]["implementation"]))
 
     print()

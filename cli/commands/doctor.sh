@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos doctor - verifica preconditions y reporta el nivel de enforcement REAL.
+# thalos doctor - verifica preconditions y reporta el nivel de enforcement REAL.
 #
 # No afirma que un requisito se cumple cuando su mecanismo no esta disponible.
 # Ver system/00-enforcement.md 5.4.
@@ -8,16 +8,16 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos doctor - verifica preconditions y reporta el nivel de enforcement real
+thalos doctor - verifica preconditions y reporta el nivel de enforcement real
 
 USO
-    talos doctor [--format json]
+    thalos doctor [--format json]
 
 QUE VERIFICA
     git, identidad, remoto y autenticacion de gh
@@ -104,7 +104,7 @@ fi
 # ---------- validador ----------
 # shellcheck source=../../hooks/lib/resolve-validator.sh
 . "$SYS/hooks/lib/resolve-validator.sh"
-if impl=$(talos_resolve_validator); then
+if impl=$(thalos_resolve_validator); then
     record ok si validador "$impl" ""
 else
     record fail si validador "ninguno disponible" \
@@ -118,7 +118,7 @@ for f in VERSION system/rules.yaml config/roles.yaml hooks/generated/write-scope
     if [ -f "$SYS/$f" ]; then
         record ok si "archivo:$f" "presente" ""
     else
-        record fail si "archivo:$f" "falta" "reinstala Talos"
+        record fail si "archivo:$f" "falta" "reinstala Thalos"
     fi
 done
 
@@ -126,7 +126,7 @@ n_schemas=$(find "$SYS/schemas" -name '*.schema.json' 2>/dev/null | wc -l | tr -
 if [ "$n_schemas" -gt 0 ]; then
     record ok si schemas "$n_schemas contratos" ""
 else
-    record fail si schemas "sin schemas" "reinstala Talos"
+    record fail si schemas "sin schemas" "reinstala Thalos"
 fi
 
 # ---------- modo de operacion y capacidades (preconditions 27.1.15 y 37.4.3) ----------
@@ -135,7 +135,7 @@ fi
 # registry. Ver hooks/lib/resolve-capability.sh.
 # shellcheck source=../../hooks/lib/resolve-capability.sh
 . "$SYS/hooks/lib/resolve-capability.sh"
-# gate.sh trae talos_python. Sin sourcearlo, el chequeo de deriva de mas abajo
+# gate.sh trae thalos_python. Sin sourcearlo, el chequeo de deriva de mas abajo
 # no corria y no lo decia: un check que puede saltearse en silencio es peor que
 # no tenerlo, porque quien lo lee asume que paso.
 # shellcheck source=../../hooks/lib/gate.sh
@@ -151,30 +151,30 @@ if [ -f "$SYS/config/system.yaml" ]; then
     fi
 else
     exec_mode=""
-    record fail si modo_ejecucion "falta config/system.yaml" "reinstala Talos"
+    record fail si modo_ejecucion "falta config/system.yaml" "reinstala Thalos"
 fi
 
 # La tabla de capacidades es una PROYECCION de config/extensions.yaml. Si
-# quedan desincronizadas, Talos resuelve contra una ligadura que su propia
+# quedan desincronizadas, Thalos resuelve contra una ligadura que su propia
 # configuracion ya no declara, y lo hace en silencio: reporta las capacidades
 # sanas leyendo la tabla vieja.
 #
-# Es la clase de deriva que Talos existe para detectar. Aplicarla al propio
+# Es la clase de deriva que Thalos existe para detectar. Aplicarla al propio
 # sistema no es opcional.
-if ! talos_capability_table >/dev/null 2>&1; then
+if ! thalos_capability_table >/dev/null 2>&1; then
     :
-elif ! _dpy=$(talos_python 2>/dev/null); then
+elif ! _dpy=$(thalos_python 2>/dev/null); then
     record warn si registro_al_dia "sin python: no se pudo verificar la deriva" \
         "instala python3 para que doctor pueda comprobarlo"
 elif [ ! -d "$SYS/tools" ]; then
     record warn si registro_al_dia "sin tools/: no se pudo verificar la deriva" \
-        "reinstala Talos con tools/"
+        "reinstala Thalos con tools/"
 else
     _tmp=$(mktemp -d)
     cp -R "$SYS/config" "$SYS/adapters" "$SYS/tools" "$_tmp/" 2>/dev/null
     mkdir -p "$_tmp/hooks/generated"
     if (cd "$_tmp" && "$_dpy" tools/build-registry.py >/dev/null 2>&1) \
-       && cmp -s "$_tmp/hooks/generated/capabilities.tsv" "$TALOS_CAP_TABLE"; then
+       && cmp -s "$_tmp/hooks/generated/capabilities.tsv" "$THALOS_CAP_TABLE"; then
         record ok si registro_al_dia "la tabla coincide con extensions.yaml" ""
     else
         record fail si registro_al_dia "la tabla NO coincide con extensions.yaml" \
@@ -183,29 +183,29 @@ else
     rm -rf "$_tmp"
 fi
 
-if talos_capability_table >/dev/null 2>&1; then
-    cap_rows=$(talos_capability_audit || true)
-    cap_fails=$(talos_capability_failures "$cap_rows")
-    n_bound=$(talos_capability_table | awk -F'\t' '$3 != "-"' | wc -l | tr -d ' ')
+if thalos_capability_table >/dev/null 2>&1; then
+    cap_rows=$(thalos_capability_audit || true)
+    cap_fails=$(thalos_capability_failures "$cap_rows")
+    n_bound=$(thalos_capability_table | awk -F'\t' '$3 != "-"' | wc -l | tr -d ' ')
     if [ "$cap_fails" -eq 0 ]; then
         record ok si capacidades "$n_bound ligadas, requeridas sanas" ""
     else
-        record fail si capacidades "$cap_fails requerida(s) sin satisfacer" "talos adapters"
+        record fail si capacidades "$cap_fails requerida(s) sin satisfacer" "thalos adapters"
     fi
 else
     record fail si capacidades "sin tabla de capacidades" "python3 tools/build-registry.py"
 fi
 
-# Regla 37.4.5.6: reportar la ruta resuelta de cada binario externo. Talos no
+# Regla 37.4.5.6: reportar la ruta resuelta de cada binario externo. Thalos no
 # instala nada; cuando falta, muestra el comando exacto (regla 37.4.5.5).
 # El bucle NO puede ir detras de un pipe: record acumula en una variable, y en
 # un subshell ese acumulado se pierde al cerrar. Se captura primero.
-bin_rows=$(talos_capability_binaries 2>/dev/null || true)
+bin_rows=$(thalos_capability_binaries 2>/dev/null || true)
 while IFS='|' read -r bcap bbin brange bpath; do
     [ -z "$bcap" ] && continue
     if [ "$bpath" = "-" ]; then
         record fail si "binario:$bbin" "no resuelto, requiere $brange" \
-            "instala $bbin o define TALOS_$(printf '%s' "$bbin" | tr 'a-z' 'A-Z')_BIN"
+            "instala $bbin o define THALOS_$(printf '%s' "$bbin" | tr 'a-z' 'A-Z')_BIN"
     else
         record ok si "binario:$bbin" "$bpath ($brange)" ""
     fi
@@ -220,18 +220,18 @@ if [ -f spec/manifest.yaml ]; then
             st=$(grep -E '^status:' spec/manifest.yaml | head -1 | sed 's/status:[[:space:]]*//' | tr -d '"')
             record ok no spec "valido, status=$st" ""
         else
-            record fail no spec "no valida contra su schema" "talos spec check"
+            record fail no spec "no valida contra su schema" "thalos spec check"
         fi
     fi
 else
-    record warn no spec "no existe spec/manifest.yaml" "talos init genera un esqueleto"
+    record warn no spec "no existe spec/manifest.yaml" "thalos init genera un esqueleto"
 fi
 
 # ---------- runtime ----------
 if [ -f orchestration/.meta.json ]; then
     record ok no runtime "inicializado" ""
 else
-    record warn no runtime "sin inicializar" "talos init"
+    record warn no runtime "sin inicializar" "thalos init"
 fi
 
 # ---------- mecanismos de enforcement ----------
@@ -239,7 +239,7 @@ mech_status() {
     case "$1" in
         1) [ -x "$SYS/hooks/validate-artifact.sh" ] && [ "$n_schemas" -gt 0 ] && echo activo || echo inactivo ;;
         2) [ -x "$SYS/hooks/check-write-scope.sh" ] && [ -f "$SYS/hooks/generated/write-scope.rules" ] && echo activo || echo inactivo ;;
-        3) [ -f .github/workflows/talos.yml ] && echo activo || echo inactivo ;;
+        3) [ -f .github/workflows/thalos.yml ] && echo activo || echo inactivo ;;
         4) { [ -e .git/hooks/pre-commit ] && [ -e .git/hooks/commit-msg ]; } && echo activo || echo inactivo ;;
         5) if have gh && git remote get-url origin >/dev/null 2>&1; then
                repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo "")
@@ -271,8 +271,8 @@ fi
 
 # ---------- salida ----------
 if [ "$FORMAT" = json ]; then
-    printf '{\n  "talos_version": "%s",\n  "install_level": "%s",\n' \
-        "${TALOS_VERSION:-?}" "$level"
+    printf '{\n  "thalos_version": "%s",\n  "install_level": "%s",\n' \
+        "${THALOS_VERSION:-?}" "$level"
     printf '  "mechanisms": {"1": "%s", "2": "%s", "3": "%s", "4": "%s", "5": "%s"},\n' \
         "$m1" "$m2" "$m3" "$m4" "$m5"
     printf '  "checks": [\n'
@@ -286,7 +286,7 @@ if [ "$FORMAT" = json ]; then
     done
     printf '\n  ],\n  "failed": %s\n}\n' "$fails"
 else
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '%s' "$rows" | while IFS='|' read -r st req id detail rem; do
         [ -z "$st" ] && continue

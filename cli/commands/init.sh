@@ -1,13 +1,13 @@
 #!/bin/sh
-# talos init - prepara orchestration/ en el proyecto actual.
+# thalos init - prepara orchestration/ en el proyecto actual.
 #
 # Idempotente: correrlo dos veces no rompe nada ni pisa lo existente.
 # No instala herramientas de terceros ni toca spec/ salvo que se pida.
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 RUNTIME_SCHEMA_VERSION=1
@@ -17,10 +17,10 @@ for arg in "$@"; do
         --with-spec) WITH_SPEC=1 ;;
         -h|--help)
             cat <<'USAGE'
-talos init - prepara orchestration/ en el proyecto actual
+thalos init - prepara orchestration/ en el proyecto actual
 
 USO
-    talos init [--with-spec]
+    thalos init [--with-spec]
 
 OPCIONES
     --with-spec   genera tambien un esqueleto en spec/
@@ -30,17 +30,17 @@ QUE CREA
     orchestration/state.json    estado del programa
     orchestration/locks.json    leases activos
     orchestration/.gitignore    excluye events/ y evidence/
-    .gitignore                  agrega .talos/ si esta vendoreado
+    .gitignore                  agrega .thalos/ si esta vendoreado
 
     Es idempotente: correrlo dos veces no pisa nada.
-    Valida lo que genera; si Talos produce algo invalido, falla.
+    Valida lo que genera; si Thalos produce algo invalido, falla.
 
 SALIDA
     0  listo
     1  lo generado no valida contra su schema
 USAGE
             exit 0 ;;
-        *) echo "talos: opcion desconocida: $arg" >&2; exit 1 ;;
+        *) echo "thalos: opcion desconocida: $arg" >&2; exit 1 ;;
     esac
 done
 
@@ -59,7 +59,7 @@ else
     cat > orchestration/.meta.json <<EOF
 {
   "runtime_schema_version": $RUNTIME_SCHEMA_VERSION,
-  "talos_version": "${TALOS_VERSION:-0.0.6}",
+  "thalos_version": "${THALOS_VERSION:-0.0.6}",
   "run_id": "$run_id",
   "created_at": "$now",
   "last_migrated_at": null,
@@ -105,21 +105,21 @@ EOF
     note "creado orchestration/.gitignore"
 fi
 
-# Talos vendoreado son cientos de archivos. Sin decidir que hacer con ellos,
+# Thalos vendoreado son cientos de archivos. Sin decidir que hacer con ellos,
 # quedan como ruido permanente en el work tree del proyecto: cada git status
 # los lista y tapan lo que la persona si esta cambiando.
 #
-# Se ignora por defecto. Fijar la version de Talos con el proyecto es una
+# Se ignora por defecto. Fijar la version de Thalos con el proyecto es una
 # decision valida, y para tomarla alcanza con borrar la linea; dejar el ruido
 # sin decidir no es una decision, es un descuido.
-if [ -d .talos ] && ! grep -qE '^/?\.talos/?$' .gitignore 2>/dev/null; then
+if [ -d .thalos ] && ! grep -qE '^/?\.thalos/?$' .gitignore 2>/dev/null; then
     {
         [ -f .gitignore ] && [ -s .gitignore ] && echo ""
-        echo "# Talos vendoreado. Son cientos de archivos del sistema, no del producto."
-        echo "# Si preferis fijar la version de Talos junto al proyecto, borra esta linea."
-        echo ".talos/"
+        echo "# Thalos vendoreado. Son cientos de archivos del sistema, no del producto."
+        echo "# Si preferis fijar la version de Thalos junto al proyecto, borra esta linea."
+        echo ".thalos/"
     } >> .gitignore
-    note "agregado .talos/ a .gitignore"
+    note "agregado .thalos/ a .gitignore"
     created=$((created + 1))
 fi
 
@@ -152,12 +152,12 @@ EOF
     fi
 fi
 
-# Valida lo que acaba de escribir. Si Talos genera algo invalido, hay que saberlo.
+# Valida lo que acaba de escribir. Si Thalos genera algo invalido, hay que saberlo.
 if [ -x "$SYS/hooks/validate-artifact.sh" ]; then
     if "$SYS/hooks/validate-artifact.sh" runtime-meta orchestration/.meta.json >/dev/null 2>&1; then
         note "orchestration/.meta.json valida contra su schema"
     else
-        echo "talos: lo generado NO valida contra runtime-meta.schema.json" >&2
+        echo "thalos: lo generado NO valida contra runtime-meta.schema.json" >&2
         "$SYS/hooks/validate-artifact.sh" runtime-meta orchestration/.meta.json >&2 || true
         exit 1
     fi
@@ -170,4 +170,4 @@ else
     echo "Listo. $created artefacto(s) creado(s)."
 fi
 echo ""
-echo "Siguiente: talos doctor"
+echo "Siguiente: thalos doctor"

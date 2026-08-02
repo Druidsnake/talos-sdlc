@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lee, verifica y produce evidencia. Ver talos-0.0.7.md seccion 23.
+"""Lee, verifica y produce evidencia. Ver thalos-0.0.7.md seccion 23.
 
 Existe porque la evidencia NO se puede leer con sed ni grep. Un payload que
 contenga la clave "kind" hace que una expresion de linea agarre el valor
@@ -96,7 +96,7 @@ def main(argv):
     if cmd == "digest":
         doc = load(target)
         if doc is None:
-            print(f"talos: no se pudo leer {target}", file=sys.stderr)
+            print(f"thalos: no se pudo leer {target}", file=sys.stderr)
             return 1
         print(expected_digest(doc))
         return 0
@@ -105,14 +105,14 @@ def main(argv):
         path = pathlib.Path(target)
         doc = load(target)
         if doc is None:
-            print(f"talos: no se pudo leer {target}", file=sys.stderr)
+            print(f"thalos: no se pudo leer {target}", file=sys.stderr)
             return 1
         doc["digest"] = expected_digest(doc)
         path.write_text(json.dumps(doc, ensure_ascii=False) + "\n")
         print(doc["digest"])
         return 0
 
-    print(f"talos: subcomando desconocido: {cmd}", file=sys.stderr)
+    print(f"thalos: subcomando desconocido: {cmd}", file=sys.stderr)
     return 2
 
 

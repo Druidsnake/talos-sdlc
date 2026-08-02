@@ -1,6 +1,6 @@
 #!/bin/sh
 # Mecanismo 4: git hook.
-# Rechaza mensajes de commit que rompen la trazabilidad (talos-0.0.7.md 5.5).
+# Rechaza mensajes de commit que rompen la trazabilidad (thalos-0.0.7.md 5.5).
 
 set -eu
 msg_file="$1"
@@ -12,8 +12,8 @@ case "$subject" in
 esac
 
 fail() {
-    echo "talos: commit RECHAZADO" >&2
-    echo "talos: $1" >&2
+    echo "thalos: commit RECHAZADO" >&2
+    echo "thalos: $1" >&2
     echo "" >&2
     echo "  asunto: $subject" >&2
     exit 1

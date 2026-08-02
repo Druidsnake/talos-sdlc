@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/policy-config/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/policy-config/0.0.6",
   "title": "PolicyConfig",
-  "description": "config/policy.yaml. Ver talos-0.0.7.md secciones 31 y 43.4. Policy NO participa en la cadena de resolucion de configuracion: la restringe. Un valor resuelto que viole policy falla al cargar.",
+  "description": "config/policy.yaml. Ver thalos-0.0.7.md secciones 31 y 43.4. Policy NO participa en la cadena de resolucion de configuracion: la restringe. Un valor resuelto que viole policy falla al cargar.",
   "type": "object",
   "required": ["version", "merge", "human_approval", "constraints"],
   "properties": {

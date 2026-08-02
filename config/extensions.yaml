@@ -1,6 +1,6 @@
 version: 1
 
-# Extension registry - talos-0.0.7.md seccion 37.4 y schemas/extension-registry.schema.json.
+# Extension registry - thalos-0.0.7.md seccion 37.4 y schemas/extension-registry.schema.json.
 #
 # Este es el UNICO lugar del sistema donde se puede nombrar una implementacion
 # concreta (regla 37.4.3.5), junto con los manifiestos bajo adapters/. Ningun
@@ -19,19 +19,19 @@ version: 1
 
 capabilities:
   FileSystemAdapter:
-    implementation: talos.adapter.fs_local
+    implementation: thalos.adapter.fs_local
 
   ModelProviderAdapter:
-    implementation: talos.adapter.model_dryrun
+    implementation: thalos.adapter.model_dryrun
 
   ExecutionAdapter:
-    implementation: talos.adapter.exec_dryrun
+    implementation: thalos.adapter.exec_dryrun
 
   CoordinationAdapter:
-    implementation: talos.adapter.coord_dryrun
+    implementation: thalos.adapter.coord_dryrun
 
   CIAdapter:
-    implementation: talos.adapter.ci_dryrun
+    implementation: thalos.adapter.ci_dryrun
 
   MemoryAdapter: null
   RoutingStrategy: null

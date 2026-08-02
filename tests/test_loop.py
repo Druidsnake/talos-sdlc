@@ -1,6 +1,6 @@
 """Auditoria de la proyeccion "que sigue" y del loop del orquestador.
 
-Ver talos-0.0.7.md secciones 22, 29 y 43.5.
+Ver thalos-0.0.7.md secciones 22, 29 y 43.5.
 
 Lo que se verifica no es que el loop avance, sino que NO avance de mas: un
 ejecutor automatico es peligroso exactamente en la medida en que puede saltear
@@ -29,16 +29,16 @@ def check(label, condition, detail=""):
 
 def proyecto(con_plan=True, aprobado=True):
     d = pathlib.Path(tempfile.mkdtemp())
-    (d / ".talos").mkdir()
+    (d / ".thalos").mkdir()
     for sub in ("cli", "hooks", "schemas", "system", "config", "adapters", "roles"):
-        shutil.copytree(ROOT / sub, d / ".talos" / sub)
-    shutil.copy(ROOT / "VERSION", d / ".talos" / "VERSION")
+        shutil.copytree(ROOT / sub, d / ".thalos" / sub)
+    shutil.copy(ROOT / "VERSION", d / ".thalos" / "VERSION")
     if (ROOT / ".venv").is_dir():
         (d / ".venv").symlink_to(ROOT / ".venv")
     for c in (["git", "init", "-q"], ["git", "config", "user.name", "t"],
               ["git", "config", "user.email", "t@t.t"]):
         subprocess.run(c, cwd=d, capture_output=True)
-    talos(d, "init")
+    thalos(d, "init")
 
     (d / "spec").mkdir(exist_ok=True)
     estado = "approved" if aprobado else "draft"
@@ -56,17 +56,17 @@ def proyecto(con_plan=True, aprobado=True):
     return d
 
 
-def talos(root, *args):
-    p = subprocess.run([str(root / ".talos" / "cli" / "talos"), *args],
+def thalos(root, *args):
+    p = subprocess.run([str(root / ".thalos" / "cli" / "thalos"), *args],
                        capture_output=True, text=True, cwd=root,
                        env={"PATH": "/usr/bin:/bin:/usr/local/bin",
                             "HOME": str(pathlib.Path.home()),
-                            "TALOS_PROJECT_ROOT": str(root)})
+                            "THALOS_PROJECT_ROOT": str(root)})
     return p.returncode, p.stdout + p.stderr
 
 
 def next_json(root):
-    code, out = talos(root, "next", "--format", "json")
+    code, out = thalos(root, "next", "--format", "json")
     try:
         return json.loads(out)
     except json.JSONDecodeError:
@@ -103,7 +103,7 @@ def main():
     d = next_json(p)
     results.append(check(
         "propone arrancar solo la feature sin dependencias pendientes",
-        [a["orden"] for a in d["acciones"]] == ["talos feature start F001"],
+        [a["orden"] for a in d["acciones"]] == ["thalos feature start F001"],
         f"{d['acciones']}"))
     results.append(check(
         "y dice por que la otra no puede",
@@ -112,7 +112,7 @@ def main():
 
     # ---------- el loop no fuerza ----------
 
-    code, out = talos(p, "run")
+    code, out = thalos(p, "run")
     results.append(check("el loop avanza lo que esta autorizado",
                          "feature start F001" in out, out[-300:]))
 
@@ -154,13 +154,13 @@ def main():
     # plantaba, porque la transicion siguiente pide evidencia que solo un
     # agente puede producir.
 
-    # Nadie tiene que elegir un pane: Talos abre el suyo por el
+    # Nadie tiene que elegir un pane: Thalos abre el suyo por el
     # ExecutionAdapter. El pane donde corre el orquestador es su consola.
     #
     # Se mira un proyecto FRESCO: en el de arriba el loop ya despacho, asi que
     # el siguiente paso ya no es dispatch sino work.
     pf = proyecto()
-    talos(pf, "feature", "start", "F001")
+    thalos(pf, "feature", "start", "F001")
     d = next_json(pf)
     ordenes = [a["orden"] for a in d.get("acciones", [])]
     results.append(check(
@@ -171,11 +171,11 @@ def main():
         all("--pane" not in o for o in ordenes), f"{ordenes}"))
 
     # Un rol activo NO prueba que haya agente. El rol es un archivo que escribe
-    # Talos; el agente es un proceso que puede no haber arrancado, haberse
+    # Thalos; el agente es un proceso que puede no haber arrancado, haberse
     # muerto, o pertenecer a otro ExecutionAdapter. Tratar lo primero como
     # evidencia de lo segundo hacia que el loop saltara el despacho y le
     # mandara trabajo a un id que ya no significaba nada.
-    talos(pf, "feature", "dispatch", "F001", "--role", "Developer")
+    thalos(pf, "feature", "dispatch", "F001", "--role", "Developer")
     ordenes = [a["orden"] for a in next_json(pf).get("acciones", [])]
     results.append(check(
         "con agente despachado el loop pasa a encargar el trabajo",
@@ -192,7 +192,7 @@ def main():
                 for a in next_json(pf).get("acciones", [])),
         f"{[a['orden'] for a in next_json(pf).get('acciones', [])]}"))
 
-    ref["adapter"] = "talos.adapter.otro"
+    ref["adapter"] = "thalos.adapter.otro"
     refp.write_text(json.dumps(ref))
     acciones = next_json(pf).get("acciones", [])
     results.append(check(
@@ -222,7 +222,7 @@ def main():
         pos == sorted(pos), f"{list(zip(orden_esperado, pos))}"))
 
     results.append(check(
-        "run no pide un pane: Talos se arma la ventana que necesita",
+        "run no pide un pane: Thalos se arma la ventana que necesita",
         "--pane" not in (ROOT / "cli" / "commands" / "run.sh").read_text()))
 
     # El alcance tiene que quedar IMPUESTO, no solo declarado. dispatch instala
@@ -298,7 +298,7 @@ def main():
         "hasta que alguien" in run_src,
         "un loop sin cota que se equivoca no se equivoca una sola vez"))
 
-    code, out = talos(p, "run", "--max", "0")
+    code, out = thalos(p, "run", "--max", "0")
     results.append(check(
         "con cota 0 no ejecuta nada",
         "[01]" not in out, out[-200:]))
@@ -306,7 +306,7 @@ def main():
     # ---------- dry-run ----------
 
     p2 = proyecto()
-    code, out = talos(p2, "run", "--dry-run")
+    code, out = thalos(p2, "run", "--dry-run")
     results.append(check("dry-run muestra el paso sin ejecutarlo",
                          "[01]" in out and "dry-run" in out, out[-200:]))
     results.append(check(

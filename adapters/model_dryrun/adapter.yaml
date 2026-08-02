@@ -1,5 +1,5 @@
-id: talos.adapter.model_dryrun
-package: talos-adapter-model
+id: thalos.adapter.model_dryrun
+package: thalos-adapter-model
 version: 0.0.7
 api_version: "0.0.7"
 core_compatibility: ">=0.0.7"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos budget - presupuesto por feature. Ver talos-0.0.7.md seccion 33.
+# thalos budget - presupuesto por feature. Ver thalos-0.0.7.md seccion 33.
 #
 # El presupuesto solo puede dejar seguir o frenar. NUNCA elegir un modelo
 # distinto: la regla 33.7 dice que no influye en el routing por capacidad, y
@@ -10,17 +10,17 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos budget - presupuesto por feature
+thalos budget - presupuesto por feature
 
 USO
-    talos budget [FEATURE] [--format json]
-    talos budget consume <FEATURE> <USD> <ITER> <MIN>
+    thalos budget [FEATURE] [--format json]
+    thalos budget consume <FEATURE> <USD> <ITER> <MIN>
 
 QUE HACE
     Compara lo consumido contra lo que declara el plan, y decide si se puede
@@ -44,7 +44,7 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
-PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
+PY=$(thalos_python) || { echo "thalos: no hay python3" >&2; exit 2; }
 LIB="$SYS/hooks/lib/budget.py"
 
 if [ "${1:-}" = consume ]; then
@@ -59,10 +59,10 @@ if [ "${1:-}" = consume ]; then
 
     # Regla 33.6: el consumo se registra como evento. Sin eso, el gasto no es
     # reconstruible desde el event log y la trazabilidad tiene un agujero.
-    "$SYS/cli/talos" event append --type talos.budget.consumed \
+    "$SYS/cli/thalos" event append --type thalos.budget.consumed \
         --actor core:Orchestrator --feature "$FEAT" >/dev/null 2>&1 || true
 
-    echo "talos ${TALOS_VERSION:-?}"
+    echo "thalos ${THALOS_VERSION:-?}"
     echo ""
     printf '  consumo registrado en %s\n  %s\n' "$FEAT" "$out"
     echo ""

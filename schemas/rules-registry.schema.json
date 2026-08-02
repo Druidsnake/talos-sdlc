@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/rules-registry/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/rules-registry/0.0.6",
   "title": "RulesRegistry",
   "description": "Registro de reglas normativas con su mecanismo de enforcement. Ver system/00-enforcement.md seccion 4. La fuerza NO se declara: se deriva del mecanismo, para que no puedan contradecirse.",
   "type": "object",

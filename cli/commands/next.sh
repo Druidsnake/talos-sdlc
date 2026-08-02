@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos next - que sigue, derivado de los artefactos aprobados.
+# thalos next - que sigue, derivado de los artefactos aprobados.
 #
 # No hay un objetivo declarado aparte, y no deberia haberlo: la cadena de
 # autoridad de la seccion 43.5 pone el spec aprobado por encima de todo lo que
@@ -10,16 +10,16 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 usage() {
     cat <<'USAGE'
-talos next - que sigue, derivado de los artefactos aprobados
+thalos next - que sigue, derivado de los artefactos aprobados
 
 USO
-    talos next [--format json]
+    thalos next [--format json]
 
 DE DONDE SALE
     spec aprobado          que construir
@@ -41,9 +41,9 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 # shellcheck source=../../hooks/lib/gate.sh
 . "$SYS/hooks/lib/gate.sh"
 
-PY=$(talos_python) || { echo "talos: no hay python3" >&2; exit 2; }
+PY=$(thalos_python) || { echo "thalos: no hay python3" >&2; exit 2; }
 TABLA="$SYS/hooks/generated/transitions.tsv"
-[ -f "$TABLA" ] || { echo "talos: falta la tabla de transiciones" >&2; exit 2; }
+[ -f "$TABLA" ] || { echo "thalos: falta la tabla de transiciones" >&2; exit 2; }
 
 FORMATO=texto
 PANE=""

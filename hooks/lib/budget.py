@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Presupuestos. Ver talos-0.0.7.md seccion 33.
+"""Presupuestos. Ver thalos-0.0.7.md seccion 33.
 
 LA REGLA QUE GOBIERNA ESTE ARCHIVO ES LA 33.8
 
-    "Si el presupuesto impide usar el tier requerido, Talos DEBE escalar en
+    "Si el presupuesto impide usar el tier requerido, Thalos DEBE escalar en
      lugar de degradar silenciosamente el modelo."
 
 Y la 33.7:
@@ -65,7 +65,7 @@ def costo_estimado_tier(root, tier, tokens_por_invocacion=100_000):
         import yaml
     except ImportError:
         return None
-    for cand in ("config/models.yaml", ".talos/config/models.yaml"):
+    for cand in ("config/models.yaml", ".thalos/config/models.yaml"):
         f = root / cand
         if not f.is_file():
             continue
@@ -150,7 +150,7 @@ def evaluar(root, fid=None):
 
 
 def render(filas, peor):
-    print("talos")
+    print("thalos")
     print()
     if not filas:
         print("  no hay features con presupuesto declarado")
@@ -178,7 +178,7 @@ def render(filas, peor):
             print("           se ESCALA: el tier no se degrada (reglas 33.7 y 33.8)")
     print()
     if peor == 3:
-        print("  Presupuesto agotado o excedido. Talos pausa o escala (regla 33.4).")
+        print("  Presupuesto agotado o excedido. Thalos pausa o escala (regla 33.4).")
     elif peor == 4:
         print("  El presupuesto no alcanza para el tier requerido.")
         print("  Escalar es la unica salida: bajar el tier resolveria el numero")
@@ -226,13 +226,13 @@ def main(argv):
             return 2
         c = consumir(root, argv[3], argv[4], argv[5], argv[6])
         if c is None:
-            print(f"talos: {argv[3]} no tiene estado", file=sys.stderr)
+            print(f"thalos: {argv[3]} no tiene estado", file=sys.stderr)
             return 2
         print(json.dumps(c))
         _, peor = evaluar(root, argv[3])
         return peor
 
-    print(f"talos: subcomando desconocido: {cmd}", file=sys.stderr)
+    print(f"thalos: subcomando desconocido: {cmd}", file=sys.stderr)
     return 2
 
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# talos merge - gobierno del merge. Ver talos-0.0.7.md seccion 31.
+# thalos merge - gobierno del merge. Ver thalos-0.0.7.md seccion 31.
 #
 # MergeGate es nucleo, no rol. Ningun agente lo implementa y ninguna extension
 # puede autorizar un merge.
@@ -8,19 +8,19 @@
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 EVDIR=orchestration/evidence
 
 usage() {
     cat <<'USAGE'
-talos merge - evalua MERGE_GATE y, si autoriza, ejecuta el merge
+thalos merge - evalua MERGE_GATE y, si autoriza, ejecuta el merge
 
 USO
-    talos merge check <FEATURE> --pr <N>    solo evalua
-    talos merge do <FEATURE> --pr <N>       evalua y mergea si autoriza
+    thalos merge check <FEATURE> --pr <N>    solo evalua
+    thalos merge do <FEATURE> --pr <N>       evalua y mergea si autoriza
 
 QUE VERIFICA
     CHECKS_GREEN           todos los checks en pass, segun el CIAdapter
@@ -62,15 +62,15 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-[ -n "$FEAT" ] || { echo "talos: falta el id de la feature" >&2; exit 1; }
-[ -n "$PR" ]   || { echo "talos: falta --pr" >&2; exit 1; }
+[ -n "$FEAT" ] || { echo "thalos: falta el id de la feature" >&2; exit 1; }
+[ -n "$PR" ]   || { echo "thalos: falta --pr" >&2; exit 1; }
 
-echo "talos ${TALOS_VERSION:-?}"
+echo "thalos ${THALOS_VERSION:-?}"
 echo ""
 printf '  feature  %s\n  pr       #%s\n  gate     MERGE_GATE\n\n' "$FEAT" "$PR"
 
 set +e
-report=$(talos_merge_gate "$FEAT" "$PR" "$EVDIR")
+report=$(thalos_merge_gate "$FEAT" "$PR" "$EVDIR")
 code=$?
 set -e
 
@@ -91,7 +91,7 @@ printf '%s' "$report" \
     done
 
 # Regla 31.5: el MergeGateReport se persiste como evidencia, pase o falle.
-saved=$(talos_gate_persist "$report" "$EVDIR" "${TALOS_RUN_ID:-}" "$FEAT" 2>/dev/null || true)
+saved=$(thalos_gate_persist "$report" "$EVDIR" "${THALOS_RUN_ID:-}" "$FEAT" 2>/dev/null || true)
 
 echo ""
 case "$code" in
@@ -105,8 +105,8 @@ if [ "$sub" = check ]; then
     exit "$code"
 fi
 
-[ "$sub" = "do" ] || { echo "talos: subcomando desconocido: $sub" >&2
-                     echo "talos: disponibles: check, do" >&2; exit 1; }
+[ "$sub" = "do" ] || { echo "thalos: subcomando desconocido: $sub" >&2
+                     echo "thalos: disponibles: check, do" >&2; exit 1; }
 
 if [ "$code" -ne 0 ]; then
     echo ""
@@ -119,7 +119,7 @@ fi
 echo ""
 echo "  el gate autoriza; se delega el merge al CoordinationAdapter"
 set +e
-out=$(talos_capability_run CoordinationAdapter merge_pr \
+out=$(thalos_capability_run CoordinationAdapter merge_pr \
       "{\"pr\":\"$PR\",\"method\":\"squash\"}" 2>&1)
 mrc=$?
 set -e

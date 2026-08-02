@@ -1,7 +1,7 @@
-"""Auditoria de presupuestos. Ver talos-0.0.7.md seccion 33.
+"""Auditoria de presupuestos. Ver thalos-0.0.7.md seccion 33.
 
 La regla que gobierna estos checks es la 33.8: si el presupuesto impide usar el
-tier requerido, Talos DEBE escalar en lugar de degradar silenciosamente el
+tier requerido, Thalos DEBE escalar en lugar de degradar silenciosamente el
 modelo. La implementacion ingenua hace lo prohibido -"no me alcanza para deep,
 uso balanced"- y eso no se detecta mirando el resultado: el numero cierra.
 """
@@ -201,7 +201,7 @@ def main():
     cmd = (ROOT / "cli" / "commands" / "budget.sh").read_text()
     results.append(check(
         "todo consumo se registra como evento (regla 33.6)",
-        "talos.budget.consumed" in cmd,
+        "thalos.budget.consumed" in cmd,
         "sin evento el gasto no es reconstruible desde el event log"))
 
     print()

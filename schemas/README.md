@@ -1,6 +1,6 @@
 # schemas/
 
-Contratos estructurales de Talos. **Este es el único mecanismo de enforcement duro que funciona en cualquier nivel de instalación** (ver [`system/00-enforcement.md`](../system/00-enforcement.md), mecanismo 1).
+Contratos estructurales de Thalos. **Este es el único mecanismo de enforcement duro que funciona en cualquier nivel de instalación** (ver [`system/00-enforcement.md`](../system/00-enforcement.md), mecanismo 1).
 
 Un schema no describe un artefacto: lo **rechaza** cuando no cumple. Esa diferencia es la razón por la que esta carpeta existe.
 
@@ -8,7 +8,7 @@ Un schema no describe un artefacto: lo **rechaza** cuando no cumple. Esa diferen
 
 ## Qué se enforza acá
 
-Cada schema traduce requisitos normativos de [`talos-0.0.7.md`](../talos-0.0.7.md) en validación ejecutable, sin modelo de por medio.
+Cada schema traduce requisitos normativos de [`thalos-0.0.7.md`](../thalos-0.0.7.md) en validación ejecutable, sin modelo de por medio.
 
 | Schema | Requisito que vuelve verificable |
 |---|---|

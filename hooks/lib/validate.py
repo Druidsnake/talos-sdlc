@@ -21,7 +21,7 @@ def main(argv):
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
-        print("talos: falta jsonschema", file=sys.stderr)
+        print("thalos: falta jsonschema", file=sys.stderr)
         return 2
 
     schema_path, doc_path = pathlib.Path(argv[1]), pathlib.Path(argv[2])
@@ -29,7 +29,7 @@ def main(argv):
     try:
         schema = json.loads(schema_path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        print(f"talos: no se pudo leer el schema {schema_path}: {exc}", file=sys.stderr)
+        print(f"thalos: no se pudo leer el schema {schema_path}: {exc}", file=sys.stderr)
         return 2
 
     try:
@@ -40,10 +40,10 @@ def main(argv):
         else:
             doc = json.loads(raw)
     except ImportError:
-        print("talos: falta pyyaml para validar YAML", file=sys.stderr)
+        print("thalos: falta pyyaml para validar YAML", file=sys.stderr)
         return 2
     except (OSError, ValueError) as exc:
-        print(f"talos: no se pudo leer el documento {doc_path}: {exc}", file=sys.stderr)
+        print(f"thalos: no se pudo leer el documento {doc_path}: {exc}", file=sys.stderr)
         return 2
 
     errors = sorted(Draft202012Validator(schema).iter_errors(doc),

@@ -1,17 +1,17 @@
 #!/bin/sh
-# talos event append - registra un evento con secuencia monotonica.
+# thalos event append - registra un evento con secuencia monotonica.
 #
-# EventLog es el UNICO escritor de seq (talos-0.0.7.md 41.2.2). La exclusion
+# EventLog es el UNICO escritor de seq (thalos-0.0.7.md 41.2.2). La exclusion
 # se hace con mkdir, que es atomico en POSIX: si el directorio ya existe,
 # mkdir falla y sabemos que otro escritor tiene el turno.
 #
-# Uso: talos event append --type talos.feature.started --actor role:FeatureLead
+# Uso: thalos event append --type thalos.feature.started --actor role:FeatureLead
 #                         [--feature F001] [--evidence ev-1,ev-2]
 
 set -eu
 
-SYS="${TALOS_SYSTEM_ROOT:?}"
-PROJ="${TALOS_PROJECT_ROOT:?}"
+SYS="${THALOS_SYSTEM_ROOT:?}"
+PROJ="${THALOS_PROJECT_ROOT:?}"
 cd "$PROJ"
 
 META=orchestration/.meta.json
@@ -33,13 +33,13 @@ while [ $# -gt 0 ]; do
         --causation) causation="${2:?falta valor para --causation}"; shift 2 ;;
         -h|--help)
             cat <<'USAGE'
-talos event append - registra un evento con secuencia monotonica
+thalos event append - registra un evento con secuencia monotonica
 
 USO
-    talos event append --type <talos.x.y> --actor <actor> [opciones]
+    thalos event append --type <thalos.x.y> --actor <actor> [opciones]
 
 OBLIGATORIOS
-    --type       tipo del evento, en el namespace talos
+    --type       tipo del evento, en el namespace thalos
     --actor      quien lo produce. Ej: core:MergeGate, role:Developer
 
 OPCIONALES
@@ -53,7 +53,7 @@ COMO FUNCIONA
     invalido no entra al log y no consume secuencia.
 
 EJEMPLO
-    talos event append --type talos.feature.started \
+    thalos event append --type thalos.feature.started \
                        --actor role:FeatureLead --feature F001
 
 SALIDA
@@ -61,23 +61,23 @@ SALIDA
     2  runtime sin inicializar    5  no se pudo tomar el lock
 USAGE
             exit 0 ;;
-        *) echo "talos: opcion desconocida: $1" >&2; exit 1 ;;
+        *) echo "thalos: opcion desconocida: $1" >&2; exit 1 ;;
     esac
 done
 
-[ -n "$type" ]  || { echo "talos: --type es obligatorio" >&2; exit 1; }
-[ -n "$actor" ] || { echo "talos: --actor es obligatorio" >&2; exit 1; }
+[ -n "$type" ]  || { echo "thalos: --type es obligatorio" >&2; exit 1; }
+[ -n "$actor" ] || { echo "thalos: --actor es obligatorio" >&2; exit 1; }
 
 if [ ! -f "$META" ]; then
-    echo "talos: runtime sin inicializar" >&2
-    echo "talos: ejecuta talos init" >&2
+    echo "thalos: runtime sin inicializar" >&2
+    echo "thalos: ejecuta thalos init" >&2
     exit 2
 fi
 
 # El namespace lo valida despues el schema, pero fallar temprano da mejor mensaje.
 case "$type" in
-    talos.*.*) ;;
-    *) echo "talos: el tipo debe usar el namespace talos: $type" >&2; exit 1 ;;
+    thalos.*.*) ;;
+    *) echo "thalos: el tipo debe usar el namespace thalos: $type" >&2; exit 1 ;;
 esac
 
 # --- exclusion mutua: mkdir es atomico ---
@@ -85,8 +85,8 @@ attempts=0
 until mkdir "$LOCKDIR" 2>/dev/null; do
     attempts=$((attempts + 1))
     if [ "$attempts" -ge 50 ]; then
-        echo "talos: no se pudo tomar el lock del event log tras 50 intentos" >&2
-        echo "talos: si ningun proceso esta escribiendo, borra $LOCKDIR" >&2
+        echo "thalos: no se pudo tomar el lock del event log tras 50 intentos" >&2
+        echo "thalos: si ningun proceso esta escribiendo, borra $LOCKDIR" >&2
         exit 5
     fi
     sleep 0.1 2>/dev/null || sleep 1
@@ -130,7 +130,7 @@ tmp=$(mktemp)
 printf '%s\n' "$event" > "$tmp"
 if [ -x "$SYS/hooks/validate-artifact.sh" ]; then
     if ! "$SYS/hooks/validate-artifact.sh" event "$tmp" >/dev/null 2>&1; then
-        echo "talos: el evento no valida contra event.schema.json" >&2
+        echo "thalos: el evento no valida contra event.schema.json" >&2
         "$SYS/hooks/validate-artifact.sh" event "$tmp" >&2 || true
         rm -f "$tmp"
         exit 1

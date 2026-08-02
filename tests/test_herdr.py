@@ -5,7 +5,7 @@ de ExecutionAdapter.
 
 Ninguno de estos checks necesita Herdr instalado. Esa es la propiedad que se
 verifica: el modo dry-run-only tiene que correr sin ninguna herramienta externa
-(regla 37.4.4.1), asi que la suite del propio Talos no puede depender de ella.
+(regla 37.4.4.1), asi que la suite del propio Thalos no puede depender de ella.
 """
 import json
 import os
@@ -55,7 +55,7 @@ def fake_herdr(version, works=True, tally=None):
 
 def run_adapter(op, args=None, env=None):
     e = {"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home()),
-         "TALOS_PROJECT_ROOT": tempfile.mkdtemp()}
+         "THALOS_PROJECT_ROOT": tempfile.mkdtemp()}
     if env:
         e.update(env)
     cmd = [str(ADAPTER / "run.sh"), op]
@@ -66,9 +66,9 @@ def run_adapter(op, args=None, env=None):
 
 
 def sh_semver(a, b):
-    """Ejercita talos_semver_ge tal como lo usa el adapter."""
+    """Ejercita thalos_semver_ge tal como lo usa el adapter."""
     script = (f'. "{ROOT}/adapters/lib/semver.sh"\n'
-              f'talos_semver_ge "{a}" "{b}"\n')
+              f'thalos_semver_ge "{a}" "{b}"\n')
     return subprocess.run(["sh", "-c", script], capture_output=True).returncode
 
 
@@ -87,7 +87,7 @@ def main():
 
     results.append(check(
         "declara el id y la capacidad de la seccion 38.5",
-        man["id"] == "talos.adapter.herdr"
+        man["id"] == "thalos.adapter.herdr"
         and man["implements"] == "ExecutionAdapter",
         f"{man['id']} / {man['implements']}"))
 
@@ -95,7 +95,7 @@ def main():
     results.append(check(
         "declara herdr >= 0.7.0 con su env_override (seccion 38.5)",
         ext.get("name") == "herdr" and ext.get("version_range") == ">=0.7.0"
-        and ext.get("env_override") == "TALOS_HERDR_BIN",
+        and ext.get("env_override") == "THALOS_HERDR_BIN",
         f"{ext}"))
 
     results.append(check(
@@ -140,9 +140,9 @@ def main():
     # ---------- resolucion del binario (seccion 37.4.5) ----------
 
     bien = fake_herdr("0.7.5")
-    code, out, err = run_adapter("health", env={"TALOS_HERDR_BIN": str(bien)})
+    code, out, err = run_adapter("health", env={"THALOS_HERDR_BIN": str(bien)})
     results.append(check(
-        "resuelve el binario por TALOS_HERDR_BIN, primer paso de la cascada",
+        "resuelve el binario por THALOS_HERDR_BIN, primer paso de la cascada",
         code == 0 and str(bien) in out, f"exit={code} {out[:120]}{err[:120]}"))
 
     results.append(check(
@@ -151,7 +151,7 @@ def main():
 
     # Regla 37.4.5.3: version fuera de rango falla en PRECONDITION_GATE.
     viejo = fake_herdr("0.6.9")
-    code, out, err = run_adapter("health", env={"TALOS_HERDR_BIN": str(viejo)})
+    code, out, err = run_adapter("health", env={"THALOS_HERDR_BIN": str(viejo)})
     results.append(check(
         "RECHAZA una version fuera del rango declarado (regla 37.4.5.3)",
         code == 2 and "0.6.9" in err and "0.7.0" in err,
@@ -165,7 +165,7 @@ def main():
 
     results.append(check(
         "el error nombra los tres pasos de la cascada (seccion 37.4.5)",
-        "TALOS_HERDR_BIN" in err and ".talos/bin/herdr" in err and "PATH" in err,
+        "THALOS_HERDR_BIN" in err and ".thalos/bin/herdr" in err and "PATH" in err,
         err[:200]))
 
     results.append(check(
@@ -175,14 +175,14 @@ def main():
     # Binario presente y version buena, pero sin servidor: no esta sano.
     # Tener el binario no alcanza; sin servidor no hay donde ejecutar.
     muerto = fake_herdr("0.7.5", works=False)
-    code, out, err = run_adapter("health", env={"TALOS_HERDR_BIN": str(muerto)})
+    code, out, err = run_adapter("health", env={"THALOS_HERDR_BIN": str(muerto)})
     results.append(check(
         "RECHAZA cuando el binario esta pero no hay servidor",
         code == 2 and "servidor" in err, f"exit={code} {err[:140]}"))
 
-    # Con TALOS_DRY_RUN el adapter no toca el servidor.
+    # Con THALOS_DRY_RUN el adapter no toca el servidor.
     code, out, err = run_adapter(
-        "report_metadata", env={"TALOS_HERDR_BIN": str(muerto), "TALOS_DRY_RUN": "1"})
+        "report_metadata", env={"THALOS_HERDR_BIN": str(muerto), "THALOS_DRY_RUN": "1"})
     results.append(check(
         "en dry-run no exige servidor y lo declara (regla 38.1.5)",
         code == 0 and '"dry_run":true' in out, f"exit={code} {out[:140]}"))
@@ -193,15 +193,15 @@ def main():
     # no ejecutan nada, asi que su resource_ref es una constante y el reintento
     # "funciona" sin probar nada.
     #
-    # Pasar "$(comando)" como argumento a talos_mutate evalua la sustitucion
+    # Pasar "$(comando)" como argumento a thalos_mutate evalua la sustitucion
     # ANTES de entrar a la funcion: el efecto ocurre siempre y la consulta al
     # ledger llega tarde. La respuesta decia already_exists y el recurso se
     # duplicaba igual, que es justo lo que corrige la seccion 38.2.
     tally = pathlib.Path(tempfile.mkdtemp()) / "invocaciones"
     contador = fake_herdr("0.7.5", tally=str(tally))
     proyecto = tempfile.mkdtemp()   # ledger compartido entre las llamadas
-    env = {"TALOS_HERDR_BIN": str(contador), "TALOS_PROJECT_ROOT": proyecto,
-           "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+    env = {"THALOS_HERDR_BIN": str(contador), "THALOS_PROJECT_ROOT": proyecto,
+           "THALOS_RUN_ID": "r-1", "THALOS_FEATURE_ID": "F001"}
 
     r1 = run_adapter("create_workspace", {"label": "x"}, env=env)
     r2 = run_adapter("create_workspace", {"label": "x"}, env=env)
@@ -241,8 +241,8 @@ def main():
     tally2 = pathlib.Path(tempfile.mkdtemp()) / "invocaciones"
     contador2 = fake_herdr("0.7.5", tally=str(tally2))
     compartido = tempfile.mkdtemp()
-    entorno = {"TALOS_PROJECT_ROOT": compartido,
-               "TALOS_RUN_ID": "r-1", "TALOS_FEATURE_ID": "F001"}
+    entorno = {"THALOS_PROJECT_ROOT": compartido,
+               "THALOS_RUN_ID": "r-1", "THALOS_FEATURE_ID": "F001"}
 
     # El simulador escribe primero, con los MISMOS run_id, feature y argumentos.
     subprocess.run([str(ROOT / "adapters" / "exec_dryrun" / "run.sh"),
@@ -254,12 +254,12 @@ def main():
     results.append(check(
         "cada linea del ledger dice que adapter la escribio",
         led.is_file() and any(
-            l.split("\t")[-1] == "talos.adapter.exec_dryrun"
+            l.split("\t")[-1] == "thalos.adapter.exec_dryrun"
             for l in led.read_text().splitlines() if not l.startswith("#")),
         led.read_text() if led.is_file() else "sin ledger"))
 
     r = run_adapter("create_workspace", {"label": "x"},
-                    env={"TALOS_HERDR_BIN": str(contador2), **entorno})
+                    env={"THALOS_HERDR_BIN": str(contador2), **entorno})
     veces3 = len(tally2.read_text().split()) if tally2.exists() else 0
     results.append(check(
         "el adapter productivo NO le cree al ledger del simulador",
@@ -272,7 +272,7 @@ def main():
     # Lo propio se sigue respetando: la idempotencia no se rompio para arreglar
     # la procedencia.
     r2 = run_adapter("create_workspace", {"label": "x"},
-                     env={"TALOS_HERDR_BIN": str(contador2), **entorno})
+                     env={"THALOS_HERDR_BIN": str(contador2), **entorno})
     veces4 = len(tally2.read_text().split())
     results.append(check(
         "pero SI le cree a sus propias entradas (seccion 38.2)",
@@ -289,7 +289,7 @@ def main():
     texto = 'primera linea\nsegunda con "comillas" adentro\ny una barra \\ suelta'
     got = subprocess.run(
         ["sh", "-c",
-         f'. "{ROOT}/adapters/lib/adapter.sh"; talos_json_get "$1" text',
+         f'. "{ROOT}/adapters/lib/adapter.sh"; thalos_json_get "$1" text',
          "sh", json.dumps({"text": texto, "target": "x"})],
         capture_output=True, text=True,
         env={"PATH": "/usr/bin:/bin", "HOME": str(pathlib.Path.home())})
@@ -303,10 +303,10 @@ def main():
     # ---------- el ledger no prueba que el recurso siga existiendo ----------
     #
     # El ledger dice "esto se hizo una vez". Un panel puede cerrarse: lo cierra
-    # una persona, o lo cierra el propio Talos al soltar el rol. Creerle al
+    # una persona, o lo cierra el propio Thalos al soltar el rol. Creerle al
     # registro devolvia already_exists sobre un panel muerto, y el start_agent
     # siguiente fallaba con "pane not found" a un comando de distancia de la
-    # causa, sobre un id que Talos mismo habia cerrado.
+    # causa, sobre un id que Thalos mismo habia cerrado.
     d = pathlib.Path(tempfile.mkdtemp())
     panes = d / "panes.json"
     panes.write_text("")
@@ -323,8 +323,8 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
 """)
     fake.chmod(0o755)
     proy2 = tempfile.mkdtemp()
-    ent = {"TALOS_HERDR_BIN": str(fake), "TALOS_PROJECT_ROOT": proy2,
-           "TALOS_RUN_ID": "r-9", "TALOS_FEATURE_ID": "F001"}
+    ent = {"THALOS_HERDR_BIN": str(fake), "THALOS_PROJECT_ROOT": proy2,
+           "THALOS_RUN_ID": "r-9", "THALOS_FEATURE_ID": "F001"}
 
     r1 = run_adapter("create_session", {"cwd": "/x", "direction": "right"}, env=ent)
     results.append(check(
@@ -363,8 +363,8 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
     fuente = (ADAPTER / "run.sh").read_text()
     results.append(check(
         "ninguna mutante usa la forma que evalua el efecto por adelantado",
-        "talos_mutate " not in fuente and "talos_mutate_run" in fuente,
-        "queda una llamada a talos_mutate con el resultado ya calculado"))
+        "thalos_mutate " not in fuente and "thalos_mutate_run" in fuente,
+        "queda una llamada a thalos_mutate con el resultado ya calculado"))
 
     # ---------- defectos que solo aparecen ejecutando ----------
     #
@@ -393,13 +393,13 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
     # agent read devuelve texto de terminal; meterlo crudo en JSON lo rompe.
     results.append(check(
         "read_agent escapa la salida antes de emitirla",
-        "talos_json_string" in fuente,
+        "thalos_json_string" in fuente,
         "la salida de terminal cruda no es un valor JSON valido"))
 
     escapado = subprocess.run(
         ["sh", "-c",
          f'. "{ROOT}/adapters/lib/adapter.sh"; '
-         f'printf \'linea1\\n"comillas" y \\\\barras\' | talos_json_string'],
+         f'printf \'linea1\\n"comillas" y \\\\barras\' | thalos_json_string'],
         capture_output=True, text=True)
     try:
         json.loads(escapado.stdout)
@@ -407,7 +407,7 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
     except json.JSONDecodeError:
         ok_escape = False
     results.append(check(
-        "talos_json_string produce un string JSON valido con saltos y comillas",
+        "thalos_json_string produce un string JSON valido con saltos y comillas",
         ok_escape, escapado.stdout[:120]))
 
     # El motivo del backend tiene que viajar en el error, no perderse.
@@ -465,7 +465,7 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
     results.append(check(
         "ExecutionAdapter sigue ligado a la implementacion de simulacion",
         reg["capabilities"]["ExecutionAdapter"]["implementation"]
-        == "talos.adapter.exec_dryrun",
+        == "thalos.adapter.exec_dryrun",
         reg["capabilities"]["ExecutionAdapter"]["implementation"]))
 
     # Cambiar de implementacion NO puede exigir tocar el nucleo (regla 37.4.3.6).
@@ -474,19 +474,19 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
         subprocess.run(["cp", "-R", str(ROOT / sub), str(box / sub)], check=True)
     (box / "hooks" / "generated").mkdir(parents=True)
     cfg = yaml.safe_load((box / "config" / "extensions.yaml").read_text())
-    cfg["capabilities"]["ExecutionAdapter"] = {"implementation": "talos.adapter.herdr"}
+    cfg["capabilities"]["ExecutionAdapter"] = {"implementation": "thalos.adapter.herdr"}
     (box / "config" / "extensions.yaml").write_text(yaml.safe_dump(cfg))
     p = subprocess.run([sys.executable, str(box / "tools" / "build-registry.py")],
                        capture_output=True, text=True)
     tabla = (box / "hooks" / "generated" / "capabilities.tsv")
     results.append(check(
         "ligar ExecutionAdapter a herdr compila sin tocar el nucleo (37.4.3.6)",
-        p.returncode == 0 and "talos.adapter.herdr" in tabla.read_text(),
+        p.returncode == 0 and "thalos.adapter.herdr" in tabla.read_text(),
         f"rc={p.returncode} {p.stderr[:140]}"))
 
     results.append(check(
         "la tabla lleva el binario y su rango para que doctor los reporte (37.4.5.6)",
-        "herdr\t>=0.7.0\tTALOS_HERDR_BIN" in tabla.read_text(),
+        "herdr\t>=0.7.0\tTHALOS_HERDR_BIN" in tabla.read_text(),
         [l for l in tabla.read_text().splitlines() if "herdr" in l][:1]))
 
     print()

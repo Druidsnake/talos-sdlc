@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talos-sdlc/schemas/extension-registry/0.0.6",
+  "$id": "https://thalos-sdlc/schemas/extension-registry/0.0.6",
   "title": "ExtensionRegistry",
-  "description": "Registro de capacidades e implementaciones en config/extensions.yaml. Ver talos-0.0.7.md secciones 37.4 y 43.6. Este archivo es el unico lugar donde el sistema puede nombrar implementaciones concretas (principio 20.b).",
+  "description": "Registro de capacidades e implementaciones en config/extensions.yaml. Ver thalos-0.0.7.md secciones 37.4 y 43.6. Este archivo es el unico lugar donde el sistema puede nombrar implementaciones concretas (principio 20.b).",
   "type": "object",
   "required": ["version", "capabilities"],
   "properties": {
@@ -31,7 +31,7 @@
         "type": "object",
         "required": ["id", "enabled"],
         "properties": {
-          "id": { "type": "string", "pattern": "^talos\\.plugin\\.[a-z0-9_]+$" },
+          "id": { "type": "string", "pattern": "^thalos\\.plugin\\.[a-z0-9_]+$" },
           "enabled": { "type": "boolean" },
           "priority": { "type": "integer" },
           "permissions": { "type": "array", "items": { "type": "string" } }
@@ -47,7 +47,7 @@
       "required": ["implementation"],
       "description": "Capacidad REQUERIDA: exactamente una implementacion. Cero o dos falla en PRECONDITION_GATE.",
       "properties": {
-        "implementation": { "type": "string", "pattern": "^talos\\.adapter\\.[a-z0-9_]+$" },
+        "implementation": { "type": "string", "pattern": "^thalos\\.adapter\\.[a-z0-9_]+$" },
         "config": { "type": "object" }
       },
       "additionalProperties": false
@@ -56,7 +56,7 @@
       "type": ["object", "null"],
       "description": "Capacidad OPCIONAL: cero implementaciones es un estado valido.",
       "properties": {
-        "implementation": { "type": "string", "pattern": "^talos\\.adapter\\.[a-z0-9_]+$" },
+        "implementation": { "type": "string", "pattern": "^thalos\\.adapter\\.[a-z0-9_]+$" },
         "config": { "type": "object" }
       },
       "additionalProperties": false

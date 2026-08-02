@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LockManager: leases con TTL y fencing token. Ver talos-0.0.7.md seccion 32.
+"""LockManager: leases con TTL y fencing token. Ver thalos-0.0.7.md seccion 32.
 
 Un lock es un lease: una concesion con expiracion. La correccion respecto de
 0.0.4 es justamente esta: sin expiracion, un proceso que muere deja el recurso
@@ -200,7 +200,7 @@ def main(argv):
                   f"\t{x['expires_at']}\t{x['generation']}")
         return 0
 
-    print(f"talos: subcomando desconocido: {cmd}", file=sys.stderr)
+    print(f"thalos: subcomando desconocido: {cmd}", file=sys.stderr)
     return 2
 
 
