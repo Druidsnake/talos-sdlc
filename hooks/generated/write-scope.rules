@@ -5,8 +5,16 @@
 
 Developer	allow	src/**
 Developer	allow	tests/**
+Developer	allow	orchestration/features/*/tasks/**
 Developer	deny	spec/**
-Developer	deny	orchestration/**
+Developer	deny	orchestration/program-plan.json
+Developer	deny	orchestration/state.json
+Developer	deny	orchestration/locks.json
+Developer	deny	orchestration/events/**
+Developer	deny	orchestration/evidence/**
+Developer	deny	orchestration/reports/**
+Developer	deny	orchestration/messages/**
+Developer	deny	orchestration/features/*/feature-state.json
 Developer	deny	.talos/**
 Developer	deny	talos.config/**
 Developer	deny	.github/workflows/**

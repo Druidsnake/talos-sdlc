@@ -88,6 +88,28 @@ def main():
                 f"no existe: {schema_file.name}",
             ))
 
+        # 4.1. Y el rol PUEDE escribir ese artefacto.
+        #
+        # Un rol con un entregable obligatorio que su propio alcance le deniega
+        # es un rol que no puede cumplir. Paso exactamente eso: el Developer
+        # tenia output_artifact bajo orchestration/ y un deny sobre
+        # orchestration/**; deny gana sobre allow, asi que el sistema le exigia
+        # un archivo que el mismo le prohibia. El agente creaba el directorio
+        # con la shell -que no esta gobernada- y fallaba al escribir el
+        # archivo, la feature no avanzaba y el motivo no aparecia en ningun
+        # lado.
+        if art and art.get("path"):
+            ruta = (art["path"].replace("{feature_id}", "F001")
+                    .replace("{task_id}", "T01"))
+            veredicto = subprocess.run(
+                [str(ROOT / "hooks" / "check-write-scope.sh"), name, ruta],
+                capture_output=True, text=True)
+            results.append(check(
+                f"[{name}] puede escribir su propio entregable",
+                veredicto.returncode == 0,
+                f"su alcance le deniega {ruta}: {veredicto.stderr.strip()[:90]}",
+            ))
+
         # 5. El tier minimo pertenece al dominio (null incluido)
         results.append(check(
             f"[{name}] role_minimum_tier en dominio ordenado o null",

@@ -80,9 +80,28 @@ roles:
     write_paths:
       - "src/**"
       - "tests/**"
+      # Su entregable declarado, y nada mas de orchestration/. Sin esto el rol
+      # tenia prohibido escribir el unico artefacto que el sistema le exige:
+      # el encargo le pedia un task-result.json bajo orchestration/ y el hook
+      # se lo denegaba. El agente creaba el directorio con la shell -que no
+      # esta gobernada- y fallaba al escribir el archivo, asi que la feature no
+      # avanzaba nunca y el motivo no aparecia en ningun lado.
+      - "orchestration/features/*/tasks/**"
     forbidden_paths:
+      # El deny total sobre orchestration/ era mas simple y estaba mal: deny
+      # gana sobre allow, asi que tapaba su propio entregable. Se enumera lo
+      # que de verdad no puede tocar. Lo que no matchee ningun allow igual se
+      # deniega por defecto: el default es fail-closed, esto es defensa en
+      # profundidad y documentacion de la frontera.
       - "spec/**"
-      - "orchestration/**"
+      - "orchestration/program-plan.json"
+      - "orchestration/state.json"
+      - "orchestration/locks.json"
+      - "orchestration/events/**"
+      - "orchestration/evidence/**"
+      - "orchestration/reports/**"
+      - "orchestration/messages/**"
+      - "orchestration/features/*/feature-state.json"
       - ".talos/**"
       - "talos.config/**"
       - ".github/workflows/**"
