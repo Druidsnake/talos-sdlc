@@ -272,13 +272,27 @@ def main():
     # Esperar un ESTADO no alcanza: un agente se asienta apenas recibe el
     # prompt, antes de trabajar. Con eso el paso miraba el disco, no encontraba
     # nada y reportaba exito igual; el loop lo contaba como avance y reencargaba
-    # lo mismo hasta agotar el presupuesto. La condicion de terminacion es el
-    # ARTEFACTO.
+    # lo mismo hasta agotar el presupuesto.
+    #
+    # La leccion sigue viva, el mecanismo cambio. Se OBSERVA en vez de esperar,
+    # y la espera termina por un veredicto de vitalidad; pero el EXITO lo sigue
+    # decidiendo el artefacto, que es lo que esta regla siempre protegio.
     results.append(check(
-        "work espera el entregable, no un estado del runtime",
-        "wait_agent" in src_feat and "esperando el entregable" in src_feat
-        and "_limite" in src_feat,
-        "devolver apenas se entrega el prompt deja a quien llama sin saber si hubo trabajo"))
+        "work observa al agente en vez de esperar a que se asiente",
+        "observe_agent" in src_feat and "liveness.py" in src_feat,
+        "wait_agent devuelve al primer estado asentado, que ocurre antes de trabajar"))
+    results.append(check(
+        "solo ALIVE_WORKING justifica seguir esperando",
+        '[ "$VEREDICTO" = ALIVE_WORKING ] || break' in src_feat,
+        "cualquier otro veredicto ya dice que hacer, y esperar no lo cambia"))
+    results.append(check(
+        "el exito sigue exigiendo el artefacto, no el veredicto",
+        'if [ -f "$SALIDA" ]; then' in src_feat and "exit 0" in src_feat,
+        "un veredicto de vitalidad no prueba que se haya producido nada"))
+    results.append(check(
+        "y los dos ejes se reportan por separado",
+        "vitalidad: %s" in src_feat,
+        "colapsarlos es lo que hacia identicos 'nunca arranco' y 'no entrego'"))
 
     # El adapter no puede creerle al ledger sobre un recurso que puede morirse.
     src_herdr = (ROOT / "adapters" / "herdr" / "run.sh").read_text()

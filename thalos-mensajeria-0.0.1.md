@@ -609,7 +609,7 @@ Cada etapa DEBE dejar el sistema funcionando.
 5. ACK observado en feature work y boot                                          [HECHA]
    -> aparece NOT_DELIVERED
 
-6. reescritura del bucle de espera sobre veredictos
+6. reescritura del bucle de espera sobre veredictos                              [HECHA]
    -> se separa el eje A del eje B en el reporte, y `done` deja de costar 90s
 
 7. expiración, sweep acoplado y STATUS_UPDATE

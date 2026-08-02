@@ -81,14 +81,24 @@ def state_of(root, fid):
     return json.loads(f.read_text())
 
 
+# El contador hace que observe_agent devuelva un state_change_seq distinto en
+# cada llamada. Sin eso no hay transicion que observar y todo encargo terminaria
+# en NOT_DELIVERED: el ACK es justamente ver moverse ese contador
+# (thalos-mensajeria-0.0.1.md seccion 7).
 SPY = """#!/bin/sh
 # Adapter espia: registra que le pidieron y responde lo minimo viable.
 printf '%s\\t%s\\n' "$1" "${2:-}" >> "${THALOS_PROJECT_ROOT:-.}/spy.log"
+_n=$(cat "${THALOS_PROJECT_ROOT:-.}/spy.seq" 2>/dev/null || echo 0)
+_n=$((_n + 1))
+echo "$_n" > "${THALOS_PROJECT_ROOT:-.}/spy.seq"
 case "$1" in
     create_session)
         echo '{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}' ;;
     start_agent)
         echo '{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}' ;;
+    observe_agent)
+        printf '{"pane_exists":true,"state":"idle","state_change_seq":%s,' "$_n"
+        echo '"process_alive":true,"process_observed":true,"dry_run":false}' ;;
     *)
         echo '{"status":"ok","dry_run":false,"result":{}}' ;;
 esac
@@ -472,9 +482,12 @@ def main():
         prompts and f'"target":"{agente}"' in prompts[0]
         and '"target":"spy:pane"' not in prompts[0],
         f"{prompts[:1]}"))
-    esperas = spy_lines(log, "wait_agent")
+    # Se OBSERVA, no se espera. wait_agent bloquea hasta que el agente se
+    # asienta y devuelve un estado que sobrevive a la muerte de quien lo
+    # reporto; observe_agent es una foto que trae ademas si el proceso vive.
+    esperas = spy_lines(log, "observe_agent")
     results.append(check(
-        "y espera por el mismo target con el que encargo",
+        "y observa al mismo target con el que encargo",
         esperas and f'"target":"{agente}"' in esperas[0], f"{esperas[:1]}"))
     # El adapter espia nunca deja entregable: ese es el caso que importa.
     # Reportar exito sin el artefacto hacia que el loop lo contara como avance
@@ -589,12 +602,19 @@ def main():
         'case "$1" in\n'
         '  create_session) echo \'{"status":"created","resource_ref":{"id":"spy:pane","url":null},"dry_run":false}\' ;;\n'
         '  start_agent) echo \'{"status":"created","resource_ref":{"id":"spy:term","url":null},"dry_run":false}\' ;;\n'
-        '  wait_agent) echo \'{"status":"ok","dry_run":false,"result":{"state":"blocked"}}\' ;;\n'
+        '  observe_agent)\n'
+        '     _n=$(cat "${THALOS_PROJECT_ROOT:-.}/spy.seq" 2>/dev/null || echo 0)\n'
+        '     _n=$((_n + 1)); echo "$_n" > "${THALOS_PROJECT_ROOT:-.}/spy.seq"\n'
+        '     printf \'{"pane_exists":true,"state":"blocked","state_change_seq":%s,\' "$_n"\n'
+        '     echo \'"process_alive":true,"process_observed":true,"dry_run":false}\' ;;\n'
         '  *) echo \'{"status":"ok","dry_run":false,"result":{}}\' ;;\n'
         'esac\n')
     (esp / "run.sh").chmod(0o755)
     thalos(pblock, "feature", "dispatch", "F001", "--role", "Developer")
-    code, out = thalos(pblock, "feature", "work", "F001", "--timeout", "3")
+    # El plazo tiene que alcanzar para blocked_confirm_samples muestras
+    # consecutivas: un bloqueo momentaneo no es un bloqueo (regla 5.3.5), y con
+    # un plazo corto el veredicto seria EXPIRED antes de poder confirmarlo.
+    code, out = thalos(pblock, "feature", "work", "F001", "--timeout", "25")
     results.append(check(
         "un agente bloqueado sale needs_human (4), no exito silencioso",
         code == 4, f"exit={code} {out[-300:]}"))

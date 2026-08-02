@@ -501,59 +501,110 @@ PYWALL
             ;;
     esac
 
-    printf '  ..   esperando el entregable del agente (hasta %ss)\n' "$ESPERA_S"
-    # wait_agent devuelve cuando el agente SE ASIENTA. Un agente asentado ya
-    # no esta trabajando: volver a esperarlo es esperar a alguien que se fue.
+    printf '  ..   esperando al agente (hasta %ss)\n' "$ESPERA_S"
+
+    # DOS EJES, MEDIDOS POR SEPARADO. Ver thalos-mensajeria-0.0.1.md 0.3.
     #
-    # Antes el bucle hacia justo eso -reesperaba a un agente quieto y dormia
-    # hasta agotar el presupuesto-, asi que "nunca arranco" y "trabaja lento"
-    # costaban lo mismo: media hora. La diferencia importa, y se puede ver:
-    # trabajando se mide en el estado, terminado se mide en el artefacto.
+    #   vitalidad -> el canal con el agente sigue vivo?   lo dice el veredicto
+    #   avance    -> aparecio el entregable del contrato? lo dice el disco
+    #
+    # Antes este bucle preguntaba por el segundo y respondia como si fuera el
+    # primero: la unica condicion de corte era el artefacto, asi que "nunca
+    # arranco", "se murio" y "termino sin entregar" salian por la misma puerta
+    # y con el mismo texto. La diferencia entre esos tres es todo lo que
+    # necesita saber quien mira.
+    #
+    # wait_agent ya no se usa aca: BLOQUEA hasta que el agente se asienta y
+    # devuelve un estado, y un estado sobrevive a la muerte de quien lo
+    # reporto. observe_agent no bloquea y trae ademas el hecho que lo desmiente.
+    _iv=$(thalos_ack_config communication.yaml liveness.observe_interval_seconds 5)
+    _umbral=$(thalos_ack_config communication.yaml liveness.blocked_confirm_samples 3)
     _limite=$(( $(date +%s) + ESPERA_S ))
-    _quieto_desde=""
+    _blocked=0
+    VEREDICTO=ALIVE_WORKING
+    ACCION=""
+    FIN=vitalidad
+
     while :; do
-        set +e
-        espera=$(thalos_capability_run ExecutionAdapter wait_agent \
-                 "{\"target\":\"$TARGET\",\"timeout_ms\":\"900000\"}" 2>&1)
-        set -e
-        [ -f "$SALIDA" ] && break
-        # El bloqueo termina la espera igual que el entregable: son las dos
-        # formas validas de terminar un encargo.
-        [ -f "$BLOQUEO" ] && break
-        case "$espera" in
-            *'"state":"working"'*)
-                _quieto_desde=""
-                ;;
-            *)
-                # Asentado y sin entregable. Se le da una gracia por si se
-                # asienta entre tandas, y si sigue quieto no hay a quien
-                # esperarle.
-                [ -n "$_quieto_desde" ] || _quieto_desde=$(date +%s)
-                if [ "$(( $(date +%s) - _quieto_desde ))" -ge 90 ]; then
-                    break
-                fi
-                ;;
+        # El entregable termina la espera por su cuenta, en cualquier momento.
+        # El bloqueo declarado tambien: son las dos formas validas de terminar
+        # un encargo por el eje de avance.
+        if [ -f "$SALIDA" ] || [ -f "$BLOQUEO" ]; then
+            FIN=avance
+            break
+        fi
+
+        _obs=$(thalos_capability_run ExecutionAdapter observe_agent \
+               "{\"target\":\"$TARGET\"}" 2>/dev/null || echo '{}')
+
+        # Un bloqueo momentaneo no es un bloqueo (regla 5.3.5): se cuentan
+        # muestras consecutivas y el umbral sale de config, no del codigo.
+        case "$_obs" in
+            *'"state":"blocked"'*) _blocked=$(( _blocked + 1 )) ;;
+            *) _blocked=0 ;;
         esac
-        [ "$(date +%s)" -ge "$_limite" ] && break
-        sleep 5
+
+        _venc=""
+        [ "$(date +%s)" -ge "$_limite" ] && _venc="--expired"
+
+        set +e
+        # shellcheck disable=SC2086  # _venc es una bandera opcional
+        _v=$("$PY" "$SYS/hooks/lib/liveness.py" verdict "$_obs" --ack \
+             --blocked-samples "$_blocked" --blocked-confirm "$_umbral" $_venc)
+        set -e
+        VEREDICTO=$(printf '%s' "$_v" | cut -f1)
+        ACCION=$(printf '%s' "$_v" | cut -f2)
+
+        # ALIVE_WORKING es el UNICO veredicto que justifica seguir esperando.
+        # Cualquier otro ya dice que hacer, y esperar mas no lo va a cambiar.
+        [ "$VEREDICTO" = ALIVE_WORKING ] || break
+        sleep "$_iv"
     done
 
-    # Bloqueado es bloqueado cuando SIGUE bloqueado al vencer el plazo.
+    # Cada veredicto trae su accion (regla 3.8). Mostrarla ahorra el paso de
+    # traducir un nombre a que hacer con el.
+    if [ "$FIN" = vitalidad ]; then
+        printf '  --   vitalidad: %s -- %s\n' "$VEREDICTO" "${ACCION:-sin accion}"
+    fi
+
+    # El agente esta vivo y pide una decision. No fracaso ni termino.
     #
-    # El runtime muestra cosas y las resuelve solo: un agente que trabaja pasa
-    # por estados momentaneos de bloqueo. Cortar en la primera lectura -o en la
-    # segunda- abortaba el paso de un agente que estaba trabajando bien.
-    if [ ! -f "$SALIDA" ]; then
-        case "$espera" in
-            *'"state":"blocked"'*)
-                echo "  --   el agente sigue BLOQUEADO esperando una decision"
-                echo ""
-                echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
-                echo "  para algo y no puede seguir hasta que alguien conteste."
-                printf '  Mira su pane:  %s\n' "$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
-                exit 4
-                ;;
-        esac
+    # Se escala CON EVIDENCIA y sin interpretarla (decision M-005): el estado
+    # `blocked` del runtime mezcla "pide permiso" con "la sesion fallo", y una
+    # persona distingue eso en dos segundos mirando la pantalla mientras que
+    # una heuristica lo adivina mal justo cuando importa.
+    if [ "$VEREDICTO" = WAITING_HUMAN ]; then
+        echo "  --   el agente sigue BLOQUEADO esperando una decision"
+        echo ""
+        echo "  No fracaso ni termino: su runtime le esta pidiendo permiso"
+        echo "  para algo y no puede seguir hasta que alguien conteste."
+        _ctx=$(thalos_ack_config communication.yaml liveness.escalation_context_lines 40)
+        set +e
+        _pant=$(thalos_capability_run ExecutionAdapter read_agent \
+                "{\"target\":\"$TARGET\",\"lines\":\"$_ctx\"}" 2>&1)
+        set -e
+        _cuerpo=$(printf '%s' "$_pant" | "$PY" -c '
+import json, sys
+crudo = sys.stdin.read()
+try:
+    d = json.loads(crudo)
+    print((d.get("result") or {}).get("output") or crudo)
+except Exception:
+    print(crudo)
+' 2>/dev/null || printf '%s' "$_pant")
+        _tmpe=$(mktemp)
+        printf '%s' "$_cuerpo" > "$_tmpe"
+        _esc_msg=$("$PY" "$SYS/hooks/lib/message.py" send orchestration/messages \
+                   ESCALATION "role:$ROLE" "human:operator" \
+                   "${THALOS_RUN_ID:-r-unknown}" "$FEAT" T01 "$_tmpe" 2>/dev/null || echo "")
+        rm -f "$_tmpe"
+        if [ -n "$_esc_msg" ]; then
+            printf '  Su pantalla quedo adjunta en %s\n' "$_esc_msg"
+            printf '  Leela:      thalos message show %s\n' "$_esc_msg"
+            printf '  Contestale: thalos message answer %s --text "..."\n' "$_esc_msg"
+        fi
+        printf '  Su pane:      %s\n' "$(thalos_agent_ref_field "$FEAT" pane 2>/dev/null || echo '?')"
+        exit 4
     fi
 
     if [ -f "$BLOQUEO" ]; then
@@ -611,7 +662,42 @@ PYBLOQ
         printf '  ok   el agente dejo su entregable: %s\n' "$SALIDA"
         exit 0
     fi
-    echo "  --   el agente termino sin dejar entregable"
+    # SIN ENTREGABLE, PERO NO TODOS LOS SIN-ENTREGABLE SON IGUALES.
+    #
+    # Este era el mensaje unico que tapaba tres situaciones distintas. Ahora
+    # cada una dice lo suyo, porque cada una se arregla distinto.
+    case "$VEREDICTO" in
+        DEAD|FAILED)
+            echo "  --   el agente MURIO trabajando: su proceso ya no esta"
+            echo ""
+            echo "  El runtime seguia reportandolo activo. Lo que lo desmiente es"
+            echo "  que en su panel no queda ningun proceso mas que el shell."
+            printf '  Redespachalo:\n    thalos feature release %s\n' "$FEAT"
+            printf '    thalos feature dispatch %s --role %s\n' "$FEAT" "$ROLE"
+            ;;
+        GONE)
+            echo "  --   el agente YA NO EXISTE: su panel se cerro"
+            echo ""
+            printf '  Redespachalo:\n    thalos feature release %s\n' "$FEAT"
+            printf '    thalos feature dispatch %s --role %s\n' "$FEAT" "$ROLE"
+            ;;
+        EXPIRED)
+            echo "  --   se agoto el plazo con el agente todavia vivo"
+            echo ""
+            echo "  No se murio ni se bloqueo: no termino a tiempo. Si el trabajo"
+            echo "  era mas grande que su max_wall_minutes, el numero esta mal."
+            ;;
+        UNOBSERVABLE)
+            echo "  --   no se puede observar al agente"
+            echo ""
+            echo "  El runtime no reporta estado, tipicamente porque le falta la"
+            echo "  integracion que lo hace observable. NO es un fallo del agente:"
+            echo "  lo que hay que reparar es la observacion."
+            ;;
+        *)
+            echo "  --   el agente termino sin dejar entregable"
+            ;;
+    esac
     echo ""
 
     # LO QUE HAYA DICHO NO SE PIERDE.
