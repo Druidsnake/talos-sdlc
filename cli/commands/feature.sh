@@ -573,12 +573,22 @@ if [ "$sub" = release ]; then
     # eso es especifico del runtime.
     for _fd in orchestration/features/*; do
         [ -d "$_fd" ] || continue
-        _rf="$_fd/.runtime"
-        if [ -f "$_rf" ]; then
-            _sh="$SYS/hooks/agent/$(cat "$_rf")/install.sh"
-            [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall | sed 's/^/  /'
-            rm -f "$_rf"
-        fi
+        # Se barren TODOS los shims conocidos, no solo el que quedo anotado.
+        #
+        # El .runtime dice cual se uso la ultima vez. Si entre un despacho y
+        # otro cambio el runtime -porque cambio el tier, o el proveedor-, lo
+        # que dejo el anterior sobrevive: dos briefs conviviendo en la raiz y
+        # un bloqueo registrado apuntando a un rol que ya nadie activo.
+        #
+        # Cada uninstall retira solo lo que su propio shim marco, asi que
+        # correrlos todos es seguro y es la unica forma de no depender de que
+        # el anotado sea el unico que dejo algo.
+        rm -f "$_fd/.runtime"
+        for _sd in $(grep -v '^#' "$SYS/hooks/agent/runtimes.tsv" 2>/dev/null \
+                     | awk -F'\t' 'NF>1 {print $2}' | sort -u); do
+            _sh="$SYS/hooks/agent/$_sd/install.sh"
+            [ -x "$_sh" ] && "$_sh" "$PROJ" --uninstall 2>/dev/null | sed 's/^/  /'
+        done
         _fid=$(basename "$_fd")
         # Talos abrio la sesion: Talos la cierra. Dejarla abierta acumula
         # paneles muertos ocupando pantalla, y quien mira la maquina no puede

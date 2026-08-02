@@ -31,6 +31,64 @@ if [ "${2:-}" = "--uninstall" ]; then
         rm -f CLAUDE.md
         echo "brief retirado (CLAUDE.md)"
     fi
+    # El hook TAMBIEN se retira. Retirar solo el brief dejaba el bloqueo
+    # registrado en .claude/settings.json de una sesion que Talos ya no
+    # gobierna: apuntando a una ruta de .talos/ que puede no existir, y
+    # bloqueando escrituras segun un rol que ya nadie activo. Instalar es
+    # reversible o no es instalar.
+    if [ -f .claude/settings.json ]; then
+        _py=""
+        for _c in "$PROJ/.venv/bin/python" "$HOME/.venv/bin/python"; do
+            [ -x "$_c" ] && { _py="$_c"; break; }
+        done
+        [ -n "$_py" ] || _py=$(command -v python3 2>/dev/null) || _py=""
+        if [ -n "$_py" ]; then
+            "$_py" - <<'PYEOF'
+import json, pathlib
+
+p = pathlib.Path(".claude/settings.json")
+try:
+    cfg = json.loads(p.read_text())
+except (json.JSONDecodeError, OSError):
+    raise SystemExit(0)
+
+# Se saca SOLO lo que puso Talos, reconocido por la ruta del shim. Lo que la
+# persona haya configurado no es de Talos y no se toca.
+def es_de_talos(h):
+    return "hooks/agent/claude-code/pre-tool-use.sh" in str(h.get("command", ""))
+
+pre = (cfg.get("hooks") or {}).get("PreToolUse") or []
+quedan, saco = [], False
+for e in pre:
+    hs = [h for h in e.get("hooks", []) if not es_de_talos(h)]
+    if len(hs) != len(e.get("hooks", [])):
+        saco = True
+    if hs:
+        e["hooks"] = hs
+        quedan.append(e)
+    elif not e.get("hooks"):
+        quedan.append(e)
+
+if not saco:
+    raise SystemExit(0)
+
+if quedan:
+    cfg["hooks"]["PreToolUse"] = quedan
+else:
+    cfg["hooks"].pop("PreToolUse", None)
+    if not cfg["hooks"]:
+        cfg.pop("hooks", None)
+
+# Un settings.json que queda vacio por retirar lo unico que tenia es un
+# archivo que Talos creo: se lleva lo suyo entero.
+if cfg:
+    p.write_text(json.dumps(cfg, indent=2) + "\n")
+else:
+    p.unlink()
+print("bloqueo retirado (.claude/settings.json)")
+PYEOF
+        fi
+    fi
     exit 0
 fi
 

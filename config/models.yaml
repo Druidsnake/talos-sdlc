@@ -42,7 +42,7 @@ tiers:
   # cuando equivocarse sale caro; ahi es donde el gasto se justifica, porque el
   # error no cuesta una tarea sino la feature entera.
   deep:
-    model: claude-opus-5
-    provider: claude
-    cost_per_mtok_input: 15.00
-    cost_per_mtok_output: 75.00
+    model: minimax-coding-plan/MiniMax-M3
+    provider: opencode
+    cost_per_mtok_input: 0.30
+    cost_per_mtok_output: 1.20

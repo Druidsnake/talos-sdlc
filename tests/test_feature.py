@@ -475,6 +475,21 @@ def main():
     results.append(check(
         "release suelta tambien la referencia del agente",
         not ref_p.exists()))
+    # Instalar es reversible o no es instalar. Lo que el shim dejo en el
+    # proyecto se retira entero: el brief Y el bloqueo. Un bloqueo que
+    # sobrevive al rol queda apuntando a una ruta de .talos/ y gobernando una
+    # sesion que Talos ya solto.
+    results.append(check(
+        "release no deja briefs ni bloqueos en el proyecto",
+        not (pa / "AGENTS.md").exists() and not (pa / "CLAUDE.md").exists()
+        and not (pa / ".opencode" / "plugin" / "talos-scope.js").exists(),
+        f"{[str(x) for x in (pa / '.opencode').rglob('*') if x.is_file()]}"))
+    _cs = pa / ".claude" / "settings.json"
+    results.append(check(
+        "y el hook de Claude Code no queda registrado tras liberar",
+        not _cs.exists() or "pre-tool-use.sh" not in _cs.read_text(),
+        _cs.read_text()[:200] if _cs.exists() else ""))
+
     cierres = spy_lines(log, "close_session")
     results.append(check(
         "y cierra la sesion que Talos abrio (seccion 38.5)",
@@ -526,6 +541,45 @@ def main():
     results.append(check(
         "el shim ignora un modelo que no es de su proveedor",
         ajeno.stdout.strip() == "", f"emitio {ajeno.stdout!r}"))
+
+    # ---------- lo que un shim instala, lo retira ----------
+    #
+    # Retirar solo el brief dejaba el bloqueo registrado en el runtime de una
+    # sesion que Talos ya no gobierna: apuntando a una ruta de .talos/ que
+    # puede no existir, y aplicando un rol que nadie activo.
+    ps = pathlib.Path(tempfile.mkdtemp())
+    (ps / ".claude").mkdir()
+    # Configuracion ajena que Talos NO puede pisar al instalar ni al retirar.
+    (ps / ".claude" / "settings.json").write_text(json.dumps({
+        "model": "el-que-la-persona-eligio",
+        "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
+            {"type": "command", "command": "/mio/audita.sh"}]}]}}))
+    brief = ps / "brief.md"
+    brief.write_text("brief de prueba\n")
+    inst = ROOT / "hooks" / "agent" / "claude-code" / "install.sh"
+    entorno = {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(pathlib.Path.home())}
+    subprocess.run([str(inst), str(ps), str(ROOT), str(brief)],
+                   capture_output=True, text=True, env=entorno)
+    cfg = json.loads((ps / ".claude" / "settings.json").read_text())
+    puesto = json.dumps(cfg)
+    results.append(check(
+        "el shim de Claude Code instala su bloqueo",
+        "pre-tool-use.sh" in puesto and (ps / "CLAUDE.md").is_file()))
+
+    subprocess.run([str(inst), str(ps), "--uninstall"],
+                   capture_output=True, text=True, env=entorno)
+    cfg2 = json.loads((ps / ".claude" / "settings.json").read_text())
+    results.append(check(
+        "y al retirar no queda registrado",
+        "pre-tool-use.sh" not in json.dumps(cfg2) and not (ps / "CLAUDE.md").exists(),
+        json.dumps(cfg2)[:200]))
+    results.append(check(
+        "sin llevarse por delante la configuracion de la persona",
+        cfg2.get("model") == "el-que-la-persona-eligio"
+        and any(h.get("command") == "/mio/audita.sh"
+                for e in (cfg2.get("hooks") or {}).get("PreToolUse", [])
+                for h in e.get("hooks", [])),
+        json.dumps(cfg2)[:200]))
 
     # ---------- la chispa: talos boot ----------
     #
