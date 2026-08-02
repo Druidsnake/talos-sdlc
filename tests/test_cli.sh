@@ -106,7 +106,7 @@ echo ""
 echo "=== ayuda de cada comando ==="
 # thalos rules estuvo roto por completo hasta que alguien pidio --help:
 # ningun test lo invocaba. Estos checks cubren la superficie entera.
-for c in doctor status rules adapters gate evidence plan feature merge human next run budget init agent "spec check" "event append" "event tail"; do
+for c in doctor status rules adapters gate evidence plan feature merge human next run budget init agent message "spec check" "event append" "event tail"; do
     # shellcheck disable=SC2086  # se quiere el word-splitting del subcomando
     set -- $c
     if $THALOS "$@" --help >/dev/null 2>&1; then
@@ -158,6 +158,30 @@ expect_out "ALIVE_WORKING" "sin observar el proceso no se inventa la muerte" \
 expect_exit 0 "un agente vivo sale 0" \
     $THALOS agent verdict --observation \
     '{"pane_exists":true,"state":"working","process_alive":true,"process_observed":true}'
+
+echo ""
+echo "=== mensajes: expiracion sin demonio ==="
+expect_exit 0 "thalos message sweep corre sin mensajes" $THALOS message sweep
+expect_out "no habia nada vencido" "y lo dice en vez de callarse" $THALOS message sweep
+expect_exit 1 "message status sin --text sale 1" $THALOS message status
+expect_exit 0 "message status registra un STATUS_UPDATE" \
+    $THALOS message status --text "voy por la mitad"
+expect_out "STATUS_UPDATE" "el canal declarado deja rastro" $THALOS message list
+# Regla 25.5.9: lo critico vencido escala. Se envejece a mano un mensaje real.
+$THALOS message status --text "x" >/dev/null 2>&1
+python3 - "$proj" <<'PYEXP'
+import datetime, json, pathlib, sys
+d = pathlib.Path(sys.argv[1]) / "orchestration" / "messages"
+f = sorted(d.glob("msg-*.json"))[0]
+m = json.loads(f.read_text())
+m["critical"] = True
+m["expires_at"] = (datetime.datetime.now(datetime.timezone.utc)
+                   - datetime.timedelta(seconds=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+f.write_text(json.dumps(m, indent=2))
+PYEXP
+expect_out "escalo" "un critico vencido escala al barrer (regla 25.5.9)" \
+    $THALOS message sweep
+expect_out "thalos.escalation.triggered" "y queda en el EventLog" $THALOS event tail 5
 
 echo ""
 echo "=== capacidades y adapters ==="

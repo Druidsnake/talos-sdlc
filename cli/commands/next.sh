@@ -55,4 +55,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# Barrido acoplado (mensajeria 8.2): sin demonio, la expiracion ocurre cuando
+# alguien corre un comando. `next` es donde se mira que sigue, asi que es donde
+# una escalacion tiene que aparecer. Solo se muestran las escalaciones: un
+# vencimiento comun no cambia lo que sigue.
+if [ "$FORMATO" = texto ]; then
+    "$SYS/cli/thalos" message sweep 2>/dev/null | grep '!!' || true
+fi
+
 exec "$PY" "$SYS/hooks/lib/next.py" "$PROJ" "$TABLA" "$FORMATO" "$PANE"

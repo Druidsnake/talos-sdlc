@@ -61,4 +61,7 @@ else
     printf '  eventos         %s\n' "${seq:-0}"
     printf '  spec            %s\n' "$spec_status"
     printf '  features        %s\n' "$n_features"
+    # Barrido acoplado (mensajeria 8.2). Una escalacion no puede quedar
+    # esperando a que alguien se acuerde de correr `message list`.
+    "$SYS/cli/thalos" message sweep 2>/dev/null | grep '!!' || true
 fi

@@ -38,6 +38,7 @@ run "loop: proyeccion y orquestador" $PY tests/test_loop.py
 run "presupuestos: limites sin degradar el tier" $PY tests/test_budget.py
 run "vitalidad: la tabla de decision sobre un agente" $PY tests/test_liveness.py
 run "ack: el encargo entro o no entro, y se sabe" $PY tests/test_ack.py
+run "mensajes: expiracion, escalacion y canal declarado" $PY tests/test_message.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 

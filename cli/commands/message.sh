@@ -32,6 +32,8 @@ USO
     thalos message answer <ID> --text "..."
                                        responde y ENTREGA la respuesta al agente
     thalos message close <ID> [ESTADO]  lo cierra (por defecto CLOSED)
+    thalos message status --text "..."  un STATUS_UPDATE del rol activo
+    thalos message sweep                marca lo vencido y escala lo critico
 
 ESTADOS
     OPEN  ACKED  ANSWERED  CLOSED  EXPIRED  ESCALATED
@@ -55,10 +57,75 @@ PY=$(command -v python3 2>/dev/null) || { echo "thalos: no hay python3" >&2; exi
 sub="${1:-list}"
 [ $# -gt 0 ] && shift
 
+# El barrido corre acoplado a comandos que ya ocurren, porque este subsistema
+# no introduce demonios (mensajeria 8.2). Cada mensaje que vence se marca, y
+# los criticos escalan con su evento: la escalacion importa cuando alguien
+# mira, y alguien mira cuando corre un comando.
+barrer_y_avisar() {
+    "$PY" "$LIB" sweep "$DIR" 2>/dev/null | while IFS='	' read -r _id _st _feat; do
+        if [ "$_st" = ESCALATED ]; then
+            # El EventLog es del nucleo y se escribe por su CLI, con secuencia
+            # monotonica (seccion 41.2). La libreria no emite eventos.
+            # shellcheck disable=SC2086  # --feature es opcional
+            "$SYS/cli/thalos" event append \
+                --type thalos.escalation.triggered \
+                --actor thalos:core \
+                ${_feat:+--feature "$_feat"} \
+                --payload "{\"message_id\":\"$_id\",\"reason\":\"expired_critical\"}" \
+                >/dev/null 2>&1 || true
+            printf '  !!   %s vencio SIN RESPUESTA y escalo (regla 25.5.9)\n' "$_id"
+        else
+            printf '  --   %s vencio sin respuesta\n' "$_id"
+        fi
+    done
+}
+
 case "$sub" in
+    sweep)
+        _out=$(barrer_y_avisar)
+        echo "thalos ${THALOS_VERSION:-?}"
+        echo ""
+        if [ -z "$_out" ]; then
+            echo "  no habia nada vencido"
+        else
+            printf '%s\n' "$_out"
+        fi
+        exit 0
+        ;;
+
+    status)
+        TEXTO=""
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --text) TEXTO="${2:?falta el texto}"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        [ -n "$TEXTO" ] || { echo "thalos: falta --text" >&2; exit 1; }
+
+        # El canal declarado (mensajeria 6). Es OPCIONAL y MONOTONO POSITIVO:
+        # lo que el agente diga suma, y que no diga nada NUNCA resta. Por eso
+        # no hay ningun camino donde la falta de STATUS_UPDATE produzca un
+        # veredicto: existe para enriquecer, no para habilitar.
+        # shellcheck source=../../hooks/lib/role.sh
+        . "$SYS/hooks/lib/role.sh" 2>/dev/null || true
+        _rol=$(thalos_role_current 2>/dev/null || echo desconocido)
+        _feat=$(cat "orchestration/.feature-actual" 2>/dev/null || echo "")
+        _tmp=$(mktemp)
+        printf '%s' "$TEXTO" > "$_tmp"
+        _nuevo=$("$PY" "$LIB" send "$DIR" STATUS_UPDATE "role:$_rol" "thalos:core" \
+                 "${THALOS_RUN_ID:-r-unknown}" "$_feat" T01 "$_tmp")
+        rm -f "$_tmp"
+        echo "thalos ${THALOS_VERSION:-?}"
+        echo ""
+        printf '  %s registrado\n' "$_nuevo"
+        exit 0
+        ;;
+
     list)
         echo "thalos ${THALOS_VERSION:-?}"
         echo ""
+        barrer_y_avisar
         if [ -z "$(ls "$DIR"/msg-*.json 2>/dev/null)" ]; then
             echo "  no hay mensajes"
             exit 0
@@ -132,6 +199,6 @@ case "$sub" in
         ;;
     *)
         echo "thalos: subcomando desconocido: $sub" >&2
-        echo "thalos: disponibles: list, show, answer, close" >&2
+        echo "thalos: disponibles: list, show, answer, close, status, sweep" >&2
         exit 1 ;;
 esac

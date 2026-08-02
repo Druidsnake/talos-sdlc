@@ -23,6 +23,7 @@ actor=""
 feature=""
 evidence=""
 causation=""
+payload=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -31,6 +32,11 @@ while [ $# -gt 0 ]; do
         --feature)   feature="${2:?falta valor para --feature}"; shift 2 ;;
         --evidence)  evidence="${2:?falta valor para --evidence}"; shift 2 ;;
         --causation) causation="${2:?falta valor para --causation}"; shift 2 ;;
+        # event.schema.json define payload desde 0.0.6 y ningun comando lo
+        # exponia: el campo estaba muerto y todo evento salia con {}. Sin el,
+        # una escalacion puede decir que escalo pero no QUE escalo, y el que
+        # lee el log se queda sin el unico dato accionable.
+        --payload)   payload="${2:?falta valor para --payload}"; shift 2 ;;
         -h|--help)
             cat <<'USAGE'
 thalos event append - registra un evento con secuencia monotonica
@@ -46,6 +52,8 @@ OPCIONALES
     --feature    id de feature. Ej: F001
     --evidence   ids de evidencia separados por coma
     --causation  id del evento que lo causo
+    --payload    objeto JSON con el detalle del evento. Se valida antes de
+                 escribir: uno que no parsea no entra al log
 
 COMO FUNCIONA
     EventLog es el unico escritor de seq. La exclusion usa mkdir, que es
@@ -117,11 +125,25 @@ fi
 
 json_or_null() { [ -n "$1" ] && printf '"%s"' "$1" || printf 'null'; }
 
+# Un payload que no parsea NO entra: el evento se valida contra su schema
+# antes de escribirse, y meter basura ahi lo volveria irrecuperable justo
+# cuando alguien lo lee para entender que paso.
+pl_json="{}"
+if [ -n "$payload" ]; then
+    if command -v python3 >/dev/null 2>&1 \
+       && printf '%s' "$payload" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then
+        pl_json="$payload"
+    else
+        echo "thalos: --payload no es un objeto JSON valido" >&2
+        exit 1
+    fi
+fi
+
 mkdir -p "$EVENTS"
 logfile="$EVENTS/$(printf '%06d' $(( (seq - 1) / 1000 + 1 ))).ndjson"
 
 event=$(cat <<EOF
-{"id":"$eid","seq":$seq,"schema_version":1,"type":"$type","ts":"$now","run_id":"$run_id","project":"$project","feature_id":$(json_or_null "$feature"),"actor":"$actor","correlation_id":$(json_or_null "$feature"),"causation_id":$(json_or_null "$causation"),"evidence_refs":$ev_json,"payload":{}}
+{"id":"$eid","seq":$seq,"schema_version":1,"type":"$type","ts":"$now","run_id":"$run_id","project":"$project","feature_id":$(json_or_null "$feature"),"actor":"$actor","correlation_id":$(json_or_null "$feature"),"causation_id":$(json_or_null "$causation"),"evidence_refs":$ev_json,"payload":$pl_json}
 EOF
 )
 
