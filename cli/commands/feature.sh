@@ -407,11 +407,33 @@ PYEOF
     # El texto va como semantic_args del adapter: quien ejecuta es el
     # ExecutionAdapter, y el nucleo no sabe con que agente esta hablando.
     esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+
+    # No alcanza con que el adapter acepte el envio: eso confirma que la
+    # terminal recibio las teclas, no que el agente recibio el encargo. El ACK
+    # se OBSERVA como transicion de estado posterior al envio, sin pedirle nada
+    # al agente. Ver thalos-mensajeria-0.0.1.md seccion 7.
+    # shellcheck source=../../hooks/lib/ack.sh
+    . "$SYS/hooks/lib/ack.sh"
     set +e
-    out=$(thalos_capability_run ExecutionAdapter prompt_agent \
-          "{\"target\":\"$TARGET\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
+    thalos_ack_send "$TARGET" "$esc"
     rc=$?
     set -e
+    out="${THALOS_ACK_OUT:-}"
+
+    # NOT_DELIVERED: se agotaron los intentos y el encargo nunca entro. Es un
+    # error de clase TRANSIENT (35.1), no un veredicto sobre el agente, y por
+    # eso NO consume iteracion de presupuesto: no hubo encargo que ejecutar.
+    if [ "$rc" -eq 1 ]; then
+        echo "  FALL el encargo no le llego al agente (NOT_DELIVERED)"
+        echo ""
+        echo "  El adapter lo envio y el agente nunca cambio de estado."
+        echo "  No se consumio iteracion: no hubo encargo que ejecutar."
+        echo ""
+        printf '  Si %s ya no responde, la referencia quedo vieja:\n' "$TARGET"
+        printf '    thalos feature release %s\n    thalos feature dispatch %s --role %s\n' \
+            "$FEAT" "$FEAT" "$ROLE"
+        exit 5
+    fi
     if [ "$rc" -ne 0 ]; then
         echo "  FALL el ExecutionAdapter no pudo entregar el trabajo"
         # Un agente puede MORIRSE: que se haya despachado no prueba que siga
@@ -428,13 +450,21 @@ PYEOF
         printf '%s\n' "$out" | sed 's/^/    /' | tail -3
         exit 5
     fi
-    echo "  ok   trabajo entregado al agente"
+    echo "  ok   el agente recibio el encargo (ACK observado)"
+
+    # El ACK se persiste porque lo consulta la tabla de veredictos DESPUES,
+    # desde otro proceso. Sin el, un `done` en reposo -nunca recibio nada- es
+    # indistinguible de un `done` de terminacion.
+    thalos_agent_ack_set "$FEAT"
 
     # Cada encargo consume una iteracion (regla 33.3). Sin esto el loop
     # reencarga para siempre: la primera vez el ledger lo deja pasar, y de ahi
     # en adelante devuelve already_exists sin hacer nada, asi que la condicion
     # "no hay entregable" nunca cambia. El limite de iteraciones del
     # presupuesto ES el limite de reintentos; no hace falta inventar otro.
+    #
+    # Se consume ACA y no antes: un encargo que no entro no gasta iteracion
+    # (regla 7.3.3), y ese camino ya salio mas arriba.
     "$SYS/cli/thalos" budget consume "$FEAT" 0 1 0 >/dev/null 2>&1 || true
 
     # Esperar a que el agente se asiente. Devolver apenas se entrega el prompt

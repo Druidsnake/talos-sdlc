@@ -111,6 +111,12 @@ case "$sub" in
         if [ -z "$OBS" ]; then
             [ -n "$FEAT" ] || { echo "thalos: falta la feature o --observation" >&2; exit 1; }
             OBS=$(observar "$FEAT") || exit $?
+            # El ACK lo sabe Thalos porque el mando el encargo; el backend no
+            # puede saberlo. Es lo que separa un `done` de reposo de un `done`
+            # de terminacion (decision M-004).
+            if thalos_agent_ack_is "$FEAT"; then
+                case "$FLAGS" in *--ack*) ;; *) FLAGS="$FLAGS --ack" ;; esac
+            fi
         fi
 
         # El umbral de blocked sale de la config, no del codigo (principio 10).

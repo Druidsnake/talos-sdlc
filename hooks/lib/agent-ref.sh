@@ -60,7 +60,37 @@ thalos_agent_ref_field() {
 # thalos_agent_ref_clear <feature_id>
 thalos_agent_ref_clear() {
     rm -f "$(thalos_agent_ref_path "$1")" \
+          "$(thalos_agent_ref_path "$1")-ack" \
           "${THALOS_PROJECT_ROOT:-.}/orchestration/features/$1/.pane"
+}
+
+# ---------- ACK del encargo vigente ----------
+#
+# Ver thalos-mensajeria-0.0.1.md regla 7.2.2. El ACK se persiste porque
+# alimenta `ack_confirmed` de la tabla de veredictos, y esa tabla se consulta
+# despues del despacho, desde otro proceso.
+#
+# Sin esto, el mismo `done` crudo es indistinguible entre dos situaciones
+# opuestas: un agente en REPOSO que nunca recibio nada, y uno que TERMINO el
+# encargo. La diferencia no esta en el backend -que no sabe que se le pidio-
+# sino en si Thalos vio entrar su encargo.
+
+# thalos_agent_ack_set <feature_id>
+thalos_agent_ack_set() {
+    _aa_f="$(thalos_agent_ref_path "$1")-ack"
+    mkdir -p "$(dirname "$_aa_f")"
+    date -u +%Y-%m-%dT%H:%M:%SZ > "$_aa_f"
+}
+
+# thalos_agent_ack_is <feature_id>
+# Sale 0 si el encargo vigente tuvo ACK observado.
+thalos_agent_ack_is() {
+    [ -f "$(thalos_agent_ref_path "$1")-ack" ]
+}
+
+# thalos_agent_ack_clear <feature_id>
+thalos_agent_ack_clear() {
+    rm -f "$(thalos_agent_ref_path "$1")-ack"
 }
 
 # thalos_agent_ref_check <feature_id>

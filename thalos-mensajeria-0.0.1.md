@@ -387,6 +387,16 @@ La regla 3 ES la confirmación previa al despacho: no se lanzan instrucciones nu
 
 El reenvío es seguro pese a que `prompt_agent` sea `at_most_once`: si el agente nunca recibió el encargo, no hay duplicado que evitar.
 
+### 7.3.1. No poder observar no es no haber entregado
+
+Un `ExecutionAdapter` puede no implementar `observe_agent` de forma útil, o devolver una observación sin `state` ni `state_change_seq`. En ese caso no hay contra qué comparar y **el ACK no se puede decidir**.
+
+1. Si la observación base no trae `state` ni `state_change_seq`, Thalos NO DEBE exigir ACK.
+2. En ese caso el envío DEBE aceptarse como antes de este subsistema, y NO DEBE reintentarse.
+3. Un adapter que simula (`dry_run` o `simulated`) queda cubierto por la misma regla: nadie procesa el encargo, así que no hay transición que esperar.
+
+Es la regla 4.3.1 aplicada al handshake, y la asimetría es la misma: no detectar un encargo perdido cuesta una espera; declarar `NOT_DELIVERED` sobre un encargo que sí llegó **aborta un despacho que funcionaba**. Ante la falta de señal se degrada, no se inventa el fallo.
+
 ### 7.4. Limitación conocida
 
 Si el agente ya estaba en `working` al momento del despacho, no hay transición y el ACK no se puede observar. La regla 7.2.3 hace que esa situación no deba ocurrir dentro del ciclo de Thalos.

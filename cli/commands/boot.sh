@@ -153,11 +153,26 @@ PY=$(command -v python3 2>/dev/null) || {
     echo "  FALL no hay python3 para escapar el encargo" >&2; exit 2; }
 esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
 
+# Mismo criterio que feature work: que el adapter acepte el envio no prueba
+# que el coordinador lo haya recibido. Aca importa mas todavia, porque despues
+# de esto Thalos deja de proponer pasos: un coordinador encendido sin encargo
+# no le pide nada a nadie y nadie se entera.
+# shellcheck source=../../hooks/lib/ack.sh
+. "$SYS/hooks/lib/ack.sh"
 set +e
-out=$(thalos_capability_run ExecutionAdapter prompt_agent \
-      "{\"target\":\"$TARGET\",\"text\":\"$esc\",\"timeout_ms\":\"900000\"}" 2>&1)
+thalos_ack_send "$TARGET" "$esc"
 prc=$?
 set -e
+out="${THALOS_ACK_OUT:-}"
+if [ "$prc" -eq 1 ]; then
+    echo ""
+    echo "  FALL el encargo no le llego al coordinador (NOT_DELIVERED)"
+    echo ""
+    echo "  Se envio y el agente nunca cambio de estado."
+    echo "  Una sesion encendida sin encargo es un agente esperando sin saber que."
+    printf '  Soltala con  thalos feature release %s\n' "$FEAT"
+    exit 5
+fi
 if [ "$prc" -ne 0 ]; then
     echo ""
     echo "  FALL el coordinador arranco pero no recibio su encargo"
@@ -168,8 +183,10 @@ if [ "$prc" -ne 0 ]; then
     exit 5
 fi
 
+thalos_agent_ack_set "$FEAT"
+
 echo ""
-printf '  ok   %s tiene su encargo y la superficie de comandos\n' "$TARGET"
+printf '  ok   %s recibio su encargo (ACK observado)\n' "$TARGET"
 echo ""
 echo "  Thalos deja de proponer pasos. Desde aca decide el coordinador."
 printf '  Para retomar el control:  thalos feature release %s\n' "$FEAT"
