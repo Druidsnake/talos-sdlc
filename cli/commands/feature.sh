@@ -414,11 +414,23 @@ PYEOF
     # al agente. Ver thalos-mensajeria-0.0.1.md seccion 7.
     # shellcheck source=../../hooks/lib/ack.sh
     . "$SYS/hooks/lib/ack.sh"
+    # shellcheck source=../../hooks/lib/agent-events.sh
+    . "$SYS/hooks/lib/agent-events.sh"
     set +e
     thalos_ack_send "$TARGET" "$esc"
     rc=$?
     set -e
     out="${THALOS_ACK_OUT:-}"
+
+    # Que el encargo entrara -o no- es lo primero que alguien quiere saber
+    # cuando revisa un despacho raro. Sin esto no queda escrito en ningun lado.
+    if [ "$rc" -eq 0 ]; then
+        thalos_evento_agente thalos.agent.ack_confirmed "$FEAT" \
+            "{\"target\":\"$TARGET\",\"role\":\"$ROLE\"}"
+    elif [ "$rc" -eq 1 ]; then
+        thalos_evento_agente thalos.agent.ack_missing "$FEAT" \
+            "{\"target\":\"$TARGET\",\"role\":\"$ROLE\"}"
+    fi
 
     # NOT_DELIVERED: se agotaron los intentos y el encargo nunca entro. Es un
     # error de clase TRANSIENT (35.1), no un veredicto sobre el agente, y por
@@ -554,6 +566,17 @@ PYWALL
         set -e
         VEREDICTO=$(printf '%s' "$_v" | cut -f1)
         ACCION=$(printf '%s' "$_v" | cut -f2)
+
+        # SOLO los cambios (regla 10.1). Un sondeo cada 5 segundos durante 15
+        # minutos son 180 observaciones y una sola cosa que contar: cuando
+        # cambio el veredicto. El resto es ruido que hay que filtrar despues
+        # para encontrar el dato.
+        if [ "$VEREDICTO" != "${_ultimo:-}" ]; then
+            _estado_crudo=$(printf '%s' "$_obs" \
+                | sed -n 's/.*"state"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+            thalos_evento_veredicto "$FEAT" "$VEREDICTO" "${_estado_crudo:-unknown}"
+            _ultimo="$VEREDICTO"
+        fi
 
         # ALIVE_WORKING es el UNICO veredicto que justifica seguir esperando.
         # Cualquier otro ya dice que hacer, y esperar mas no lo va a cambiar.

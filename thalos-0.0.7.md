@@ -2186,6 +2186,15 @@ thalos.transition.rejected
 thalos.message.sent
 thalos.message.acked
 thalos.message.expired
+thalos.message.status_updated
+
+thalos.agent.ack_confirmed
+thalos.agent.ack_missing
+thalos.agent.observed
+thalos.agent.dead
+thalos.agent.gone
+thalos.agent.waiting_human
+thalos.agent.turn_done
 
 thalos.lock.acquired
 thalos.lock.renewed

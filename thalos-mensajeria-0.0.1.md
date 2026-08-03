@@ -536,6 +536,8 @@ thalos.message.escalated
 ```
 
 1. `thalos.agent.observed` DEBE emitirse **solo al cambiar el veredicto**, no en cada muestreo.
+1.a. Todo tipo que el código emita DEBE existir en el catálogo de la sección 41.5 del núcleo.
+1.b. Todo tipo `thalos.agent.*` del catálogo DEBE tener un emisor. Un catálogo con tipos que nadie produce es una promesa sin quien la cumpla — y es exactamente lo que dejó esta sección escrita y sin construir durante ocho etapas.
 2. Los eventos de vitalidad NO DEBEN referenciar artefactos del eje B.
 3. `thalos.message.acked` y `thalos.message.expired` ya existen en el catálogo y ahora tienen productor.
 

@@ -116,6 +116,12 @@ case "$sub" in
         _nuevo=$("$PY" "$LIB" send "$DIR" STATUS_UPDATE "role:$_rol" "thalos:core" \
                  "${THALOS_RUN_ID:-r-unknown}" "$_feat" T01 "$_tmp")
         rm -f "$_tmp"
+        # El canal declarado tambien deja rastro: si un agente hablo y despues
+        # murio, lo que dijo sigue siendo lo ultimo que se sabe de el.
+        # shellcheck source=../../hooks/lib/agent-events.sh
+        . "$SYS/hooks/lib/agent-events.sh"
+        thalos_evento_agente thalos.message.status_updated "$_feat" \
+            "{\"message_id\":\"$_nuevo\",\"role\":\"$_rol\"}"
         echo "thalos ${THALOS_VERSION:-?}"
         echo ""
         printf '  %s registrado\n' "$_nuevo"

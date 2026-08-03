@@ -159,11 +159,21 @@ esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.s
 # no le pide nada a nadie y nadie se entera.
 # shellcheck source=../../hooks/lib/ack.sh
 . "$SYS/hooks/lib/ack.sh"
+# shellcheck source=../../hooks/lib/agent-events.sh
+. "$SYS/hooks/lib/agent-events.sh"
 set +e
 thalos_ack_send "$TARGET" "$esc"
 prc=$?
 set -e
 out="${THALOS_ACK_OUT:-}"
+
+if [ "$prc" -eq 0 ]; then
+    thalos_evento_agente thalos.agent.ack_confirmed "$FEAT" \
+        "{\"target\":\"$TARGET\",\"role\":\"coordinador\"}"
+elif [ "$prc" -eq 1 ]; then
+    thalos_evento_agente thalos.agent.ack_missing "$FEAT" \
+        "{\"target\":\"$TARGET\",\"role\":\"coordinador\"}"
+fi
 if [ "$prc" -eq 1 ]; then
     echo ""
     echo "  FALL el encargo no le llego al coordinador (NOT_DELIVERED)"

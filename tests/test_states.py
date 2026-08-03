@@ -150,6 +150,46 @@ def main():
         f"fuera del catalogo: {sorted(kinds_tabla - kinds_validos)}",
     ))
 
+    # Lo mismo para los EVENTOS, que no lo tenian. El schema solo exige el
+    # namespace -thalos.x.y- asi que cualquier tipo inventado pasaba, y el
+    # catalogo de la 41.5 podia listar tipos que nadie emitia sin que nada lo
+    # notara. Esa asimetria fue justo lo que dejo una seccion entera de la
+    # mensajeria escrita y sin construir: no habia nada que la reclamara.
+    spec = (ROOT / "thalos-0.0.7.md").read_text()
+    cat = re.search(r"### 41\.5\..*?```txt\n(.*?)```", spec, re.S)
+    catalogo = set(re.findall(r"^thalos\.[a-z_]+\.[a-z_]+$",
+                              cat.group(1) if cat else "", re.M))
+    # Se buscan los tipos LITERALES en codigo, no solo tras --type: un emisor
+    # puede pasar el tipo por variable a un helper, y buscar la bandera lo
+    # dejaria invisible. Se excluyen los comentarios, que nombran tipos como
+    # ejemplo sin emitir nada.
+    emitidos = set()
+    for d in ("cli", "hooks"):
+        for path in (ROOT / d).rglob("*.sh"):
+            # event-append.sh no emite eventos: ES el mecanismo de emision, y
+            # su texto de ayuda usa thalos.x.y como marcador de posicion.
+            if path.name == "event-append.sh":
+                continue
+            for linea in path.read_text().splitlines():
+                if linea.lstrip().startswith("#"):
+                    continue
+                emitidos |= set(re.findall(r"\b(thalos\.[a-z_]+\.[a-z_]+)", linea))
+    results.append(check(
+        "todo evento que el codigo emite existe en el catalogo de la 41.5",
+        emitidos and emitidos <= catalogo,
+        f"fuera del catalogo: {sorted(emitidos - catalogo)}",
+    ))
+
+    # Y la vuelta que importa para este subsistema: los eventos de vitalidad
+    # estan en el catalogo Y tienen productor. Un catalogo con tipos que nadie
+    # emite es una promesa sin nadie que la cumpla.
+    vitalidad = {t for t in catalogo if t.startswith("thalos.agent.")}
+    results.append(check(
+        "los eventos de vitalidad del catalogo tienen quien los emita",
+        vitalidad and vitalidad <= emitidos,
+        f"declarados y sin emisor: {sorted(vitalidad - emitidos)}",
+    ))
+
     # Deriva: la tabla versionada coincide con la spec.
     box = pathlib.Path(tempfile.mkdtemp())
     (box / "hooks" / "generated").mkdir(parents=True)
