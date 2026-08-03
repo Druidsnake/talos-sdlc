@@ -104,6 +104,54 @@ def main():
         "un fallo de envio sale 5, distinto de NOT_DELIVERED",
         rc == 5, f"rc={rc}"))
 
+    # LAS OPCIONES DEL SHELL SON GLOBALES, NO LOCALES A LA FUNCION.
+    #
+    # Quien llama hace `set +e` para poder leer el codigo de retorno. Un
+    # `set -e` adentro de la funcion le pisa esa decision, y al devolver
+    # NOT_DELIVERED el script del que llama moria EN SILENCIO: sin imprimir el
+    # motivo y con codigo 1 en vez del que corresponde. Aparecio corriendo el
+    # subsistema contra un agente real; ningun test unitario lo veia porque
+    # todos llamaban a la funcion como ultimo comando del script.
+    d = pathlib.Path(tempfile.mkdtemp())
+    stub = d / "stub.sh"
+    stub.write_text("""
+thalos_capability_run() {
+    if [ "$2" = observe_agent ]; then
+        echo '{"pane_exists":true,"state":"idle","state_change_seq":7}'
+    else
+        echo '{"status":"created"}'
+    fi
+}
+""")
+    script = f"""
+. {stub}
+. {ROOT}/hooks/lib/ack.sh
+set +e
+thalos_ack_send t 'x'
+rc=$?
+set -e
+echo "SOBREVIVI rc=$rc"
+"""
+    p = subprocess.run(["sh", "-c", script], capture_output=True, text=True,
+                       env={**os.environ, "THALOS_SYSTEM_ROOT": str(ROOT)})
+    results.append(check(
+        "quien llama con set +e sigue vivo tras un NOT_DELIVERED",
+        "SOBREVIVI rc=1" in p.stdout,
+        f"stdout={p.stdout.strip()!r} — un set -e adentro mata al que llama"))
+
+    # Reintentar sobre un panel que ya no existe son dos minutos de nada: la
+    # observacion base ya sabia que el agente se habia ido.
+    cuenta3 = pathlib.Path(tempfile.mkdtemp()) / "n"
+    rc = escenario(['{"pane_exists":false,"state":"unknown","state_change_seq":0}'] * 10,
+                   cuenta=cuenta3)
+    results.append(check(
+        "no reintenta el encargo sobre un agente que ya no existe",
+        rc == 5, f"rc={rc}"))
+    envios3 = len(cuenta3.read_text().split()) if cuenta3.exists() else 0
+    results.append(check(
+        "y lo corta en el primer intento, no en el tercero",
+        envios3 == 1, f"envio {envios3} veces"))
+
     # LA CONTRACARA. Un ExecutionAdapter que no implementa observe_agent no
     # devuelve ni estado ni contador: no hay contra que comparar. Leer esa
     # falta de senal como falta de entrega abortaba despachos que funcionaban,

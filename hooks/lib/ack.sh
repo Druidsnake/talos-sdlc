@@ -45,10 +45,17 @@ thalos_ack_baseline() {
             "{\"target\":\"$1\"}" 2>/dev/null || echo '')
     _ab_s=$(printf '%s' "$_ab_o" | sed -n 's/.*"state"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
     _ab_q=$(printf '%s' "$_ab_o" | sed -n 's/.*"state_change_seq"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1)
+    # El cuarto campo dice si el panel EXISTE. Un agente que ya no esta no
+    # puede recibir un reenvio, y reintentarle el encargo es tiempo tirado
+    # sobre algo que no va a cambiar.
+    case "$_ab_o" in
+        *'"pane_exists":false'*) _ab_p=0 ;;
+        *) _ab_p=1 ;;
+    esac
     if [ -z "$_ab_s" ] && [ -z "$_ab_q" ]; then
-        printf 'unknown 0 0'
+        printf 'unknown 0 0 %s' "$_ab_p"
     else
-        printf '%s %s 1' "${_ab_s:-unknown}" "${_ab_q:-0}"
+        printf '%s %s 1 %s' "${_ab_s:-unknown}" "${_ab_q:-0}" "$_ab_p"
     fi
 }
 
@@ -105,16 +112,31 @@ thalos_ack_send() {
     _as_espera=$(( _as_base / 1000 ))
     [ "$_as_espera" -lt 1 ] && _as_espera=1
     while :; do
-        # shellcheck disable=SC2046  # se quiere el word-splitting: son 3 campos
+        # shellcheck disable=SC2046  # se quiere el word-splitting: son 4 campos
         set -- $(thalos_ack_baseline "$_as_t")
-        _as_e0="$1"; _as_q0="$2"; _as_obs="$3"
+        _as_e0="$1"; _as_q0="$2"; _as_obs="$3"; _as_pane="$4"
 
-        set +e
-        THALOS_ACK_OUT=$(thalos_capability_run ExecutionAdapter prompt_agent \
-                         "{\"target\":\"$_as_t\",\"text\":\"$_as_x\"}" 2>&1)
-        _as_rc=$?
-        set -e
+        # NO se usa `set +e` / `set -e` aca. Las opciones del shell son
+        # GLOBALES, no locales a la funcion: quien llama hace `set +e` para
+        # poder leer el codigo de retorno, y un `set -e` adentro le pisa esa
+        # decision. Cuando la funcion devolvia NOT_DELIVERED, errexit estaba
+        # activo otra vez y el script moria EN SILENCIO -sin imprimir el
+        # motivo, con codigo 1 en vez del 5 que corresponde-.
+        #
+        # Una asignacion dentro de `if` es segura con errexit puesto o no, y
+        # no toca el estado global.
+        if THALOS_ACK_OUT=$(thalos_capability_run ExecutionAdapter prompt_agent \
+                            "{\"target\":\"$_as_t\",\"text\":\"$_as_x\"}" 2>&1); then
+            _as_rc=0
+        else
+            _as_rc=$?
+        fi
         [ "$_as_rc" -ne 0 ] && return 5
+
+        # Un agente que ya no esta no va a recibir ningun reenvio. Reintentar
+        # tres veces por 45 segundos sobre un panel que desaparecio son dos
+        # minutos de nada: la observacion base ya sabia que no existia.
+        [ "$_as_pane" = 0 ] && return 5
 
         # En simulacion nadie procesa el encargo, asi que no hay transicion que
         # esperar: exigir ACK convertiria toda corrida dry-run en NOT_DELIVERED.
