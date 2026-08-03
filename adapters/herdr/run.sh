@@ -32,7 +32,11 @@ REQUIRED_RANGE=">=0.7.5"
 # fallido. Desde que el nucleo hace su propio ACK observado, esto ya no decide
 # si el encargo llego -eso lo decide quien llama-: solo evita reportar un
 # fallo sobre un prompt cuya confirmacion tardo mas que la ventana de --wait.
-RECONCILE_WINDOW_S=60
+#
+# Se puede acortar por entorno. No es configuracion del nucleo -sigue siendo
+# del adapter- pero una ventana de un minuto vuelve intestable el camino que
+# mas importa probar: el de la recuperacion.
+RECONCILE_WINDOW_S="${THALOS_RECONCILE_WINDOW_S:-60}"
 
 op="${1:-}"
 args="${2:-{\}}"
@@ -345,10 +349,27 @@ case "$op" in
         # agente con el encargo dos veces. Se OBSERVA, que es lo que este
         # adapter ya hace en start_agent y en create_session: ante un recurso
         # cuyo estado no se puede afirmar, la fuente de verdad es el backend.
+        # Se pregunta con `agent get`, que RESUELVE el target -por nombre o por
+        # panel- y devuelve un solo registro.
+        #
+        # Antes se filtraba `agent list` por un campo "name" que sus registros
+        # NO TIENEN: traen agent, pane_id, agent_status, state_change_seq y
+        # demas, nunca name. El grep no acertaba nunca, la comparacion se hacia
+        # siempre contra vacio y el bucle agotaba la ventana entera para
+        # terminar fallando igual. La recuperacion no recuperaba nada.
+        #
+        # Ademas partia el JSON con `tr '}' '\n'`, que corta tambien los objetos
+        # anidados -agent_session es uno- y deja registros mutilados.
         _estado_seq() {
-            "$HERDR" agent list 2>/dev/null | tr '}' '\n' \
-                | grep -F "\"name\":\"$_target\"" \
-                | sed -n 's/.*"state_change_seq":\([0-9]*\).*/\1/p' | head -1
+            "$HERDR" agent get "$_target" 2>/dev/null | first_num state_change_seq
+        }
+        # Un target que no resuelve no se va a mover nunca: esperar la ventana
+        # entera es la misma espera inutil que este subsistema vino a eliminar.
+        _existe() {
+            case "$("$HERDR" agent get "$_target" 2>/dev/null)" in
+                *agent_not_found*) return 1 ;;
+                *) return 0 ;;
+            esac
         }
         _antes=$(_estado_seq)
 
@@ -368,6 +389,7 @@ case "$op" in
             *agent_prompt_stalled*)
                 _espera=0
                 while [ "$_espera" -lt "$RECONCILE_WINDOW_S" ]; do
+                    _existe || break
                     _ahora=$(_estado_seq)
                     if [ -n "$_ahora" ] && [ "$_ahora" != "$_antes" ]; then
                         # El agente se movio: el prompt habia llegado.

@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -573,6 +574,73 @@ case "$1" in --version) echo "herdr 0.7.5" ;; esac
     results.append(check(
         "un agente ausente no inventa process_alive verdadero",
         o.get("process_alive") is False, str(o)[:160]))
+
+    # ---------- recuperacion de agent_prompt_stalled ----------
+    #
+    # agent_prompt_stalled NO significa que el prompt no llego: significa que
+    # Herdr no vio moverse el estado dentro de su ventana de --wait. La
+    # recuperacion observa si el agente se movio DESPUES.
+    #
+    # Estaba muerta. Buscaba el agente por un campo "name" que `agent list` no
+    # devuelve -sus registros traen agent, pane_id, agent_status,
+    # state_change_seq y demas, nunca name-, asi que el grep no acertaba nunca,
+    # la comparacion se hacia siempre contra vacio y el bucle agotaba los 60
+    # segundos para terminar fallando igual. Sesenta segundos de nada.
+
+    def stalled(seq_fijo, ventana="3", existe=True):
+        """Un herdr que contesta agent_prompt_stalled y luego se deja observar.
+
+        Con seq_fijo el contador no se mueve: el agente nunca reacciono y la
+        recuperacion tiene que rendirse. Sin el, cada lectura devuelve un valor
+        distinto, que es lo que prueba que el prompt si habia entrado.
+        """
+        d = pathlib.Path(tempfile.mkdtemp())
+        p = d / "herdr"
+        if existe:
+            cuerpo = ('_n=$(cat %s/seq 2>/dev/null || echo 10)\n'
+                      '     %s\n'
+                      '     echo "$_n" > %s/seq\n'
+                      '     printf \'{"result":{"agent":{"pane_id":"w1:p1",'
+                      '"agent_status":"working","state_change_seq":%%s}}}\' "$_n"\n'
+                      % (d, "" if seq_fijo else "_n=$((_n + 1))", d))
+        else:
+            cuerpo = ('echo \'{"error":{"code":"agent_not_found",'
+                      '"message":"agent target a1 not found"}}\'\n')
+        p.write_text(
+            '#!/bin/sh\n'
+            'case "$1 $2" in\n'
+            '  "agent prompt") echo "agent_prompt_stalled" >&2; exit 1 ;;\n'
+            f'  "agent get") {cuerpo} ;;\n'
+            '  *) echo "herdr 0.7.5" ;;\n'
+            'esac\n')
+        p.chmod(0o755)
+        t0 = time.time()
+        rc, out, err = run_adapter("prompt_agent", {"target": "a1", "text": "x"},
+                                   {"THALOS_HERDR_BIN": str(p),
+                                    "THALOS_RECONCILE_WINDOW_S": ventana})
+        return rc, out, err, time.time() - t0
+
+    rc, out, _, _ = stalled(seq_fijo=False)
+    results.append(check(
+        "tras un stalled, si el agente se movio la operacion se da por buena",
+        rc == 0 and "created" in out,
+        f"rc={rc} {out[:140]}"))
+    results.append(check(
+        "y lo dice: la confirmacion tardo, no es que fallara",
+        "tardo mas que la ventana" in out, out[:140]))
+
+    # Si no distinguiera, el check anterior pasaria por accidente.
+    rc, out, err, _ = stalled(seq_fijo=True)
+    results.append(check(
+        "si el agente NO se movio, sigue siendo un fallo",
+        rc == 5, f"rc={rc} {err[:120]}"))
+
+    # Un agente que no existe no se va a mover nunca: esperar la ventana entera
+    # es la misma espera inutil que este subsistema vino a eliminar.
+    rc, out, err, tardo = stalled(seq_fijo=True, ventana="30", existe=False)
+    results.append(check(
+        "un agente inexistente corta al toque en vez de agotar la ventana",
+        rc == 5 and tardo < 10, f"rc={rc} tardo {tardo:.1f}s de 30"))
 
     results.append(check(
         "observe_agent no lee terminal (regla 4.2.4)",
