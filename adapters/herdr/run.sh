@@ -354,7 +354,7 @@ case "$op" in
 
         set +e
         # shellcheck disable=SC2086
-        _out=$(thalos_mutate_run "$op" "$run" "$feat" "$args" agent \
+        _out=$(thalos_run_at_most_once "$op" "$run" "$feat" "$args" agent \
                    herdr_do agent prompt "$_target" "$_text" --wait \
                        ${_tmo:+--timeout} ${_tmo:+"$_tmo"} 2>&1)
         _prc=$?
@@ -517,7 +517,11 @@ case "$op" in
         # pane run manda el texto Y el Enter de forma atomica. Con send-text
         # el comando queda escrito en el prompt y nunca se ejecuta: la
         # operacion reportaba exito sin haber corrido nada.
-        thalos_mutate_run "$op" "$run" "$feat" "$args" pane_id \
+        #
+        # at_most_once igual que prompt_agent: el manifiesto declara que este
+        # adapter no puede garantizar idempotencia sobre un comando arbitrario,
+        # asi que el ledger registra y no suprime (regla 38.2.7).
+        thalos_run_at_most_once "$op" "$run" "$feat" "$args" pane_id \
             herdr_do pane run "$_pane" "$_cmd"
         ;;
 

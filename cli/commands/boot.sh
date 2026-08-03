@@ -161,8 +161,9 @@ esc=$(printf '%s' "$encargo" | "$PY" -c 'import json,sys; print(json.dumps(sys.s
 . "$SYS/hooks/lib/ack.sh"
 # shellcheck source=../../hooks/lib/agent-events.sh
 . "$SYS/hooks/lib/agent-events.sh"
+_gen=$(thalos_agent_ref_field "$FEAT" generation 2>/dev/null || echo 1)
 set +e
-thalos_ack_send "$TARGET" "$esc"
+thalos_ack_send "$TARGET" "$esc" "$_gen"
 prc=$?
 set -e
 out="${THALOS_ACK_OUT:-}"

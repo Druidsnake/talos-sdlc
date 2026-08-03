@@ -232,6 +232,49 @@ thalos_mutate_run() {
         "$([ "$THALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
 }
 
+# thalos_run_at_most_once <operation> <run_id> <feature_id> <semantic_args> <campo-id> <cmd...>
+#
+# Para las operaciones que el manifiesto declara `at_most_once` (regla 38.2.7).
+#
+# REGISTRA EN EL LEDGER Y NO SUPRIME.
+#
+# Suprimir aca es que el adapter finja dar la garantia que su propio manifiesto
+# dice que NO PUEDE dar. Y el precio no era teorico: un encargo legitimo -un
+# redespacho, un reintento tras un ACK que no llego, otra vuelta del loop sobre
+# la misma feature- producia la key de la vez anterior, el ledger contestaba
+# already_exists, y el prompt NO SE ENVIABA. El agente no recibia nada y el
+# paso reportaba exito. Medido en vivo: dos comandos identicos, el segundo
+# descartado en silencio.
+#
+# Lo que evita el doble envio NO es el ledger: es la regla 38.2.7, que prohibe
+# al nucleo reintentar estas operaciones por su cuenta. La proteccion vive en
+# quien llama, que es el unico que sabe si un envio ya cumplio su proposito.
+#
+# El registro se conserva porque un adapter que no deja rastro no es auditable
+# (seccion 38.1): se puede reconstruir que se envio y cuando, que es para lo
+# que sirve el ledger en una operacion que no se puede deduplicar.
+thalos_run_at_most_once() {
+    _op="$1"; _run="$2"; _feat="$3"; _args="$4"; _field="$5"
+    shift 5
+
+    _key=$(thalos_idempotency_key "$_run" "$_feat" "$_op" "$_args") || return 5
+
+    if ! _out=$("$@" 2>&1); then
+        printf '{"status":"error","error_class":"adapter","operation":"%s","message":%s}\n' \
+            "$_op" "$(printf '%s' "$_out" | thalos_json_string)" >&2
+        return 5
+    fi
+    _id=$(printf '%s' "$_out" \
+          | sed -n 's/.*"'"$_field"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    [ -n "$_id" ] || _id="$_op"
+    _ref="{\"id\":\"$_id\",\"url\":null}"
+
+    thalos_ledger_record "$_key" "$_op" "$_ref"
+    printf '{"status":"created","resource_ref":%s,"idempotency_key":"%s","dry_run":%s}\n' \
+        "$_ref" "$_key" \
+        "$([ "$THALOS_ADAPTER_SIMULATED" = 1 ] && echo true || echo false)"
+}
+
 # ---------- lectura de semantic_args ----------
 #
 # thalos_json_get <json> <clave>

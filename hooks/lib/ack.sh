@@ -86,7 +86,13 @@ thalos_ack_config() {
     printf '%s' "${_ac_v:-$3}"
 }
 
-# thalos_ack_send <target> <texto-escapado>
+# thalos_ack_send <target> <texto-escapado> [generacion]
+#
+# La generacion distingue una INSTANCIA de despacho de otra. Va en los
+# semantic_args porque es lo unico que entra en la idempotency key: sin ella,
+# redespachar sobre la misma feature con el mismo encargo produce la key de la
+# vez anterior y el ledger contesta already_exists sin enviar nada. Ver
+# thalos-0.0.7.md 38.2.8.
 #
 # Despacha un encargo y NO vuelve hasta saber si entro. Reintenta con backoff
 # mientras el encargo no haya llegado, porque reenviar algo que nunca llego no
@@ -99,7 +105,7 @@ thalos_ack_config() {
 # Deja en THALOS_ACK_OUT la ultima respuesta del adapter, para que quien llama
 # pueda mirar dry_run u otros campos sin volver a preguntar.
 thalos_ack_send() {
-    _as_t="$1"; _as_x="$2"
+    _as_t="$1"; _as_x="$2"; _as_g="${3:-1}"
     _as_tmo=$(thalos_ack_config communication.yaml liveness.ack_timeout_seconds 45)
     _as_max=$(thalos_ack_config reliability.yaml \
               reliability.operations.agent_prompt.max_attempts 3)
@@ -126,7 +132,8 @@ thalos_ack_send() {
         # Una asignacion dentro de `if` es segura con errexit puesto o no, y
         # no toca el estado global.
         if THALOS_ACK_OUT=$(thalos_capability_run ExecutionAdapter prompt_agent \
-                            "{\"target\":\"$_as_t\",\"text\":\"$_as_x\"}" 2>&1); then
+                "{\"target\":\"$_as_t\",\"text\":\"$_as_x\",\"agent_generation\":\"$_as_g\"}" \
+                2>&1); then
             _as_rc=0
         else
             _as_rc=$?

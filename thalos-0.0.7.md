@@ -1776,6 +1776,11 @@ idempotency_key = sha256(
 5. `semantic_args` DEBE excluir timestamps y valores no deterministas.
 6. Si el backend externo no soporta idempotencia nativa, el adapter DEBE implementar reconciliación: buscar el recurso por key antes de crear.
 7. Un adapter que no pueda garantizar idempotencia en una operación DEBE declararla `at_most_once` en su manifiesto, y el core NO DEBE reintentarla automáticamente.
+8. `semantic_args` DEBE identificar la **instancia** del recurso sobre el que se actúa, no solo su nombre. Si el nombre se reutiliza entre instancias, DEBE incluirse un identificador de instancia —una generación— que sea constante entre reintentos de la misma operación y distinto entre instancias.
+
+**Corrección respecto de 0.0.7: la regla 5 decía qué excluir y ninguna decía qué incluir.** La consecuencia se vio corriendo. Thalos reutiliza a propósito el nombre del agente entre despachos —es lo que le permite reconciliar— y el encargo que arma `feature work` es determinista para una feature y una task dadas. Con eso, un **redespacho producía la misma key que el despacho anterior**: el ledger contestaba `already_exists` y el prompt no se enviaba nunca. El agente nuevo no recibía su encargo, jamás. Antes del ACK observado de la sección 7 de la mensajería, el paso reportaba *"trabajo entregado"* y esperaba el presupuesto completo por un entregable que no podía existir.
+
+Una generación no es un timestamp ni un valor no determinista, así que no contradice la regla 5: es constante mientras la instancia lo sea. Es el mismo mecanismo que la sección 32.3 usa para los leases.
 
 ### 38.3. Adapters recomendados
 

@@ -42,8 +42,13 @@ case "$op" in
         ;;
     prompt_agent|run_command)
         # at_most_once: respuesta no reproducible / efectos de lado arbitrarios.
-        thalos_mutate "$op" "$run" "$feat" "$args" \
-            "{\"id\":\"exec:$op\",\"url\":null}"
+        #
+        # Se REGISTRA y no se suprime (regla 38.2.7). Suprimir seria fingir la
+        # garantia que el manifiesto declara que no se puede dar, y el precio
+        # es que un encargo legitimo -un redespacho, otra vuelta del loop- se
+        # descarte en silencio.
+        thalos_run_at_most_once "$op" "$run" "$feat" "$args" id \
+            printf '{"id":"exec:%s"}' "$op"
         ;;
     wait_agent)
         thalos_ok '{"state":"idle","exit_code":0,"simulated":true}'

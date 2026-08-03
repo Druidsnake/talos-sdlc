@@ -416,8 +416,13 @@ PYEOF
     . "$SYS/hooks/lib/ack.sh"
     # shellcheck source=../../hooks/lib/agent-events.sh
     . "$SYS/hooks/lib/agent-events.sh"
+    # La generacion identifica ESTA instancia de despacho. Sin ella, un
+    # redespacho con el mismo encargo produce la idempotency key de la vez
+    # anterior y el ledger contesta already_exists sin enviar nada: el agente
+    # nuevo no recibe su encargo nunca (regla 38.2.8).
+    _gen=$(thalos_agent_ref_field "$FEAT" generation 2>/dev/null || echo 1)
     set +e
-    thalos_ack_send "$TARGET" "$esc"
+    thalos_ack_send "$TARGET" "$esc" "$_gen"
     rc=$?
     set -e
     out="${THALOS_ACK_OUT:-}"

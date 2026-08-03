@@ -36,12 +36,40 @@ thalos_agent_ref_path() {
     printf '%s/orchestration/features/%s/.agent' "${THALOS_PROJECT_ROOT:-.}" "$1"
 }
 
+# GENERACION: que instancia de despacho es esta.
+#
+# La idempotency key es sha256(run:feature:op:args) por la regla 38.2.4, y el
+# encargo que arma `feature work` es determinista para una feature+task dada.
+# Sin nada que distinga una instancia de otra, un REDESPACHO producia la misma
+# key, el ledger contestaba already_exists y el prompt no se enviaba nunca: el
+# agente nuevo no recibia su encargo, jamas.
+#
+# El nombre del agente no alcanza para distinguirlas porque Thalos lo reutiliza
+# a proposito -es lo que le permite reconciliar-. Hace falta un contador.
+#
+# NO es un timestamp ni un valor no determinista, asi que no viola la regla
+# 38.2.5: es constante entre reintentos del MISMO despacho -la deduplicacion
+# sigue protegiendo contra el doble envio- y solo cambia cuando hay uno nuevo.
+# Es el mismo patron que la seccion 32.3 usa para los leases.
+#
+# Vive aparte de .agent y SOBREVIVE a release: si se borrara con el resto, el
+# proximo despacho volveria a empezar en 1 y chocaria con las keys viejas.
+thalos_agent_gen_path() {
+    printf '%s-gen' "$(thalos_agent_ref_path "$1")"
+}
+
 # thalos_agent_ref_write <feature_id> <adapter> <name> <pane> [ref]
 thalos_agent_ref_write() {
     _ar_f=$(thalos_agent_ref_path "$1")
     mkdir -p "$(dirname "$_ar_f")"
-    printf '{"adapter":"%s","name":"%s","pane":"%s","ref":"%s","dispatched_at":"%s"}\n' \
-        "$2" "$3" "$4" "${5:-}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$_ar_f"
+    _ar_g=$(cat "$(thalos_agent_gen_path "$1")" 2>/dev/null || echo 0)
+    case "$_ar_g" in ''|*[!0-9]*) _ar_g=0 ;; esac
+    _ar_g=$(( _ar_g + 1 ))
+    printf '%s\n' "$_ar_g" > "$(thalos_agent_gen_path "$1")"
+    # La generacion se guarda como CADENA para que el lector de campos, que
+    # busca "clave":"valor", la encuentre igual que a las demas.
+    printf '{"adapter":"%s","name":"%s","pane":"%s","ref":"%s","generation":"%s","dispatched_at":"%s"}\n' \
+        "$2" "$3" "$4" "${5:-}" "$_ar_g" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$_ar_f"
     # El .pane suelto es la version sin procedencia de esto mismo. Se borra al
     # escribir la referencia buena: dos fuentes para el mismo dato garantizan
     # que alguna quede vieja.

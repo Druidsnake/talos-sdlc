@@ -196,8 +196,12 @@ case "$sub" in
             # archivos y confiar en no olvidarse de uno.
             _tmo_ms=$(( $(thalos_ack_config reliability.yaml \
                           reliability.operations.agent_prompt.timeout_seconds 900) * 1000 ))
+            # La generacion tambien va aca: una respuesta al mismo bloqueo,
+            # entregada a un agente REDESPACHADO, es una entrega nueva y no un
+            # reintento de la anterior (regla 38.2.8).
+            _gen=$(thalos_agent_ref_field "$_feat" generation 2>/dev/null || echo 1)
             if thalos_capability_run ExecutionAdapter prompt_agent \
-                   "{\"target\":\"$_target\",\"text\":\"$_esc\",\"timeout_ms\":\"$_tmo_ms\"}" \
+                   "{\"target\":\"$_target\",\"text\":\"$_esc\",\"timeout_ms\":\"$_tmo_ms\",\"agent_generation\":\"$_gen\"}" \
                    >/dev/null 2>&1; then
                 printf '  entregada a %s\n' "$_target"
             else
