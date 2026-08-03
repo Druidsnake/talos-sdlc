@@ -508,11 +508,13 @@ Hoy **no existe**, aunque `schemas/reliability-config.schema.json` sí. Se crea 
 
 | Valor | Dónde | Va a |
 |---|---|---|
-| `900000` | `boot.sh:158`, `feature.sh:412`, `feature.sh:487`, `message.sh:120` | `reliability.operations.agent_prompt.timeout_seconds` |
-| `300000` | `feature.sh:567`, `feature.sh:571` | `reliability.operations.*` |
+| `900000` | `boot.sh`, `feature.sh`, `message.sh` | `reliability.operations.agent_prompt.timeout_seconds` |
+| `300000` | `feature.sh` (recordatorio de commit) | `reliability.operations.agent_recall.timeout_seconds` |
 | `90` (gracia de quietud) | `feature.sh` bucle de espera | **se elimina**: la reemplaza `process_alive` |
 | `5` (intervalo de sondeo) | `feature.sh` bucle de espera | `liveness.observe_interval_seconds` |
-| `60` (ventana de `agent_prompt_stalled`) | `adapters/herdr/run.sh` | `liveness.ack_timeout_seconds` |
+| `60` (ventana de `agent_prompt_stalled`) | `adapters/herdr/run.sh` | **se queda en el adapter**, como constante nombrada |
+
+**Corrección respecto de la primera redacción:** esta tabla mandaba el `60` del adapter a `liveness.ack_timeout_seconds`. Está mal en dos sentidos. Primero, haría que el adapter leyera la configuración del núcleo, que es la regla 38.5.5 violada en el espejo: prohibimos que el núcleo conozca el vocabulario del backend, y meter la config del núcleo dentro del adapter es el mismo acople con las flechas al revés. Segundo, desde que el núcleo hace su propio ACK observado (sección 7.2), esa ventana ya no decide si el encargo llegó —eso lo decide quien llama— sino solo si el adapter reporta un fallo sobre un envío cuya confirmación tardó. Es reconciliación interna del adapter, y ahí se queda, con nombre y motivo.
 
 ---
 
@@ -615,11 +617,13 @@ Cada etapa DEBE dejar el sistema funcionando.
 7. expiración, sweep acoplado y STATUS_UPDATE                                    [HECHA]
    -> se cierran 25.5.7/8/9
 
-8. destierro de los literales cableados
-   -> criterio de aceptación 11
+8. destierro de los literales cableados                                          [HECHA]
+   -> criterio de aceptación 14
 ```
 
 Las etapas 1–4 no cambian ningún comportamiento existente. La 6 ES la que cambia el reporte que ve una persona, y DEBE hacerse cuando 1–5 estén verificadas.
+
+**Estado: las ocho etapas están implementadas y la suite completa pasa.** Lo que sigue no es implementación sino uso: correr el subsistema contra agentes reales el tiempo suficiente para que aparezca lo que ningún experimento anticipó.
 
 ---
 

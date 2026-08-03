@@ -157,8 +157,18 @@ def main():
     code, out, err = run_adapter("health", env={"THALOS_HERDR_BIN": str(viejo)})
     results.append(check(
         "RECHAZA una version fuera del rango declarado (regla 37.4.5.3)",
-        code == 2 and "0.6.9" in err and "0.7.0" in err,
+        code == 2 and "0.6.9" in err and "0.7.5" in err,
         f"exit={code} {err[:140]}"))
+
+    # El piso subio a 0.7.5 porque observe_agent necesita pane.process_info.
+    # Una version que ANTES alcanzaba ya no alcanza, y tiene que decirlo: sin
+    # esa operacion el subsistema de vitalidad no puede distinguir a un agente
+    # que trabaja de uno que murio trabajando.
+    justo_abajo = fake_herdr("0.7.0")
+    code, out, err = run_adapter("health", env={"THALOS_HERDR_BIN": str(justo_abajo)})
+    results.append(check(
+        "y rechaza 0.7.0, que no tiene pane.process_info",
+        code == 2, f"exit={code} {err[:140]}"))
 
     # Sin binario en ningun paso: precondition, no crash.
     code, out, err = run_adapter("health")

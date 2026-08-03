@@ -180,6 +180,32 @@ thalos_capability_run() {
         "un archivo ausente devuelve el default en vez de romper",
         v == "porDefecto", f"dio {v}"))
 
+    # ---------- criterio de aceptacion 14: ningun plazo cableado ----------
+    #
+    # Estaban repetidos a mano en cuatro archivos. Cambiar uno y olvidarse de
+    # otro daba un sistema con dos plazos distintos para lo mismo, y el que
+    # mandaba dependia de por donde hubiera entrado la ejecucion.
+    sueltos = []
+    for d in ("cli", "adapters", "hooks"):
+        for path in (ROOT / d).rglob("*.sh"):
+            texto = path.read_text()
+            for lit in ("900000", "300000"):
+                if lit in texto:
+                    sueltos.append(f"{path.relative_to(ROOT)}:{lit}")
+    results.append(check(
+        "ningun plazo de agente quedo cableado en shell (criterio 14)",
+        not sueltos, f"cableados: {sueltos}"))
+
+    # El manifiesto y el chequeo en runtime tienen que pedir lo MISMO. Si el
+    # manifiesto declara 0.7.5 y el codigo acepta 0.7.0, la declaracion no
+    # protege nada: el adapter arranca contra una version sin process_info.
+    man = (ROOT / "adapters" / "herdr" / "adapter.yaml").read_text()
+    run = (ROOT / "adapters" / "herdr" / "run.sh").read_text()
+    results.append(check(
+        "el rango del manifiesto y el del runtime coinciden",
+        'version_range: ">=0.7.5"' in man and 'REQUIRED_RANGE=">=0.7.5"' in run,
+        "un manifiesto que declara mas de lo que el codigo exige no exige nada"))
+
     print()
     ok = sum(1 for x in results if x)
     print(f"{ok}/{len(results)} checks del ACK observado")

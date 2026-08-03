@@ -179,12 +179,19 @@ case "$sub" in
         . "$SYS/hooks/lib/resolve-capability.sh"
         # shellcheck source=../../hooks/lib/agent-ref.sh
         . "$SYS/hooks/lib/agent-ref.sh"
+        # shellcheck source=../../hooks/lib/ack.sh
+        . "$SYS/hooks/lib/ack.sh"
         _target=$(thalos_agent_ref_field "$_feat" name 2>/dev/null || echo "")
         if [ -n "$_target" ] && thalos_agent_ref_check "$_feat" 2>/dev/null; then
             _esc=$(printf 'Respuesta a tu bloqueo (%s):\n\n%s' "$MID" "$TEXTO" \
                    | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+            # El plazo sale de config, no del codigo (regla 43.3). Estaba
+            # cableado en cuatro lugares distintos: cambiarlo era editar cuatro
+            # archivos y confiar en no olvidarse de uno.
+            _tmo_ms=$(( $(thalos_ack_config reliability.yaml \
+                          reliability.operations.agent_prompt.timeout_seconds 900) * 1000 ))
             if thalos_capability_run ExecutionAdapter prompt_agent \
-                   "{\"target\":\"$_target\",\"text\":\"$_esc\",\"timeout_ms\":\"900000\"}" \
+                   "{\"target\":\"$_target\",\"text\":\"$_esc\",\"timeout_ms\":\"$_tmo_ms\"}" \
                    >/dev/null 2>&1; then
                 printf '  entregada a %s\n' "$_target"
             else

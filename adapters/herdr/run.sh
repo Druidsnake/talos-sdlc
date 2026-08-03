@@ -17,7 +17,22 @@ DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 . "$DIR/../lib/adapter.sh"
 . "$DIR/../lib/semver.sh"
 
-REQUIRED_RANGE=">=0.7.0"
+# 0.7.5 y no 0.7.0: observe_agent necesita pane.process_info, que es la unica
+# senal que no miente sobre si un agente sigue vivo. Tiene que coincidir con
+# el version_range del manifiesto, o el chequeo en runtime deja pasar una
+# version que el manifiesto declara insuficiente.
+REQUIRED_RANGE=">=0.7.5"
+
+# Ventana de RECONCILIACION del adapter, en segundos. No es politica del
+# nucleo y por eso NO sale de config/: el adapter no debe leer la
+# configuracion del nucleo, igual que el nucleo no debe conocer su vocabulario
+# (regla 38.5.5, en el sentido inverso).
+#
+# Es cuanto observa el backend tras un agent_prompt_stalled antes de darlo por
+# fallido. Desde que el nucleo hace su propio ACK observado, esto ya no decide
+# si el encargo llego -eso lo decide quien llama-: solo evita reportar un
+# fallo sobre un prompt cuya confirmacion tardo mas que la ventana de --wait.
+RECONCILE_WINDOW_S=60
 
 op="${1:-}"
 args="${2:-{\}}"
@@ -352,7 +367,7 @@ case "$op" in
         case "$_out" in
             *agent_prompt_stalled*)
                 _espera=0
-                while [ "$_espera" -lt 60 ]; do
+                while [ "$_espera" -lt "$RECONCILE_WINDOW_S" ]; do
                     _ahora=$(_estado_seq)
                     if [ -n "$_ahora" ] && [ "$_ahora" != "$_antes" ]; then
                         # El agente se movio: el prompt habia llegado.

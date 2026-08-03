@@ -643,15 +643,28 @@ PYBLOQ
         printf '  ..   dejo el entregable y no commiteo: se lo recuerdo\n'
         _rec="Dejaste tu entregable pero no commiteaste. Thalos lee git para sellar el CommitRef y sin commit no hay nada que leer. Commitea ahora lo que hiciste: un solo commit, conventional commits, sin co-autores."
         _rec_esc=$(printf '%s' "$_rec" | "$PY" -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+        _rec_s=$(thalos_ack_config reliability.yaml \
+                 reliability.operations.agent_recall.timeout_seconds 300)
         set +e
         thalos_capability_run ExecutionAdapter prompt_agent \
-            "{\"target\":\"$TARGET\",\"text\":\"$_rec_esc\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
-        _lim2=$(( $(date +%s) + 300 ))
+            "{\"target\":\"$TARGET\",\"text\":\"$_rec_esc\",\"timeout_ms\":\"$(( _rec_s * 1000 ))\"}" \
+            >/dev/null 2>&1
+        _lim2=$(( $(date +%s) + _rec_s ))
         while [ "$(git rev-parse HEAD 2>/dev/null || echo "$_base")" = "$_base" ]; do
-            thalos_capability_run ExecutionAdapter wait_agent \
-                "{\"target\":\"$TARGET\",\"timeout_ms\":\"300000\"}" >/dev/null 2>&1
             [ "$(date +%s)" -ge "$_lim2" ] && break
-            sleep 5
+            # Mismo criterio que la espera principal: se OBSERVA, no se espera.
+            # Este bucle habia quedado con wait_agent, que BLOQUEA y no puede
+            # ver que el agente murio: si se cae justo despues de dejar el
+            # entregable, esperarle el commit son cinco minutos de nada.
+            _o2=$(thalos_capability_run ExecutionAdapter observe_agent \
+                  "{\"target\":\"$TARGET\"}" 2>/dev/null || echo '{}')
+            _v2=$("$PY" "$SYS/hooks/lib/liveness.py" verdict "$_o2" --ack | cut -f1)
+            case "$_v2" in
+                DEAD|GONE|FAILED)
+                    printf '  --   el agente ya no esta: no va a commitear\n'
+                    break ;;
+            esac
+            sleep "$_iv"
         done
         set -e
     fi
