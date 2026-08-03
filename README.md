@@ -16,6 +16,32 @@ El repo se queda en `dry-run-only` a propósito: su propia suite no puede depend
 
 ---
 
+## Instalación
+
+Dos formas, y no compiten.
+
+**Una sola copia, todos los proyectos.** Enlazá el lanzador a un directorio que ya esté en tu `PATH`:
+
+```sh
+ln -s "$PWD/cli/thalos" ~/.local/bin/thalos
+```
+
+Desde ahí `thalos` funciona en cualquier repo sin copiar nada: la raíz del **sistema** sale de dónde vive el lanzador —siguiendo la cadena de enlaces— y la raíz del **proyecto** sale del repo donde estás parado.
+
+**Vendoreado en `.thalos/`.** Copiar el sistema dentro del proyecto fija una versión para ese proyecto.
+
+### Cuál gana
+
+```txt
+1. THALOS_SYSTEM_ROOT exportado    quien lo exporta sabe lo que hace
+2. .thalos/ del proyecto           el proyecto fijó SU versión
+3. la instalación que se invocó    el caso normal
+```
+
+El punto 2 no es cortesía. Un proyecto que vendorea eligió una versión y sus artefactos están escritos contra ella; correrle encima otra es una **migración** (sección 12.3), no una rutina. Sin esa precedencia, actualizar tu instalación cambiaría en silencio la versión que corre en proyectos que habían decidido no moverse.
+
+---
+
 ## Qué hay acá
 
 | Archivo | Contenido | Versión |

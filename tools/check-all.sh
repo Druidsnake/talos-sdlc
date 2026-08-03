@@ -40,6 +40,7 @@ run "vitalidad: la tabla de decision sobre un agente" $PY tests/test_liveness.py
 run "ack: el encargo entro o no entro, y se sabe" $PY tests/test_ack.py
 run "mensajes: expiracion, escalacion y canal declarado" $PY tests/test_message.py
 run "redespacho: la segunda vez tambien entrega" $PY tests/test_redespacho.py
+run "instalacion: vendoreado y global conviven" $PY tests/test_instalacion.py
 run "hooks: bloqueo efectivo" ./tests/test_hooks.sh
 run "cli: slice vertical de punta a punta" ./tests/test_cli.sh
 

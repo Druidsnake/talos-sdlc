@@ -11,11 +11,30 @@
 set -eu
 
 # Dos raices distintas, como exige thalos-0.0.7.md seccion 8:
-#   SYSTEM  -> donde vive Thalos      (.thalos/ vendoreado, o el repo si se auto-hospeda)
+#   SYSTEM  -> donde vive Thalos      (.thalos/ vendoreado, o una instalacion unica)
 #   PROJECT -> donde vive el trabajo (spec/, orchestration/, src/)
 # Confundirlas hace que Thalos busque el spec del producto dentro de si mismo.
-CLI_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-THALOS_SYSTEM_ROOT=$(dirname "$CLI_DIR")
+
+# SE SIGUE LA CADENA DE ENLACES antes de deducir nada.
+#
+# La raiz sale de donde esta ESTE archivo, y con un `thalos` enlazado en el
+# PATH -que es como se instala una vez y se usa en todos los proyectos-
+# dirname($0) da el directorio del enlace. Sin resolverlo, la raiz salia
+# ~/.local/bin/.. y Thalos se buscaba a si mismo donde no esta: fallaba
+# nombrando archivos que si existen, en otro lado.
+_fuente="$0"
+while [ -L "$_fuente" ]; do
+    _enl_dir=$(CDPATH='' cd -- "$(dirname -- "$_fuente")" && pwd)
+    _fuente=$(readlink "$_fuente")
+    # Un enlace relativo lo es respecto del directorio donde vive el enlace,
+    # no del directorio actual.
+    case "$_fuente" in
+        /*) ;;
+        *) _fuente="$_enl_dir/$_fuente" ;;
+    esac
+done
+CLI_DIR=$(CDPATH='' cd -- "$(dirname -- "$_fuente")" && pwd)
+THALOS_INSTALADO=$(dirname "$CLI_DIR")
 
 if [ -n "${THALOS_PROJECT_ROOT:-}" ]; then
     :
@@ -23,6 +42,31 @@ elif git rev-parse --show-toplevel >/dev/null 2>&1; then
     THALOS_PROJECT_ROOT=$(git rev-parse --show-toplevel)
 else
     THALOS_PROJECT_ROOT=$(pwd)
+fi
+
+# PRECEDENCIA DE LA RAIZ DEL SISTEMA
+#
+#   1. THALOS_SYSTEM_ROOT explicito   quien lo exporta sabe lo que hace
+#   2. .thalos/ del proyecto          el proyecto fijo SU version
+#   3. la instalacion que se invoco   una sola copia para todos los proyectos
+#
+# El punto 2 no es cortesia. Un proyecto que vendorea eligio una version y sus
+# artefactos estan escritos contra ella; correrle encima otra es una migracion
+# (seccion 12.3), no una rutina. Por eso el vendoreado gana aunque se haya
+# invocado el global: si no, actualizar la instalacion cambiaria en silencio
+# la version que corre en proyectos que habian decidido no moverse.
+if [ -n "${THALOS_SYSTEM_ROOT:-}" ]; then
+    :
+elif [ -x "$THALOS_PROJECT_ROOT/.thalos/cli/thalos" ] \
+     && [ "$THALOS_PROJECT_ROOT/.thalos" != "$THALOS_INSTALADO" ]; then
+    # Se le CEDE la ejecucion al vendoreado en vez de solo apuntarle la raiz:
+    # mezclar los comandos de una instalacion con la raiz de otra corre codigo
+    # de una version contra la configuracion de otra.
+    THALOS_SYSTEM_ROOT="$THALOS_PROJECT_ROOT/.thalos"
+    export THALOS_SYSTEM_ROOT THALOS_PROJECT_ROOT
+    exec "$THALOS_SYSTEM_ROOT/cli/thalos" "$@"
+else
+    THALOS_SYSTEM_ROOT="$THALOS_INSTALADO"
 fi
 
 export THALOS_SYSTEM_ROOT THALOS_PROJECT_ROOT
